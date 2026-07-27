@@ -1,9 +1,10 @@
 import express, { type Express, type Router } from 'express';
 import { requestLog } from './middleware/log';
-import { authenticate } from './middleware/auth';
+import { authenticate, isDevAuthEnabled, authMode } from './middleware/auth';
 import { resolveTenant } from './middleware/tenant';
 import { notFound, errorHandler } from './middleware/error';
 import { legacyDataRouter } from './legacy/dataJson';
+import { authRouter } from './modules/auth/router';
 import { salesRouter } from './modules/sales/router';
 import { maintenanceRouter } from './modules/maintenance/router';
 import { planningRouter } from './modules/planning/router';
@@ -26,11 +27,19 @@ import { collectRoutes, type DiscoveredRoute } from './openapi/routes';
 export function buildApiRouter(): Router {
   const api = express.Router();
 
-  // Public: liveness.
-  api.get('/health', (_req, res) => { res.json({ status: 'ok', time: new Date().toISOString() }); });
+  // Public: liveness + which auth mode the API is in.
+  api.get('/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      time: new Date().toISOString(),
+      auth: authMode(),
+    });
+  });
 
-  // Everything below requires an identity (dev-stub now, Firebase later) and a
-  // resolved tenant; the guarded Prisma client then scopes all data to that org.
+  // Public: email + password → session token (when LOGIN_PASSWORD is set).
+  api.use(authRouter);
+
+  // Everything below requires an identity and a resolved tenant.
   api.use(authenticate);
   api.use(resolveTenant);
   api.get('/me', (req, res) => { res.json({ user: req.user }); });
@@ -81,10 +90,13 @@ export function mountApi(app: Express): void {
   app.use(express.json({ limit: '50mb' }));
   app.use('/api', requestLog);
 
-  // Strangler bridge: the legacy blob store still backs the domains not yet on
-  // Postgres. Mounted before the authenticated router and left unauthenticated
-  // so the un-migrated frontend keeps working unchanged during the transition.
-  app.use('/api/data', legacyDataRouter);
+  // Strangler bridge: legacy blob store for domains not yet on Postgres.
+  // In production (DEV_AUTH=0) it requires the same identity + tenant as the API.
+  if (isDevAuthEnabled()) {
+    app.use('/api/data', legacyDataRouter);
+  } else {
+    app.use('/api/data', authenticate, resolveTenant, legacyDataRouter);
+  }
 
   // Spec + reference UI. Unauthenticated so integrators can read the contract
   // before they hold a credential.

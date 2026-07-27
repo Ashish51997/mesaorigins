@@ -14,7 +14,9 @@
 // explicit ids for the demo tenant so its value chain keeps referential integrity.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Cloud Run (Debian bookworm) + local macOS/linux.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
