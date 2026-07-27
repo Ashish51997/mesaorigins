@@ -177,7 +177,7 @@ Per-domain cutover, app runnable throughout:
 
 ## 9. Explicitly deferred (named, not forgotten)
 
-- **Firebase-admin token verification** (Phase 2) — the auth seam is built now; the real body lands later.
+- **Firebase-admin token verification** (Phase 2) — ✅ wired. Set `DEV_AUTH=0` + `FIREBASE_SERVICE_ACCOUNT`; SPA sends `Authorization: Bearer <ID token>`. While `DEV_AUTH=1`, the login picker / `x-dev-user` stub still works; a Bearer token is preferred when present.
 - **Remaining domains** end-to-end: planning, logbook, quality, inventory, store, dispatch, CAPA, reports, ACL admin — schema exists now; routers + frontend follow the slice's template.
 - **Value-chain transaction endpoints** (QA→FG→dispatch, plan→logbook) — Phase 3, once those domains migrate.
 - **Real-time push** — none initially; TanStack Query refetch-on-focus. Add SSE/WebSockets later if needed.

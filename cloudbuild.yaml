@@ -1,0 +1,69 @@
+# Build + push Mesadesk image, then deploy to Cloud Run.
+# Usage (Cloud Build):
+#   gcloud builds submit --config cloudbuild.yaml \
+#     --substitutions=_REGION=asia-south1,_SERVICE=mesadesk,_INSTANCE=mesadesk-pg
+#
+# Tag uses $BUILD_ID (always set). $SHORT_SHA is empty on plain `builds submit`
+# unless the source is a triggered git build.
+#
+# Required secrets in Secret Manager (same project):
+#   mesadesk-database-url
+#   mesadesk-firebase-sa   (service account JSON)
+
+substitutions:
+  _REGION: asia-south1
+  _SERVICE: mesadesk
+  _REPO: mesadesk
+  _INSTANCE: mesadesk-pg
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+      - .
+
+  - id: push-sha
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
+
+  - id: push-latest
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --cpu=1
+      - --memory=1Gi
+      - --min-instances=0
+      - --max-instances=5
+      - --timeout=300
+      - --service-account=mesadesk-run@$PROJECT_ID.iam.gserviceaccount.com
+      - --set-env-vars=NODE_ENV=production,DEV_AUTH=0,LOGIN_PASSWORD=mesadesk123
+      - --set-secrets=DATABASE_URL=mesadesk-database-url:latest,FIREBASE_SERVICE_ACCOUNT=mesadesk-firebase-sa:latest
+      - --add-cloudsql-instances=$PROJECT_ID:${_REGION}:${_INSTANCE}
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest

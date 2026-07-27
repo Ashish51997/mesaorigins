@@ -68,6 +68,7 @@ import Logo from './components/Logo';
 import { setCurrentEmployee, useRoleRules, useGrants, useDelegations, checkFor, can, grantState } from './lib/accessStore';
 import { employeeForRole, employeeForEmail } from './lib/userStore';
 import { setDevUser } from './lib/apiIdentity';
+import { api, ApiError } from './lib/apiClient';
 import { FEATURES, ROLE_DEFAULT_SCREENS, stripScreen } from './lib/accessCatalog';
 import { groupNav, relatedOf } from './lib/navGroups';
 import { roleInfo, themeForRole, homeForRole, normalizeRole } from './lib/roles';
@@ -91,7 +92,8 @@ import { useLang, setLang, useT } from './lib/i18n';
 
 // Firebase imports
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, signInWithPopup, signOut, googleProvider } from './firebase';
+import { auth, signOut } from './firebase';
+import { clearSessionToken } from './lib/apiIdentity';
 import { fetchFromFirestore, saveToFirestore } from './lib/firebaseSync';
 
 type ModuleType =
@@ -265,33 +267,25 @@ export default function App() {
     setActiveModule(homeForRole(role) as ModuleType);
   };
 
-  const handleSignIn = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      console.error('Error signing in with Google:', err);
-    }
-  };
-
   const handleSignOut = async () => {
     try {
       await signOut(auth);
     } catch (err) {
       console.error('Error signing out:', err);
     }
+    clearSessionToken();
     setUser(null);
     localStorage.removeItem('erp_session');
   };
 
   // Monitor Auth State
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (u) {
-        // Bind the federated identity to a real directory role. Never grant a
-        // role from a constant: an unknown account gets the least-privilege
-        // role (Operator), not Managing Director. Being MD requires being in
-        // the People directory as MD.
-        const email = u.email || '';
+        // Bind federated identity to a directory employee by email. Role comes
+        // from the server membership when /api/me succeeds; client lookup is a
+        // UX hint only until that resolves.
+        const email = (u.email || '').toLowerCase();
         const emp = employeeForEmail(email);
         const resolvedRole = emp ? emp.role : 'Operator';
         const session = {
@@ -300,18 +294,37 @@ export default function App() {
           displayName: u.displayName || emp?.name || 'Signed-in user',
           photoURL: u.photoURL || undefined,
           isFirebase: true,
-          role: resolvedRole
+          role: resolvedRole,
         };
         setUser(session);
         localStorage.setItem('erp_session', JSON.stringify(session));
+        setIdentityEmail(email);
+        setDevUser(email);
         setCurrentRole(resolvedRole);
-        if (!emp) {
-          pushToast(`Signed in as ${email || 'an unrecognized account'} — no directory match, so access is limited to Operator. An administrator can add you in People & Roles.`);
+        setActiveModule(homeForRole(resolvedRole) as ModuleType);
+
+        // Prefer the server's membership role/screens once the Bearer token works.
+        try {
+          const me = await api.get<{ user: { role: string; email: string; name: string } }>('/me');
+          if (me.user?.role) {
+            setCurrentRole(me.user.role);
+            setUser((prev) => prev ? { ...prev, role: me.user.role, displayName: me.user.name || prev.displayName } : prev);
+            setActiveModule(homeForRole(me.user.role) as ModuleType);
+          }
+        } catch (err) {
+          const code = err instanceof ApiError ? err.code : (err as { code?: string })?.code;
+          if (code === 'no_membership' || code === 'inactive') {
+            pushToast(`Signed in as ${email || 'this account'}, but there is no active People directory membership. Ask an administrator to add you.`);
+          } else if (!emp) {
+            pushToast(`Signed in as ${email || 'an unrecognized account'} — no directory match yet. An administrator can add you in People & Roles.`);
+          }
         }
       } else {
         setUser(prev => {
           if (prev?.isFirebase) {
             localStorage.removeItem('erp_session');
+            setIdentityEmail('');
+            setDevUser('');
             return null;
           }
           return prev;
@@ -701,7 +714,6 @@ export default function App() {
     return (
       <LoginScreen
         onLogin={handleCustomLogin}
-        onGoogleLogin={handleSignIn}
         theme={theme}
         onSetTheme={setTheme}
       />
@@ -809,7 +821,7 @@ export default function App() {
 
         {/* PROFILE BAR */}
         <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs">
-          {user ? (
+          {user && (
             sidebarOpen ? (
               <div className="flex items-center gap-2.5 rounded-xl p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-3xs">
                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-bold text-white text-[11px] shrink-0 shadow-sm">
@@ -833,28 +845,6 @@ export default function App() {
                 </button>
               </div>
             )
-          ) : (
-            <div className="w-full">
-              {sidebarOpen ? (
-                <div className="space-y-2">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cloud Storage</p>
-                  <button
-                    onClick={handleSignIn}
-                    className="w-full py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-3xs cursor-pointer text-xs"
-                  >
-                    <span>Sign In with Google</span>
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={handleSignIn}
-                  className="h-8 w-8 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center border border-slate-200 mx-auto cursor-pointer"
-                  title="Sign In with Google"
-                >
-                  🔐
-                </button>
-              )}
-            </div>
           )}
         </div>
       </aside>

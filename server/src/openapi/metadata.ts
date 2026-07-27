@@ -79,7 +79,11 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     summary: 'Liveness probe',
     description: 'Unauthenticated. Returns as soon as the process is serving; it does not check the database.',
     responseDescription: 'The service is up.',
-    responseSchema: obj({ status: { type: 'string', enum: ['ok'] }, time: { type: 'string', format: 'date-time' } }),
+    responseSchema: obj({
+      status: { type: 'string', enum: ['ok'] },
+      time: { type: 'string', format: 'date-time' },
+      auth: { type: 'string', enum: ['dev', 'firebase', 'password'], description: 'dev = x-dev-user; password = LOGIN_PASSWORD sessions; firebase = Google Bearer' },
+    }),
     public: true,
   },
   'GET /api/me': {
