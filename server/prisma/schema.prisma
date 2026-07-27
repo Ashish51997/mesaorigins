@@ -1,0 +1,565 @@
+// Mass Polimer ERP — multi-tenant data model.
+//
+// Tenancy: pooled shared schema. Every tenant-owned row carries `organizationId`
+// (the tenant). Isolation is enforced by BOTH Postgres Row-Level Security (see
+// the *_rls migration: FORCE RLS + a policy keyed on current_setting(
+// 'app.current_tenant')) AND a request-scoped Prisma guard (server/src/db.ts)
+// that sets that GUC and injects organizationId on writes.
+//
+// Global (no tenant, no RLS): Organization, User, Membership — the identity /
+// tenancy plane, queried before a tenant is resolved.
+//
+// Uniqueness is per-tenant: composite @@unique([organizationId, …]) so Acme's
+// SO-1 and Beta's SO-1 coexist. IDs are cuid for API rows; the seed supplies
+// explicit ids for the demo tenant so its value chain keeps referential integrity.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Runtime: the app connects as a NON-SUPERUSER role (app_user) so RLS is
+  // enforced — superusers and BYPASSRLS roles ignore row-level security.
+  url       = env("DATABASE_URL")
+  // Migrations / seed / studio use a privileged owner role (superuser) that can
+  // create tables and is not blocked by RLS. See server/prisma/setup-roles.sql.
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// ============================================================ tenancy plane (global)
+
+model Organization {
+  id                 String   @id @default(cuid())
+  name               String
+  slug               String   @unique
+  status             String   @default("active") // active | trialing | suspended
+  plan               String   @default("starter")
+  subscriptionStatus String   @default("trialing")
+  settings           Json     @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  memberships           Membership[]
+  roles                 Role[]
+  employeeGrants        EmployeeGrant[]
+  customers             Customer[]
+  inquiries             Inquiry[]
+  salesOrders           SalesOrder[]
+  productionPlans       ProductionPlan[]
+  logbookTemplates      LogbookTemplate[]
+  machineLogbooks       MachineLogbook[]
+  qualityInspections    QualityInspection[]
+  inventoryTransactions InventoryTransaction[]
+  dispatchRecords       DispatchRecord[]
+  complaints            Complaint[]
+  capaRecords           CAPARecord[]
+  formulations          Formulation[]
+  maintenanceTasks      MaintenanceTask[]
+  machines              Machine[]
+  auditEvents           AuditEvent[]
+}
+
+// Global identity. The same person (Firebase account) can be a member of
+// multiple organizations, so identity is separate from employment.
+model User {
+  id          String   @id @default(cuid())
+  firebaseUid String?  @unique
+  email       String   @unique
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships Membership[]
+}
+
+// A user's employment + role within one organization (the "employee" record).
+// No RLS: resolved during auth to discover which tenant a request belongs to.
+model Membership {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  employeeCode   String
+  department     String
+  role           String
+  shift          String   @default("D")
+  line           String   @default("—")
+  status         String   @default("active") // active | on_leave | inactive
+  joinDate       String   @default("")
+  location       String   @default("")
+  lastSeen       String   @default("")
+  version        Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  roleId         String?
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleRef      Role?           @relation(fields: [roleId], references: [id])
+  grants       EmployeeGrant[]
+
+  @@unique([organizationId, userId])
+  @@unique([organizationId, employeeCode])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// A tenant-defined role: a named set of allowed screens (actions inherit from
+// their screen). isAdmin bypasses all screen checks (Owner/Administrator).
+// isSystem marks the seeded built-ins. Access is enforced server-side from here.
+model Role {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  screens        Json     @default("[]") // string[] of screen ids
+  isAdmin        Boolean  @default(false)
+  isSystem       Boolean  @default(false)
+  version        Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  Membership[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+// A per-employee screen override on top of their role (state on|off). Lets an
+// admin grant/revoke a single screen for one person without changing the role.
+model EmployeeGrant {
+  id             String   @id @default(cuid())
+  organizationId String
+  membershipId   String
+  screen         String
+  state          String   @default("on") // on | off
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  membership   Membership   @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, membershipId, screen])
+  @@index([organizationId])
+  @@index([membershipId])
+}
+
+// ============================================================ sales / CRM (tenant)
+
+model Customer {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String
+  gstNumber       String   @default("")
+  contactPerson   String   @default("")
+  phone           String   @default("")
+  email           String   @default("")
+  billingAddress  String   @default("")
+  deliveryAddress String   @default("")
+  paymentTerms    String   @default("")
+  status          String   @default("active")
+  version         Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inquiries    Inquiry[]
+  salesOrders  SalesOrder[]
+  complaints   Complaint[]
+
+  @@index([organizationId])
+}
+
+model Inquiry {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  inquiryNumber        String
+  customerId           String
+  product              String
+  drawingRef           String   @default("")
+  quantity             Int      @default(0)
+  expectedDeliveryDate String   @default("")
+  remarks              String   @default("")
+  status               String   @default("submitted")
+  attachment           String?
+  quotationPrice       Float?
+  negotiationNote      String?
+  discountPercent      Float?
+  originalPrice        Float?
+  version              Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  salesOrder   SalesOrder?
+
+  @@unique([organizationId, inquiryNumber])
+  @@index([organizationId])
+  @@index([customerId])
+}
+
+model SalesOrder {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  soNumber            String
+  inquiryId           String   @unique
+  customerId          String
+  product             String
+  quantity            Int      @default(0)
+  deliveryDate        String   @default("")
+  priority            String   @default("medium")
+  specialInstructions String   @default("")
+  status              String   @default("pending")
+  version             Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inquiry         Inquiry          @relation(fields: [inquiryId], references: [id])
+  customer        Customer         @relation(fields: [customerId], references: [id])
+  productionPlans ProductionPlan[]
+  dispatches      DispatchRecord[]
+
+  @@unique([organizationId, soNumber])
+  @@index([organizationId])
+  @@index([customerId])
+}
+
+// ============================================================ planning (tenant)
+
+model ProductionPlan {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  salesOrderId       String
+  machineId          String
+  shift              String   @default("D")
+  operatorName       String   @default("")
+  scheduledStartDate String   @default("")
+  scheduledEndDate   String   @default("")
+  status             String   @default("scheduled")
+  logbookTemplateId  String?
+  version            Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  salesOrder      SalesOrder       @relation(fields: [salesOrderId], references: [id])
+  machine         Machine          @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  logbookTemplate LogbookTemplate? @relation(fields: [logbookTemplateId], references: [id])
+  logbook         MachineLogbook?
+
+  @@index([organizationId])
+  @@index([salesOrderId])
+  @@index([machineId])
+  @@index([logbookTemplateId])
+}
+
+// ============================================================ manufacturing / logbook (tenant)
+
+model LogbookTemplate {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  docNo               String   @default("")
+  revNo               String   @default("")
+  revDate             String   @default("")
+  brandName           String   @default("")
+  location            String   @default("")
+  title               String   @default("")
+  productName         String   @default("")
+  shifts              String[]
+  supervisors         String[]
+  lotNumberNote       String   @default("")
+  dieZones            String[]
+  barrelZones         String[]
+  zoneSpecs           Json?
+  coil                Json
+  inspectionTimeSlots String[]
+  dimensionSpecs      Json
+  finishSpec          String   @default("")
+  perMeterSpec        String   @default("")
+  traceability        Json
+  rejectionReasons    String[]
+  notes               String[]
+  layout              String   @default("coil") // "coil" | "pipe"
+  hardnessType        String   @default("A")    // "A" | "D"
+  productionUnit      String   @default("roll")  // "roll" | "nos"
+  packingNote         String   @default("")
+  pipeSpecs           Json     @default("{}")
+  version             Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  logbooks        MachineLogbook[]
+  productionPlans ProductionPlan[]
+
+  @@index([organizationId])
+}
+
+model MachineLogbook {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  productionPlanId    String   @unique
+  templateId          String
+  status              String   @default("draft")
+  rolls               Json     @default("[]")
+  scrapKg             String   @default("")
+  operatorSignature   String   @default("")
+  supervisorSignature String   @default("")
+  machineId           String   @default("")
+  date                String   @default("")
+  shift               String   @default("")
+  supervisor          String   @default("")
+  drawingNo           String   @default("")
+  tag                 String   @default("")
+  formulaNo           String   @default("")
+  dieZoneTemps        Json     @default("{}")
+  barrelZoneTemps     Json     @default("{}")
+  motorSpeed          String   @default("")
+  ampere              String   @default("")
+  takeupSpeed         String   @default("")
+  vacuum              String   @default("")
+  extruderStartTime   String   @default("")
+  productSetTime      String   @default("")
+  shoreHardness       String   @default("")
+  productionPerHour   String   @default("")
+  moldNo              String   @default("")
+  productName         String   @default("")
+  coilWeights         String[]
+  hourlyInspections   Json     @default("[]")
+  traceabilityRows    Json     @default("[]")
+  totalRollsProduced  String   @default("")
+  totalRollKgs        String   @default("")
+  processWasteKg      String   @default("")
+  lumpsWasteKg        String   @default("")
+  rejectionKg         String   @default("")
+  totalConsumedKg     String   @default("")
+  rejectionCounts     Json     @default("{}")
+  meterCheckedBy      String   @default("")
+  meterCheckTime      String   @default("")
+  meter               String   @default("")
+  meterCountSet       String   @default("")
+  attachedImage       String?
+  version             Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productionPlan ProductionPlan  @relation(fields: [productionPlanId], references: [id])
+  template       LogbookTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([organizationId])
+}
+
+// ============================================================ quality / inventory / dispatch (tenant)
+
+model QualityInspection {
+  id             String   @id @default(cuid())
+  organizationId String
+  rollNumber     String
+  lotNumber      String   @default("")
+  dimensions     Json     @default("{}")
+  finish         String   @default("pass")
+  weight         Float    @default(0)
+  colour         String   @default("pass")
+  tearingTest    String   @default("pass")
+  remarks        String   @default("")
+  decision       String   @default("pass")
+  inspectedBy    String   @default("")
+  date           String   @default("")
+  version        Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model InventoryTransaction {
+  id             String   @id @default(cuid())
+  organizationId String
+  type           String
+  direction      String
+  itemCode       String
+  itemName       String
+  quantity       Float    @default(0)
+  unit           String   @default("")
+  lotNumber      String?
+  reference      String?
+  date           String   @default("")
+  handler        String   @default("")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model DispatchRecord {
+  id                     String   @id @default(cuid())
+  organizationId         String
+  invoiceNumber          String
+  salesOrderId           String
+  vehicleNumber          String   @default("")
+  transporter            String   @default("")
+  driverName             String   @default("")
+  dispatchDate           String   @default("")
+  deliveryAddress        String   @default("")
+  etaDate                String   @default("")
+  status                 String   @default("shipped")
+  communicationTriggered Boolean  @default(false)
+  version                Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  salesOrder   SalesOrder   @relation(fields: [salesOrderId], references: [id])
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId])
+  @@index([salesOrderId])
+}
+
+// ============================================================ complaints / CAPA (tenant)
+
+model Complaint {
+  id              String   @id @default(cuid())
+  organizationId  String
+  complaintNumber String
+  customerId      String
+  batchNumber     String   @default("")
+  product         String   @default("")
+  description     String   @default("")
+  photoUrl        String?
+  severity        String   @default("medium")
+  status          String   @default("open")
+  rootCause       String?
+  resolution      String?
+  capaId          String?
+  date            String   @default("")
+  version         Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id])
+
+  @@unique([organizationId, complaintNumber])
+  @@index([organizationId])
+  @@index([customerId])
+}
+
+model CAPARecord {
+  id                String   @id @default(cuid())
+  organizationId    String
+  complaintId       String?
+  rejectionId       String?
+  rootCause         String   @default("")
+  correctiveAction  String   @default("")
+  preventiveAction  String   @default("")
+  responsiblePerson String   @default("")
+  dueDate           String   @default("")
+  status            String   @default("open")
+  closedDate        String?
+  version           Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ============================================================ standards / registry (tenant)
+
+// A production formulation (BOM/recipe) revision: a coded set of RM components
+// with their %. Each code carries revisions; the latest active one is used on
+// the line. A revision can be locked (e.g. by a CAPA) so it can't be edited.
+model Formulation {
+  id             String   @id @default(cuid())
+  organizationId String
+  code           String
+  rev            Int      @default(1)
+  product        String   @default("")
+  active         Boolean  @default(true)
+  locked         Boolean  @default(false)
+  lockReason     String   @default("")
+  capaId         String?
+  components     Json     @default("[]") // [{ name, pct, lotId }]
+  version        Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code, rev])
+  @@index([organizationId])
+}
+
+model MaintenanceTask {
+  id             String   @id @default(cuid())
+  organizationId String
+  machineId      String
+  taskName       String
+  type           String
+  dueDate        String   @default("")
+  frequency      String   @default("Monthly")
+  status         String   @default("scheduled")
+  cost           Float    @default(0)
+  version        Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  machine      Machine      @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([machineId])
+}
+
+model Machine {
+  id             String  @id @default(cuid())
+  organizationId String
+  code           String // 'M01'..'M09'
+  line           String  @default("")
+  family         String  @default("PVC")
+  logbookFormat  String  @default("")
+  status         String  @default("running")
+  statusReason   String?
+  currentProduct String?
+  currentFormula String?
+  currentLot     String?
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  maintenanceTasks MaintenanceTask[]
+  productionPlans  ProductionPlan[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+// ============================================================ authorization (tenant)
+
+// ============================================================ audit / trace (tenant)
+
+model AuditEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorEmail     String   @default("")
+  actorRole      String   @default("")
+  action         String // e.g. 'order.confirm'
+  entity         String // e.g. 'SalesOrder'
+  entityId       String   @default("")
+  before         Json?
+  after          Json?
+  at             DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, entity, entityId])
+}

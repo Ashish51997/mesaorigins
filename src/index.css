@@ -1,0 +1,407 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+/* =============================================================================
+   MASS POLYMER — UI STYLE GUIDELINE (see UI_STYLE_GUIDE.md)
+   Clean modern SaaS. Airy, light, lots of whitespace. Radial electric-blue glow
+   at the top fading to white. Poppins SemiBold headings/metrics, Inter body.
+   Primary #4438E0. Hairline borders #E7EAF0. Soft shadows only. Round everything.
+   Tokens live here; the whole app inherits them through Tailwind class overrides.
+   ========================================================================== */
+
+:root {
+  --bg-app: #f5f7fa;          /* grey-tinted section */
+  --bg-app-darker: #ffffff;   /* sidebar / rail */
+  --bg-card: #ffffff;         /* cards, pure white */
+  --bg-card-darker: #f5f7fa;  /* secondary panels */
+  --bg-input: #f2f4f8;        /* soft input grey */
+  --bg-input-bg: #ffffff;
+  --border-color: #e7eaf0;        /* hairline */
+  --border-color-muted: #eef1f6;  /* softer hairline */
+  --text-primary: #0b0b0f;    /* ink */
+  --text-secondary: #5b6472;  /* body */
+  --text-muted: #8a93a3;      /* muted labels */
+  --accent-color: #4438e0;    /* primary */
+  --accent-hover: #372cc0;
+  --accent-bg: #ecebff;       /* soft violet tint */
+  --accent-bg-light: #f5f5ff;
+  --accent-bg-muted: #eef0ff;
+  --success-bg: #22c55e;      /* delta up / good */
+  --success-text: #15803d;
+  --success-bg-muted: #e7f8ef;
+  --error-bg: #fb5768;        /* delta down / bad */
+  --error-text: #e11d48;
+  --error-bg-muted: #fff0f2;
+  --warn-bg: #fb8c5a;         /* coral accent / warn */
+  --warn-text: #c2410c;
+  --warn-bg-muted: #feede3;
+  --shadow-custom: 0 8px 24px rgba(16, 24, 40, 0.08);  /* the one soft shadow */
+  --button-primary-bg: #4438e0;
+  --button-primary-text: #ffffff;
+  --button-primary-hover: #372cc0;
+  /* Named accents for icon tiles */
+  --tile-violet: #8b5cf6;
+  --tile-cyan: #38bdf8;
+  --tile-coral: #fb8c5a;
+}
+
+.dark {
+  --bg-app: #0a0e1a;          /* deep indigo-navy */
+  --bg-app-darker: #070b14;
+  --bg-card: #111629;         /* card */
+  --bg-card-darker: #1a2036;
+  --bg-input: #1a2036;
+  --bg-input-bg: #0d1220;
+  --border-color: #232a42;
+  --border-color-muted: #1c2338;
+  --text-primary: #f6f7fb;
+  --text-secondary: #b7c0d4;
+  --text-muted: #7f8aa3;
+  --accent-color: #6d63ff;    /* lighter primary for dark */
+  --accent-hover: #8b83ff;
+  --accent-bg: rgba(109, 99, 255, 0.16);
+  --accent-bg-light: #141a2e;
+  --accent-bg-muted: #161d34;
+  --success-bg: #34d399;
+  --success-text: #34d399;
+  --success-bg-muted: rgba(52, 211, 153, 0.14);
+  --error-bg: #fb7185;
+  --error-text: #fb7185;
+  --error-bg-muted: rgba(251, 113, 133, 0.14);
+  --warn-bg: #fb923c;
+  --warn-text: #fdba74;
+  --warn-bg-muted: rgba(251, 146, 60, 0.14);
+  --shadow-custom: 0 8px 24px rgba(0, 0, 0, 0.36);
+  --button-primary-bg: #6d63ff;
+  --button-primary-text: #ffffff;
+  --button-primary-hover: #8b83ff;
+  --tile-violet: #a78bfa;
+  --tile-cyan: #7dd3fc;
+  --tile-coral: #fdba74;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: "Poppins", "Inter", sans-serif;
+
+  /* Round everything: bump the radius scale so rounded-xl≈20, rounded-2xl≈24 */
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 30px;
+
+  /* Map neutral scales to our dynamic theme variables */
+  --color-slate-50: var(--bg-app);
+  --color-slate-100: var(--bg-input);
+  --color-slate-200: var(--border-color);
+  --color-slate-300: var(--text-muted);
+  --color-slate-400: var(--text-muted);
+  --color-slate-500: var(--text-muted);
+  --color-slate-600: var(--text-secondary);
+  --color-slate-700: var(--text-secondary);
+  --color-slate-800: var(--text-primary);
+  --color-slate-900: var(--text-primary);
+  --color-slate-950: var(--bg-app-darker);
+
+  --color-gray-50: var(--bg-app);
+  --color-gray-100: var(--bg-input);
+  --color-gray-200: var(--border-color);
+  --color-gray-300: var(--text-muted);
+  --color-gray-400: var(--text-muted);
+  --color-gray-500: var(--text-muted);
+  --color-gray-600: var(--text-secondary);
+  --color-gray-700: var(--text-secondary);
+  --color-gray-800: var(--text-primary);
+  --color-gray-900: var(--text-primary);
+  --color-gray-950: var(--bg-app-darker);
+
+  --color-zinc-50: var(--bg-app);
+  --color-zinc-100: var(--bg-input);
+  --color-zinc-200: var(--border-color);
+  --color-zinc-300: var(--text-muted);
+  --color-zinc-400: var(--text-muted);
+  --color-zinc-500: var(--text-muted);
+  --color-zinc-600: var(--text-secondary);
+  --color-zinc-700: var(--text-secondary);
+  --color-zinc-800: var(--text-primary);
+  --color-zinc-900: var(--text-primary);
+  --color-zinc-950: var(--bg-app-darker);
+
+  /* Card backgrounds (standard bg-white) */
+  --color-white: var(--bg-card);
+
+  /* Primary brand — indigo AND blue both resolve to #4438E0 */
+  --color-indigo-50: var(--accent-bg-light);
+  --color-indigo-100: var(--accent-bg);
+  --color-indigo-200: var(--border-color);
+  --color-indigo-300: var(--accent-color);
+  --color-indigo-400: var(--accent-color);
+  --color-indigo-500: var(--accent-color);
+  --color-indigo-600: var(--accent-color);
+  --color-indigo-700: var(--accent-hover);
+  --color-indigo-800: var(--accent-hover);
+  --color-indigo-900: var(--text-primary);
+  --color-indigo-950: var(--bg-app);
+
+  --color-blue-50: var(--accent-bg-light);
+  --color-blue-100: var(--accent-bg);
+  --color-blue-200: var(--border-color);
+  --color-blue-300: var(--accent-color);
+  --color-blue-400: var(--accent-color);
+  --color-blue-500: var(--accent-color);
+  --color-blue-600: var(--accent-color);
+  --color-blue-700: var(--accent-hover);
+  --color-blue-800: var(--accent-hover);
+  --color-blue-900: var(--text-primary);
+  --color-blue-950: var(--bg-app);
+
+  /* Success (green delta) */
+  --color-emerald-50: var(--success-bg-muted);
+  --color-emerald-100: var(--success-bg-muted);
+  --color-emerald-200: var(--success-bg-muted);
+  --color-emerald-500: var(--success-bg);
+  --color-emerald-600: var(--success-bg);
+  --color-emerald-700: var(--success-text);
+  --color-emerald-800: var(--success-text);
+  --color-emerald-900: var(--success-text);
+
+  /* Error (red delta) */
+  --color-rose-50: var(--error-bg-muted);
+  --color-rose-100: var(--error-bg-muted);
+  --color-rose-200: var(--error-bg-muted);
+  --color-rose-500: var(--error-bg);
+  --color-rose-600: var(--error-bg);
+  --color-rose-700: var(--error-text);
+  --color-rose-800: var(--error-text);
+  --color-rose-900: var(--error-text);
+
+  /* Warn (coral) */
+  --color-amber-50: var(--warn-bg-muted);
+  --color-amber-100: var(--warn-bg-muted);
+  --color-amber-200: var(--warn-bg-muted);
+  --color-amber-500: var(--warn-bg);
+  --color-amber-600: var(--warn-bg);
+  --color-amber-700: var(--warn-text);
+  --color-amber-800: var(--warn-text);
+  --color-amber-900: var(--warn-text);
+}
+
+/* Global body + the signature radial glow ---------------------------------- */
+html, body {
+  background-color: var(--bg-app) !important;
+  color: var(--text-secondary) !important;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Radial electric-blue glow at top fading to white, on the app shell + login */
+#applet-root,
+#applet-loading,
+#login-screen-root {
+  background:
+    radial-gradient(1100px 560px at 50% -180px, rgba(68, 90, 255, 0.16), rgba(56, 189, 248, 0.06) 46%, rgba(255, 255, 255, 0) 72%),
+    var(--bg-app) !important;
+}
+.dark #applet-root,
+.dark #applet-loading,
+.dark #login-screen-root {
+  background:
+    radial-gradient(1100px 560px at 50% -180px, rgba(109, 99, 255, 0.20), rgba(56, 189, 248, 0.06) 46%, rgba(10, 14, 26, 0) 72%),
+    var(--bg-app) !important;
+}
+/* Main content floats over the glow */
+main {
+  background: transparent !important;
+}
+
+/* Headings + metrics: Poppins SemiBold, a touch of negative tracking (not tight) */
+h1, h2, h3, h4, h5, h6, .font-display, .metric-value {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Header / nav panels */
+header,
+header.bg-white,
+header.bg-slate-50 {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+aside {
+  background-color: var(--bg-app-darker) !important;
+  border-right: 1px solid var(--border-color) !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+aside .bg-slate-950,
+aside div.border-b,
+aside div.border-t {
+  background-color: transparent !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Sidebar nav items are pills */
+/* Active nav item: subtle primary tint + primary text/icon; the left accent bar is
+   rendered in the JSX. Hover keeps the tint (no change on the active item). */
+aside nav button.bg-indigo-600,
+aside nav button.bg-blue-50 {
+  background-color: var(--accent-bg-muted) !important;
+  color: var(--accent-color) !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+}
+aside nav button.bg-indigo-600 svg,
+aside nav button.bg-blue-50 svg {
+  color: var(--accent-color) !important;
+}
+aside nav button.bg-indigo-600:hover,
+aside nav button.bg-blue-50:hover {
+  background-color: var(--accent-bg-muted) !important;
+  color: var(--accent-color) !important;
+}
+
+aside nav button {
+  border-radius: 12px !important;
+  margin: 1px 0 !important;
+  transition: all 0.15s ease-in-out;
+}
+
+aside nav button:hover:not(.bg-indigo-600):not(.bg-blue-50) {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Data tables */
+table { border-collapse: collapse; }
+th {
+  color: var(--text-muted) !important;
+  font-weight: 600 !important;
+  background-color: transparent !important;
+}
+td { border-color: var(--border-color-muted) !important; }
+tr:hover td { background-color: var(--accent-bg-light) !important; }
+
+/* Inputs — soft, rounded, pill-friendly */
+input, select, textarea {
+  background-color: var(--bg-input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-color) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-bg) !important;
+}
+option { background-color: var(--bg-card) !important; color: var(--text-primary) !important; }
+
+/* Force card surfaces */
+.bg-white, .bg-slate-50, .bg-gray-50, .bg-zinc-50 {
+  background-color: var(--bg-card) !important;
+}
+
+/* Text roles */
+.text-slate-900, .text-slate-800, .text-gray-900, .text-gray-800,
+.text-zinc-900, .text-zinc-800,
+h1, h2, h3, h4, h5, h6 { color: var(--text-primary) !important; }
+
+.text-slate-700, .text-slate-600, .text-gray-700, .text-gray-600,
+.text-zinc-700, .text-zinc-600 { color: var(--text-secondary) !important; }
+
+.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400,
+.text-zinc-500, .text-zinc-400 { color: var(--text-muted) !important; }
+
+.text-indigo-600, .text-indigo-500, .text-blue-600, .text-blue-500,
+.text-sky-600, .text-sky-500 { color: var(--accent-color) !important; }
+.text-indigo-600:hover, .text-blue-600:hover { color: var(--accent-hover) !important; }
+
+/* Tinted badge/pill backgrounds */
+.bg-indigo-50, .bg-indigo-100, .bg-indigo-200, .bg-blue-50, .bg-blue-100, .bg-blue-200,
+.bg-sky-50, .bg-sky-100, .bg-sky-200 { background-color: var(--accent-bg-muted) !important; }
+.bg-emerald-50, .bg-emerald-100, .bg-emerald-200 { background-color: var(--success-bg-muted) !important; }
+.bg-rose-50, .bg-rose-100, .bg-rose-200, .bg-red-50, .bg-red-100, .bg-red-200 { background-color: var(--error-bg-muted) !important; }
+.bg-amber-50, .bg-amber-100, .bg-amber-200, .bg-yellow-50, .bg-yellow-100, .bg-yellow-200 { background-color: var(--warn-bg-muted) !important; }
+.bg-slate-100, .bg-gray-100, .bg-zinc-100 { background-color: var(--bg-input) !important; }
+
+/* Hairline borders */
+.border-slate-100, .border-slate-200, .border-slate-300,
+.border-gray-100, .border-gray-200, .border-zinc-200,
+.divide-slate-100, .divide-slate-200 { border-color: var(--border-color) !important; }
+
+/* Soft shadows only — every shadow utility maps to the one soft shadow */
+.shadow-3xs, .shadow-2xs, .shadow-xs, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl {
+  box-shadow: var(--shadow-custom) !important;
+}
+
+/* Primary buttons — filled #4438E0, fully rounded pill */
+.bg-indigo-600:not(aside button),
+.bg-blue-600:not(aside button) {
+  background-color: var(--button-primary-bg) !important;
+  color: var(--button-primary-text) !important;
+  border-radius: 9999px !important;
+}
+.bg-indigo-600:hover:not(aside button),
+.bg-blue-600:hover:not(aside button) {
+  background-color: var(--button-primary-hover) !important;
+}
+#applet-root { background-color: var(--bg-app); }
+
+/* -----------------------------------------------------------------------------
+   Reusable style-guide components
+   -------------------------------------------------------------------------- */
+
+/* Rounded-square icon tile (12px radius, single accent color) */
+.tile {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.tile-violet { background: color-mix(in srgb, var(--tile-violet) 16%, transparent); color: var(--tile-violet); }
+.tile-cyan   { background: color-mix(in srgb, var(--tile-cyan) 18%, transparent);   color: var(--tile-cyan); }
+.tile-coral  { background: color-mix(in srgb, var(--tile-coral) 18%, transparent);  color: var(--tile-coral); }
+.tile-primary{ background: var(--accent-bg); color: var(--accent-color); }
+
+/* Big Poppins metric */
+.metric-value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2rem, 2.4vw, 2.5rem);
+  line-height: 1.05;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.metric-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Trend delta chip */
+.delta {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 2px 8px; border-radius: 9999px;
+  font-size: 11px; font-weight: 600;
+}
+.delta-up   { color: var(--success-text); background: var(--success-bg-muted); }
+.delta-down { color: var(--error-text);   background: var(--error-bg-muted); }
+
+/* Segmented progress bar: blue → magenta → purple */
+.segmented-bar {
+  height: 10px; border-radius: 9999px; overflow: hidden;
+  display: flex; background: var(--bg-input);
+}
+.segmented-bar > span { height: 100%; display: block; }
+.seg-blue    { background: #2563eb; }
+.seg-magenta { background: #e5449c; }
+.seg-purple  { background: #7c3aed; }

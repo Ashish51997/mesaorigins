@@ -1,0 +1,28 @@
+# Local Postgres for the Mass Polimer ERP backend.
+#   docker compose up -d      → starts Postgres on localhost:5432
+#   DATABASE_URL in .env should point at it (see .env.example)
+# Docker not installed? Any Postgres 14+ works — just set DATABASE_URL.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: masspolimer-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: masspolimer
+      POSTGRES_PASSWORD: masspolimer
+      POSTGRES_DB: masspolimer
+    ports:
+      - "5432:5432"
+    volumes:
+      - masspolimer-pgdata:/var/lib/postgresql/data
+      # Creates the least-privilege app_user role on first init so RLS enforces
+      # (the app connects as app_user; migrations/seed use the owner).
+      - ./server/prisma/setup-roles.sql:/docker-entrypoint-initdb.d/10-setup-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U masspolimer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  masspolimer-pgdata:

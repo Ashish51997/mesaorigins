@@ -1,0 +1,6 @@
+{
+  "name": "Mass Polymer ERP",
+  "description": "An end-to-end Enterprise Resource Planning (ERP) application for Mass Polymer, tracking the full journey from inquiries and sales orders to production planning, digital machine logbooks, quality inspections, inventory, and dispatch.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

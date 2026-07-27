@@ -1,0 +1,265 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "CRM Customer Records and specific requirements",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "gradeRequirements": { "type": "string" }
+      },
+      "required": ["id", "name", "code"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "Sales inquiry pipeline records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "material": { "type": "string" },
+        "quantity": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "customerName", "material", "quantity", "status"]
+    },
+    "SalesOrder": {
+      "title": "SalesOrder",
+      "description": "Commercial dispatch sales orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "productName": { "type": "string" },
+        "quantityKg": { "type": "number" },
+        "deliveryDate": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "customerName", "productName", "quantityKg", "status"]
+    },
+    "ProductionPlan": {
+      "title": "ProductionPlan",
+      "description": "Scheduled extruder machine plans and targets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "machineId": { "type": "string" },
+        "salesOrderId": { "type": "string" },
+        "targetKg": { "type": "number" },
+        "producedKg": { "type": "number" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "machineId", "salesOrderId", "targetKg", "status"]
+    },
+    "MachineLogbook": {
+      "title": "MachineLogbook",
+      "description": "Roll-by-roll extrusion shifts, running metrics and handwritten attachments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productionPlanId": { "type": "string" },
+        "machineId": { "type": "string" },
+        "date": { "type": "string" },
+        "shift": { "type": "string" },
+        "supervisor": { "type": "string" },
+        "materialGrade": { "type": "string" },
+        "lotNumber": { "type": "string" },
+        "productName": { "type": "string" },
+        "motorSpeed": { "type": "number" },
+        "ampere": { "type": "number" },
+        "takeupSpeed": { "type": "number" },
+        "vacuum": { "type": "number" },
+        "extruderStartTime": { "type": "string" },
+        "productSetTime": { "type": "string" },
+        "productionPerHour": { "type": "number" },
+        "scrapKg": { "type": "number" },
+        "rejectionKg": { "type": "number" },
+        "totalConsumedKg": { "type": "number" },
+        "status": { "type": "string" },
+        "attachedImage": { "type": "string" }
+      },
+      "required": ["id", "machineId", "date", "shift", "status"]
+    },
+    "QualityInspection": {
+      "title": "QualityInspection",
+      "description": "QA dimensional inspection and physical-chemical checks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "machineId": { "type": "string" },
+        "inspector": { "type": "string" },
+        "rollNumber": { "type": "string" },
+        "thicknessMicrons": { "type": "number" },
+        "widthMm": { "type": "number" },
+        "tensileStrengthMpa": { "type": "number" },
+        "status": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "machineId", "rollNumber", "status"]
+    },
+    "PackingRecord": {
+      "title": "PackingRecord",
+      "description": "Secondary packaging barcodes and verified items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "salesOrderId": { "type": "string" },
+        "packager": { "type": "string" },
+        "items": { "type": "array" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "salesOrderId", "packager", "status"]
+    },
+    "InventoryTransaction": {
+      "title": "InventoryTransaction",
+      "description": "Raw materials and finished goods ledger",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "material": { "type": "string" },
+        "quantityKg": { "type": "number" },
+        "location": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "type", "material", "quantityKg"]
+    },
+    "DispatchRecord": {
+      "title": "DispatchRecord",
+      "description": "Logistical trucks and waybills for customer dispatch",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "salesOrderId": { "type": "string" },
+        "truckNo": { "type": "string" },
+        "driverName": { "type": "string" },
+        "waybillNo": { "type": "string" },
+        "dispatchedKg": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "salesOrderId", "truckNo", "status"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "Customer quality complaint logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "subject": { "type": "string" },
+        "status": { "type": "string" },
+        "severity": { "type": "string" }
+      },
+      "required": ["id", "customerName", "subject", "status"]
+    },
+    "Capa": {
+      "title": "Capa",
+      "description": "Corrective and Preventive Action records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "complaintId": { "type": "string" },
+        "actionPlan": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "complaintId", "actionPlan", "status"]
+    },
+    "Recipe": {
+      "title": "Recipe",
+      "description": "Stoichiometric compounding formulas and chemical additives",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productName": { "type": "string" },
+        "standardYieldPortion": { "type": "number" },
+        "items": { "type": "array" }
+      },
+      "required": ["id", "productName", "standardYieldPortion"]
+    },
+    "MaintenanceTask": {
+      "title": "MaintenanceTask",
+      "description": "Extruder scheduled PM checklists and calibration history",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "machineId": { "type": "string" },
+        "taskName": { "type": "string" },
+        "type": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "frequency": { "type": "string" },
+        "status": { "type": "string" },
+        "cost": { "type": "number" }
+      },
+      "required": ["id", "machineId", "taskName", "status"]
+    },
+    "PermissionRule": {
+      "title": "PermissionRule",
+      "description": "Role-based module access rules override",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "type": "string" },
+        "module": { "type": "string" },
+        "allowed": { "type": "boolean" },
+        "updatedBy": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "role", "module", "allowed"]
+    },
+    "ACLRequest": {
+      "title": "ACLRequest",
+      "description": "Delegation bypass role request logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "displayName": { "type": "string" },
+        "requestedRole": { "type": "string" },
+        "requestedModule": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "reason": { "type": "string" },
+        "status": { "type": "string" },
+        "requestedAt": { "type": "string" },
+        "resolvedAt": { "type": "string" },
+        "resolvedBy": { "type": "string" }
+      },
+      "required": ["id", "userEmail", "requestedRole", "requestedModule", "status"]
+    },
+    "LogbookTemplate": {
+      "title": "LogbookTemplate",
+      "description": "Design templates for machine logbooks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productName": { "type": "string" },
+        "temperatureZonesCount": { "type": "number" },
+        "dimensionFields": { "type": "array" },
+        "rejectionReasons": { "type": "array" }
+      },
+      "required": ["id", "productName", "temperatureZonesCount"]
+    }
+  },
+  "firestore": {
+    "customers": { "schema": { "$ref": "#/entities/Customer" }, "description": "Customer CRM list" },
+    "inquiries": { "schema": { "$ref": "#/entities/Inquiry" }, "description": "CRM Inquiry funnel" },
+    "salesOrders": { "schema": { "$ref": "#/entities/SalesOrder" }, "description": "Approved sales orders" },
+    "productionPlans": { "schema": { "$ref": "#/entities/ProductionPlan" }, "description": "Machine calendars and allocations" },
+    "templates": { "schema": { "$ref": "#/entities/LogbookTemplate" }, "description": "Logbook machine parameter templates" },
+    "machineLogbooks": { "schema": { "$ref": "#/entities/MachineLogbook" }, "description": "Digitized physical shift sheets" },
+    "inspections": { "schema": { "$ref": "#/entities/QualityInspection" }, "description": "Visual/micron thickness inspections" },
+    "packingRecords": { "schema": { "$ref": "#/entities/PackingRecord" }, "description": "Shipping package scan records" },
+    "inventory": { "schema": { "$ref": "#/entities/InventoryTransaction" }, "description": "Resin silo weights and raw materials" },
+    "dispatches": { "schema": { "$ref": "#/entities/DispatchRecord" }, "description": "Dispatch logistics and waybills" },
+    "complaints": { "schema": { "$ref": "#/entities/Complaint" }, "description": "CRM customer complaints logs" },
+    "capas": { "schema": { "$ref": "#/entities/Capa" }, "description": "Corrective Preventative Actions" },
+    "recipes": { "schema": { "$ref": "#/entities/Recipe" }, "description": "Compounding BOM formulas" },
+    "maintenanceTasks": { "schema": { "$ref": "#/entities/MaintenanceTask" }, "description": "Machine mechanical PM calibrations" },
+    "permissions": { "schema": { "$ref": "#/entities/PermissionRule" }, "description": "Role security definitions" },
+    "aclRequests": { "schema": { "$ref": "#/entities/ACLRequest" }, "description": "Access control security logs" }
+  }
+}

@@ -1,0 +1,4390 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot) 1`] = `
+<div>
+  <div
+    class="sheet-wrap"
+  >
+    <style>
+      
+.sheet-wrap{background:#e9e7e0;padding:16px;font-family:Arial,Helvetica,sans-serif;color:#111}
+.toolbar{max-width:920px;margin:0 auto 10px;display:flex;justify-content:flex-end}
+.print-btn{border:1px solid #0f4c81;background:#0f4c81;color:#fff;border-radius:6px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer}
+.sheet{max-width:920px;margin:0 auto;background:#fff;border:2px solid #111;padding:10px 12px 14px;font-size:12px}
+.sheet *{box-sizing:border-box}
+
+.cin{border:0;background:transparent;font-family:inherit;font-size:12px;width:100%;padding:1px 2px;outline:none;color:#0a2a6b}
+.cin:focus{background:#eef4fb}
+.cin.oor{background:#fbeedb;color:#a9660a;font-weight:700}
+.cin.active{background:#dbe9fb;box-shadow:0 0 0 2px #0f4c81 inset;border-radius:3px}
+.cin[readonly]{cursor:default}
+
+/* permissible-value hint on measurement cells */
+.rc{position:relative;display:block}
+.hint{position:absolute;z-index:30;top:100%;left:0;margin-top:2px;background:#0f4c81;color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.hint::before{content:"";position:absolute;top:-4px;left:8px;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:4px solid #0f4c81}
+
+/* click-to-open dropdown */
+.drop{position:relative;display:inline-block}
+.drop-btn{display:inline-flex;align-items:center;justify-content:space-between;gap:4px;width:100%;min-height:22px;border:0;background:transparent;font-family:inherit;font-size:12px;cursor:pointer;padding:1px 2px;color:#0a2a6b;border-radius:3px}
+.drop-btn:hover{background:#eef4fb}
+.drop-btn.active{background:#dbe9fb;box-shadow:0 0 0 2px #0f4c81 inset}
+.drop-btn:disabled{cursor:default}
+.drop-val{font-weight:600}
+.drop-ph{color:#9a988f}
+.drop-btn svg{flex:0 0 auto;color:#5f5e5a}
+.drop-back{position:fixed;inset:0;z-index:40}
+.drop-menu{position:absolute;z-index:41;top:100%;left:0;margin:2px 0 0;padding:4px;list-style:none;min-width:130px;background:#fff;border:1px solid #0f4c81;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.22)}
+.drop-menu li{margin:0}
+.drop-menu li button{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;border:0;background:transparent;font-family:inherit;font-size:13px;padding:8px 10px;border-radius:6px;cursor:pointer;color:#111;min-height:40px}
+.drop-menu li button:hover{background:#eef4fb}
+.drop-menu li button.on{background:#0f4c81;color:#fff;font-weight:600}
+
+.top{display:flex;align-items:stretch;border:1px solid #111;border-bottom:0}
+.brand{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 10px;border-right:1px solid #111;min-width:110px}
+.logo{font-weight:800;font-size:13px;line-height:1;text-align:center}
+.loc{font-size:8px;letter-spacing:1px;margin-top:2px}
+.title{flex:1;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;letter-spacing:1px;border-right:1px solid #111}
+.docbox{border-collapse:collapse;font-size:11px}
+.docbox td{border:1px solid #111;padding:2px 6px;white-space:nowrap}
+.docbox .dc{font-weight:700}
+
+.idrow{display:flex;flex-wrap:wrap;gap:0;border:1px solid #111;align-items:center;margin-bottom:14px}
+.idrow&gt;span{display:flex;align-items:center;gap:4px;padding:4px 8px;border-right:1px solid #111;font-weight:600}
+.idrow&gt;span:last-child{border-right:0;flex:1}
+
+/* each numbered section is a separated block */
+.lb-sec{margin-bottom:14px}
+.lb-sec:last-child{margin-bottom:0}
+
+.band{background:#dfe7f1;border:1px solid #111;padding:3px 8px;font-weight:800;font-size:13px;cursor:pointer}
+.band.active{background:#c5d6ec;box-shadow:inset 3px 0 0 #0f4c81}
+.band .bnum{margin-right:2px}
+.band .bsub{font-weight:600;font-size:11px;margin-left:12px}
+.band .bright{float:right;font-weight:600;font-size:11px}
+
+.lbgrid{width:100%;border-collapse:collapse;border:1px solid #111;border-top:0}
+.lbgrid th,.lbgrid td{border:1px solid #111;padding:2px 3px;text-align:center;vertical-align:middle}
+.lbgrid th{background:#f3f1ea;font-size:10px;font-weight:700;line-height:1.1}
+.lbgrid th .sp{font-weight:400;font-size:9px}
+.lbgrid td{height:22px}
+.lbgrid .lbl{background:#f7f6f1;font-weight:600;text-align:left;white-space:nowrap;font-size:11px}
+.lbgrid.tight td{height:20px}
+.lbgrid .tcell{font-weight:700;background:#f7f6f1;white-space:nowrap}
+
+/* section 2 layout */
+.insp{display:flex;align-items:flex-start;border:1px solid #111;border-top:0}
+.insp-left{width:300px;flex:0 0 300px;border-right:1px solid #111}
+.dimbox{border-bottom:1px solid #111;padding:4px 6px;text-align:center}
+.dim-t,.dim-b{font-size:10px;font-weight:600}
+.dimsvg{width:150px;height:56px}
+.coil-hd{padding:4px 6px;font-size:10px;border-bottom:1px solid #111;line-height:1.3}
+.coil-grid{display:grid;grid-template-columns:1fr 1fr}
+.coil-cell{display:flex;align-items:center;border-bottom:1px solid #ddd;border-right:1px solid #ddd;padding:0 2px}
+.coil-cell .cn{font-size:10px;font-weight:700;width:24px;flex:0 0 24px}
+.insp-grid{border:0;flex:1}
+.insp-grid td{height:26px}
+
+/* section 3 */
+.trace{display:flex;gap:0;border:1px solid #111;border-top:0}
+.trace-grid{border:0;border-right:1px solid #111}
+.trace-grid:last-child{border-right:0}
+.trace-grid td{height:22px;text-align:left}
+
+/* section 4 */
+.rej{border:1px solid #111;border-top:0;padding:5px 8px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px}
+.rej-hd{font-weight:800}
+.rej-item{display:flex;align-items:center;gap:4px;font-size:11px;border-bottom:1px solid #111}
+.notes{border:1px solid #111;border-top:0;padding:5px 8px;font-size:10px;line-height:1.5}
+.sign{display:flex;justify-content:space-between;border:1px solid #111;border-top:0;padding:26px 20px 8px;font-weight:700;font-size:12px}
+
+@media print{
+  .sheet-wrap{background:#fff;padding:0}
+  .toolbar{display:none}
+  .sheet{border:1.5px solid #000;max-width:none}
+  .cin:focus{background:transparent}
+  .cin.active{background:transparent;box-shadow:none}
+  .drop-btn.active{background:transparent;box-shadow:none}
+  .drop-btn svg,.hint{display:none}
+  .drop-btn:hover{background:transparent}
+  .band{cursor:default}
+  .lb-sec{margin-bottom:0}
+  .idrow{margin-bottom:0}
+  @page{size:A4 portrait;margin:8mm}
+}
+@media(max-width:700px){
+  .insp{flex-direction:column}.insp-left{width:100%;flex:1 1 auto;border-right:0;border-bottom:1px solid #111}
+  .trace{flex-direction:column}.trace-grid{border-right:0;border-bottom:1px solid #111}
+  .title{font-size:16px}
+}
+
+    </style>
+    <div
+      class="toolbar"
+    >
+      <button
+        class="print-btn"
+        type="button"
+      >
+        Print sheet
+      </button>
+    </div>
+    <div
+      class="sheet"
+    >
+      <div
+        class="top"
+      >
+        <div
+          class="brand"
+        >
+          <div
+            class="logo"
+          >
+            MASS
+            <br />
+            POLYMERS
+          </div>
+          <div
+            class="loc"
+          >
+            BENGALURU
+          </div>
+        </div>
+        <div
+          class="title"
+        >
+          MACHINE LOG BOOK
+        </div>
+        <table
+          class="docbox"
+        >
+          <tbody>
+            <tr>
+              <td>
+                1) Process parameters
+              </td>
+              <td>
+                2) Inspection Report
+              </td>
+              <td
+                class="dc"
+              >
+                Doc No: 
+                QR/MFG/013
+              </td>
+            </tr>
+            <tr>
+              <td>
+                3) Traceability
+              </td>
+              <td>
+                4) Production Report
+              </td>
+              <td
+                class="dc"
+              >
+                Rev No: 
+                02
+              </td>
+            </tr>
+            <tr>
+              <td
+                colspan="2"
+              />
+              <td
+                class="dc"
+              >
+                Rev Date: 
+                14-07-2025
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div
+        class="idrow"
+      >
+        <span>
+          Machine No: 
+          <input
+            class="cin"
+            readonly=""
+            style="width: 60px;"
+            value="M09"
+          />
+        </span>
+        <span>
+          Date: 
+          <input
+            class="cin"
+            style="width: 90px;"
+            value="01/07/26"
+          />
+        </span>
+        <span>
+          Shift: 
+          <span
+            class="drop"
+            style="width: 72px;"
+          >
+            <button
+              class="drop-btn"
+              type="button"
+            >
+              <span
+                class="drop-val"
+              >
+                N
+              </span>
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-chevron-down"
+                fill="none"
+                height="13"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="13"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="m6 9 6 6 6-6"
+                />
+              </svg>
+            </button>
+          </span>
+        </span>
+        <span>
+          Shift Supervisor: 
+          <span
+            class="drop"
+            style="width: 150px;"
+          >
+            <button
+              class="drop-btn"
+              type="button"
+            >
+              <span
+                class="drop-val"
+              >
+                Nandlal
+              </span>
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-chevron-down"
+                fill="none"
+                height="13"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="13"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="m6 9 6 6 6-6"
+                />
+              </svg>
+            </button>
+          </span>
+        </span>
+      </div>
+      <div
+        class="lb-sec"
+      >
+        <div
+          class="band"
+        >
+          <span
+            class="bnum"
+          >
+            1)
+          </span>
+           Process Parameters
+          <span
+            class="bsub"
+          >
+            Zone Wise Temperature
+          </span>
+          <span
+            class="bright"
+          >
+            Lot number: 
+            Refer to QR/Store/022
+          </span>
+        </div>
+        <table
+          class="lbgrid"
+        >
+          <thead>
+            <tr>
+              <th
+                rowspan="2"
+              >
+                Drawing No
+              </th>
+              <th
+                rowspan="2"
+              >
+                Tag
+              </th>
+              <th
+                rowspan="2"
+              >
+                Formula No
+              </th>
+              <th
+                colspan="2"
+              >
+                Die Zone Temp
+              </th>
+              <th
+                colspan="4"
+              >
+                Barrel Zone Temp
+              </th>
+              <th
+                rowspan="2"
+              >
+                Main Motor Speed
+              </th>
+              <th
+                rowspan="2"
+              >
+                Ampere
+              </th>
+              <th
+                rowspan="2"
+              >
+                Takeup Speed
+              </th>
+              <th
+                rowspan="2"
+              >
+                Vaccum
+              </th>
+            </tr>
+            <tr>
+              <th>
+                Die 6
+              </th>
+              <th>
+                Die 5
+              </th>
+              <th>
+                Zone 4
+              </th>
+              <th>
+                Zone 3
+              </th>
+              <th>
+                Zone 2
+              </th>
+              <th>
+                Zone 1
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <input
+                  class="cin"
+                  value="SPVC008D"
+                />
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="Blue"
+                />
+              </td>
+              <td>
+                <span
+                  class="drop"
+                >
+                  <button
+                    class="drop-btn"
+                    type="button"
+                  >
+                    <span
+                      class="drop-val"
+                    >
+                      5F13
+                    </span>
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-chevron-down"
+                      fill="none"
+                      height="13"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="13"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="m6 9 6 6 6-6"
+                      />
+                    </svg>
+                  </button>
+                </span>
+              </td>
+              <td>
+                <span
+                  class="rc"
+                >
+                  <input
+                    class="cin"
+                    inputmode="decimal"
+                    value=""
+                  />
+                </span>
+              </td>
+              <td>
+                <span
+                  class="rc"
+                >
+                  <input
+                    class="cin"
+                    inputmode="decimal"
+                    value="134"
+                  />
+                </span>
+              </td>
+              <td>
+                <span
+                  class="rc"
+                >
+                  <input
+                    class="cin"
+                    inputmode="decimal"
+                    value="132"
+                  />
+                </span>
+              </td>
+              <td>
+                <span
+                  class="rc"
+                >
+                  <input
+                    class="cin oor"
+                    inputmode="decimal"
+                    value="139"
+                  />
+                </span>
+              </td>
+              <td>
+                <span
+                  class="rc"
+                >
+                  <input
+                    class="cin"
+                    inputmode="decimal"
+                    value="132"
+                  />
+                </span>
+              </td>
+              <td>
+                <span
+                  class="rc"
+                >
+                  <input
+                    class="cin"
+                    inputmode="decimal"
+                    value="128"
+                  />
+                </span>
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="26.20"
+                />
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="15.0"
+                />
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="15.65"
+                />
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value=""
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <table
+          class="lbgrid tight"
+        >
+          <tbody>
+            <tr>
+              <td
+                class="lbl"
+              >
+                Extruder start time
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="9:00"
+                />
+              </td>
+              <td
+                class="lbl"
+              >
+                Product / Item set time
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="9:00"
+                />
+              </td>
+              <td
+                class="lbl"
+              >
+                Shore 
+                A
+                 Hardness
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="85"
+                />
+              </td>
+              <td
+                class="lbl"
+              >
+                Production Per Hour
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="25 Kg"
+                />
+              </td>
+            </tr>
+            <tr>
+              <td
+                class="lbl"
+              >
+                Mold No
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="SPVC042.F"
+                />
+              </td>
+              <td
+                class="lbl"
+              >
+                Product Name
+              </td>
+              <td
+                colspan="5"
+              >
+                <input
+                  class="cin"
+                  style="width: 100%;"
+                  value="090 SM SPVC042 Z 150M 7.8K M/V Black (Revised-1)"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div
+        class="lb-sec"
+      >
+        <div
+          class="band"
+        >
+          <span
+            class="bnum"
+          >
+            2)
+          </span>
+           Inspection Report
+        </div>
+        <div
+          class="insp"
+        >
+          <div
+            class="insp-left"
+          >
+            <div
+              class="dimbox"
+            >
+              <div
+                class="dim-t"
+              >
+                Top Dimension
+              </div>
+              <svg
+                class="dimsvg"
+                viewBox="0 0 150 60"
+              >
+                <path
+                  d="M15 40 Q75 12 135 40"
+                  fill="none"
+                  stroke="#111"
+                  stroke-width="1.5"
+                />
+                <path
+                  d="M15 46 Q75 20 135 46"
+                  fill="none"
+                  stroke="#111"
+                  stroke-width="1.5"
+                />
+                <line
+                  stroke="#111"
+                  stroke-width="0.7"
+                  x1="140"
+                  x2="140"
+                  y1="18"
+                  y2="46"
+                />
+                <text
+                  font-size="7"
+                  x="143"
+                  y="24"
+                >
+                  T1
+                </text>
+                <text
+                  font-size="7"
+                  x="143"
+                  y="34"
+                >
+                  T2
+                </text>
+                <text
+                  font-size="7"
+                  x="143"
+                  y="46"
+                >
+                  T3
+                </text>
+              </svg>
+              <div
+                class="dim-b"
+              >
+                Bottom Dimension
+              </div>
+            </div>
+            <div
+              class="coil"
+            >
+              <div
+                class="coil-hd"
+              >
+                150
+                 / M Coil Weight — 
+                7.8
+                 kg (Added Bobbin 
+                140
+                 gms)
+                <br />
+                150
+                 / m Range 
+                <b>
+                  7.945
+                   to 
+                  7.995
+                   kg
+                </b>
+              </div>
+              <div
+                class="coil-grid"
+              >
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    1
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    2
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    3
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    4
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    5
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    6
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    7
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    8
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    9
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    10
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    11
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    12
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    13
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    14
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    15
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    16
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    17
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    18
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    19
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    20
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    21
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    22
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    23
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    24
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    25
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    26
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    27
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    28
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    29
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    30
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    31
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    32
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    33
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    34
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    35
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    36
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    37
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    38
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    39
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    40
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    41
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    42
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    43
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="coil-cell"
+                >
+                  <span
+                    class="cn"
+                  >
+                    44
+                    )
+                  </span>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      style="width: 60px;"
+                      value=""
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <table
+            class="lbgrid insp-grid"
+          >
+            <thead>
+              <tr>
+                <th
+                  rowspan="2"
+                >
+                  Time
+                </th>
+                <th
+                  rowspan="2"
+                >
+                  Top Dim
+                  <br />
+                  <span
+                    class="sp"
+                  >
+                    13.4
+                     mm ±
+                    0.2
+                  </span>
+                </th>
+                <th
+                  rowspan="2"
+                >
+                  Bottom Dim
+                  <br />
+                  <span
+                    class="sp"
+                  >
+                    13
+                     mm ±
+                    0.2
+                  </span>
+                </th>
+                <th
+                  colspan="3"
+                >
+                  Thickness (± 
+                  0.1
+                   mm)
+                </th>
+                <th
+                  rowspan="2"
+                >
+                  Finish
+                  <br />
+                  <span
+                    class="sp"
+                  >
+                    Matt
+                  </span>
+                </th>
+                <th
+                  rowspan="2"
+                >
+                  Per meter
+                  <br />
+                  <span
+                    class="sp"
+                  >
+                    52 gms
+                  </span>
+                </th>
+                <th
+                  rowspan="2"
+                >
+                  Colour
+                </th>
+                <th
+                  rowspan="2"
+                >
+                  Tearing
+                </th>
+                <th
+                  rowspan="2"
+                >
+                  Inspection By
+                </th>
+              </tr>
+              <tr>
+                <th>
+                  1 mm
+                </th>
+                <th>
+                  1 mm
+                </th>
+                <th>
+                  1 mm
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td
+                  class="tcell"
+                >
+                  9–10
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td
+                  class="tcell"
+                >
+                  12–1
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td
+                  class="tcell"
+                >
+                  3–4
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td
+                  class="tcell"
+                >
+                  6–7
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td
+                  class="tcell"
+                >
+                  8–9
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="rc"
+                  >
+                    <input
+                      class="cin"
+                      inputmode="decimal"
+                      value=""
+                    />
+                  </span>
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div
+        class="lb-sec"
+      >
+        <div
+          class="band"
+        >
+          <span
+            class="bnum"
+          >
+            3)
+          </span>
+           Traceability 
+          <span
+            class="bsub"
+          >
+            (
+            Packing 2 Rolls
+            )
+          </span>
+        </div>
+        <div
+          class="trace"
+        >
+          <table
+            class="lbgrid trace-grid"
+          >
+            <thead>
+              <tr>
+                <th>
+                  Lot Number
+                </th>
+                <th>
+                  Colour
+                </th>
+                <th>
+                  Code
+                </th>
+                <th>
+                  Winder / Packed By
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value="010726·N·M09·B01"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value="BLK"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value="BK0137"
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-val"
+                      >
+                        Nandlal
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value="010726·N·M09·B02"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value="BLK"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value="BK0137"
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-val"
+                      >
+                        Nandlal
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value="010726·N·M09·B03"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value="BLK"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value="BK0137"
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-val"
+                      >
+                        Nandlal
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value="010726·N·M09·B04"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value="BLK"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value="BK0137"
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-val"
+                      >
+                        Nandlal
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value="010726·N·M09·B05"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value="BLK"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value="BK0137"
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-val"
+                      >
+                        Nandlal
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value="010726·N·M09·B06"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value="BLK"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value="BK0137"
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-val"
+                      >
+                        Nandlal
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value="010726·N·M09·B07"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value="BLK"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value="BK0137"
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-val"
+                      >
+                        Nandlal
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value="010726·N·M09·B08"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value="BLK"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value="BK0137"
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-val"
+                      >
+                        Nandlal
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <table
+            class="lbgrid trace-grid"
+          >
+            <thead>
+              <tr>
+                <th>
+                  Lot Number
+                </th>
+                <th>
+                  Colour
+                </th>
+                <th>
+                  Code
+                </th>
+                <th>
+                  Winder / Packed By
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 150px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 52px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cin"
+                    style="width: 60px;"
+                    value=""
+                  />
+                </td>
+                <td>
+                  <span
+                    class="drop"
+                    style="width: 120px;"
+                  >
+                    <button
+                      class="drop-btn"
+                      type="button"
+                    >
+                      <span
+                        class="drop-ph"
+                      >
+                        —
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down"
+                        fill="none"
+                        height="13"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div
+        class="lb-sec"
+      >
+        <div
+          class="band"
+        >
+          <span
+            class="bnum"
+          >
+            4)
+          </span>
+           Production Report
+        </div>
+        <table
+          class="lbgrid"
+        >
+          <thead>
+            <tr>
+              <th
+                colspan="2"
+              >
+                Total Roll Produced
+              </th>
+              <th>
+                Inevitable process waste
+              </th>
+              <th>
+                Inevitable process Lumps waste
+              </th>
+              <th>
+                Rejections
+              </th>
+              <th>
+                Total material consumed (In kgs)
+              </th>
+            </tr>
+            <tr>
+              <th>
+                Roll
+              </th>
+              <th>
+                Kgs
+              </th>
+              <th>
+                kgs
+              </th>
+              <th>
+                kgs
+              </th>
+              <th>
+                kgs
+              </th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <input
+                  class="cin"
+                  value="37"
+                />
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="288.6"
+                />
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value=""
+                />
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value=""
+                />
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="2"
+                />
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="291.6 Kg"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div
+          class="rej"
+        >
+          <span
+            class="rej-hd"
+          >
+            Reason for Rejections:
+          </span>
+          <span
+            class="rej-item"
+          >
+            1
+            ) 
+            Finishing Issue
+             
+            <input
+              class="cin"
+              style="width: 42px;"
+              value="2"
+            />
+          </span>
+          <span
+            class="rej-item"
+          >
+            2
+            ) 
+            Coil Weight Issue
+             
+            <input
+              class="cin"
+              style="width: 42px;"
+              value=""
+            />
+          </span>
+          <span
+            class="rej-item"
+          >
+            3
+            ) 
+            Cut Mark Issue
+             
+            <input
+              class="cin"
+              style="width: 42px;"
+              value=""
+            />
+          </span>
+          <span
+            class="rej-item"
+          >
+            4
+            ) 
+            Roughness Issue
+             
+            <input
+              class="cin"
+              style="width: 42px;"
+              value=""
+            />
+          </span>
+          <span
+            class="rej-item"
+          >
+            5
+            ) 
+            Line Mark Issue
+             
+            <input
+              class="cin"
+              style="width: 42px;"
+              value=""
+            />
+          </span>
+          <span
+            class="rej-item"
+          >
+            6
+            ) 
+            Bubble Issue
+             
+            <input
+              class="cin"
+              style="width: 42px;"
+              value=""
+            />
+          </span>
+          <span
+            class="rej-item"
+          >
+            7
+            ) 
+            Others
+             
+            <input
+              class="cin"
+              style="width: 42px;"
+              value=""
+            />
+          </span>
+        </div>
+        <table
+          class="lbgrid tight"
+        >
+          <tbody>
+            <tr>
+              <td
+                class="lbl"
+              >
+                Meter Checked manually by
+              </td>
+              <td>
+                <span
+                  class="drop"
+                  style="width: 140px;"
+                >
+                  <button
+                    class="drop-btn"
+                    type="button"
+                  >
+                    <span
+                      class="drop-val"
+                    >
+                      Nandlal
+                    </span>
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-chevron-down"
+                      fill="none"
+                      height="13"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="13"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="m6 9 6 6 6-6"
+                      />
+                    </svg>
+                  </button>
+                </span>
+              </td>
+              <td
+                class="lbl"
+              >
+                Time
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="3:00"
+                />
+              </td>
+              <td
+                class="lbl"
+              >
+                Meter
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="154/M"
+                />
+              </td>
+              <td
+                class="lbl"
+              >
+                Meter Count Set
+              </td>
+              <td>
+                <input
+                  class="cin"
+                  value="314"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div
+          class="notes"
+        >
+          <div>
+            <b>
+              NOTE 
+              1
+              :-
+            </b>
+             
+            Visually performed 100% By Operator
+          </div>
+          <div>
+            <b>
+              NOTE 
+              2
+              :-
+            </b>
+             
+            DVC – Digital Vernier Caliper, MM – Micro Meter, WS – Weighing scale, DHG – Digital Height gauge, HT – Hardness Tester and All Dimensions are in MM
+          </div>
+        </div>
+        <div
+          class="sign"
+        >
+          <div>
+            (Signature of Inspector)
+          </div>
+          <div>
+            (Signature of Shift Incharge)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

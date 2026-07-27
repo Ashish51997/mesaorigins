@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Secure collections for authenticated users (since server-side proxy is used, direct reads/writes are locked down except for auth)
+    match /customers/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /inquiries/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /salesOrders/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /productionPlans/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /templates/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /machineLogbooks/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /inspections/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /packingRecords/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /inventory/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /dispatches/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /complaints/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /capas/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /recipes/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /maintenanceTasks/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /permissions/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /aclRequests/{id} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

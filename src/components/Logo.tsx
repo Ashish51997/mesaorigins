@@ -1,0 +1,33 @@
+/**
+ * Logo.tsx — the Mass Polimer brand mark (from Downloads/logo.svg), inlined so it
+ * stays crisp at any size and needs no extra network request. A white rounded tile
+ * with a blue "gateway" mark, so it reads well on both light and dark themes.
+ * Size it via className (e.g. "h-9 w-9").
+ */
+
+import type { ReactElement } from 'react';
+
+export default function Logo({ className = 'h-9 w-9' }: { className?: string }): ReactElement {
+  return (
+    <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} role="img" aria-label="Mass Polimer">
+      <rect width="36" height="36" rx="6" fill="white" />
+      <path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="url(#mp_logo_a)" />
+      <path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="url(#mp_logo_b)" />
+      <path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="url(#mp_logo_c)" />
+      <defs>
+        <linearGradient id="mp_logo_a" x1="31.1904" y1="10.7024" x2="4.00013" y2="10.7024" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#1F74FF" />
+          <stop offset="1" stopColor="#0044FF" />
+        </linearGradient>
+        <linearGradient id="mp_logo_b" x1="27.383" y1="29.0001" x2="27.383" y2="15.4049" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#287CFF" />
+          <stop offset="1" stopColor="#0538BD" />
+        </linearGradient>
+        <linearGradient id="mp_logo_c" x1="7.80747" y1="29.0001" x2="7.80747" y2="15.4049" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#287CFF" />
+          <stop offset="1" stopColor="#0538BD" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
