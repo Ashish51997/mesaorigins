@@ -5,10 +5,11 @@
  */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Users, Plus, X, ShieldAlert, Trash2, KeyRound, Pencil } from 'lucide-react';
+import { Users, Plus, ShieldAlert, Trash2, KeyRound, Pencil } from 'lucide-react';
 import { pushToast } from '../Notify';
 import { EmptyState } from '../EmptyState';
 import { DataTable } from '../DataTable';
+import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { ApiError } from '../../lib/apiClient';
 import {
   useEmployees, useRoles, useCreateEmployee, useUpdateEmployee, useCreateRole, useUpdateRole,
@@ -18,11 +19,11 @@ import {
 const SCREEN_LABEL: Record<string, string> = {
   dashboard: 'Dashboard', inquiries: 'Inquiries', quotations: 'Quotations', orders: 'Orders',
   sales_customers: 'Customers', sales_complaints: 'Complaints & CAPA', orders_to_plan: 'Orders to Plan',
-  plan_board: 'Production Plan', formulations: 'Formulations (BOM)', logbooks: 'Production LOG BOOK',
+  plan_board: 'Production Plan', formulations: 'Formulations (BOM)', logbooks: 'Log Book (via Machine Tasks)',
   machine_tasks: 'Machine Tasks', logbook_templates: 'Logbook Templates',
   roll_queue: 'Roll Inspection', holds: 'Quality Holds', receive: 'Receive Material', issue_lot: 'Issue Lot',
   rm_stock: 'RM Stock', ready: 'Ready to Dispatch', dispatch_history: 'Dispatch History',
-  preventive: 'Preventive Maintenance', users: 'People & Roles', acl: 'Roles & Access',
+  machines: 'Machines', preventive: 'Preventive Maintenance', users: 'People & Roles', acl: 'Roles & Access',
 };
 const label = (s: string) => SCREEN_LABEL[s] ?? s;
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : 'Something went wrong — please try again.');
@@ -261,12 +262,9 @@ function RoleModal({ role, onClose }: { role?: ApiRole; onClose: () => void }) {
 
 function Modal({ title, children, onClose, wide }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean }) {
   return (
-    <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} p-6 space-y-3 max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3><button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"><X className="w-4 h-4" /></button></div>
-        {children}
-      </div>
-    </div>
+    <ResponsiveOverlay open onClose={onClose} title={title} wide={wide}>
+      <div className="space-y-3">{children}</div>
+    </ResponsiveOverlay>
   );
 }
 function Field({ label, children }: { label: string; children: ReactNode }) {

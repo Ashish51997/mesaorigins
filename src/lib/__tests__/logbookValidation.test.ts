@@ -110,7 +110,12 @@ describe('range + type for process parameters', () => {
   it('passes a fully valid sheet', () => {
     expect(validateLogbookForSubmit({
       operatorSignature: 'Nandlal',
+      supervisorSignature: 'Suresh',
       date: '2026-07-01',
+      shift: 'D',
+      supervisor: 'Nandlal',
+      productName: 'RPVC',
+      formulaNo: 'RF03',
       extruderStartTime: '09:00',
       productSetTime: '09:15',
       meterCheckTime: '15:00',
@@ -129,6 +134,23 @@ describe('range + type for process parameters', () => {
       scrapKg: '1.2',
       meterCountSet: '314',
     }, template)).toEqual([]);
+  });
+
+  it('flags empty required fields when closing', () => {
+    const issues = validateLogbookForSubmit({
+      operatorSignature: '',
+      supervisorSignature: '',
+      date: '',
+      shift: '',
+      supervisor: '',
+      productName: '',
+      formulaNo: '',
+    }, template);
+    const fields = issues.filter((i) => i.kind === 'required').map((i) => i.field);
+    expect(fields).toEqual(expect.arrayContaining([
+      'date', 'shift', 'supervisor', 'productName', 'formulaNo', 'operatorSignature', 'supervisorSignature',
+    ]));
+    expect(issues.every((i) => i.kind !== 'required' || i.message.endsWith('is empty.'))).toBe(true);
   });
 
   it('isOutOfRange and isInvalidNumber cover empty vs filled', () => {

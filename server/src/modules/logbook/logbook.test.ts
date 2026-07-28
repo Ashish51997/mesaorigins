@@ -51,11 +51,19 @@ describe('logbook slice', () => {
     const again = await request(app).post('/api/logbooks').send({ productionPlanId: planId });
     expect(again.body.id).toBe(id);
 
-    // Cannot submit without the operator sign-off.
+    // Cannot close without required fields filled.
     const early = await request(app).post(`/api/logbooks/${id}/submit`);
     expect(early.status).toBe(422);
 
-    const save = await request(app).patch(`/api/logbooks/${id}`).send({ operatorSignature: 'Nandlal', motorSpeed: '42' });
+    const save = await request(app).patch(`/api/logbooks/${id}`).send({
+      date: '2026-10-05',
+      shift: 'D',
+      supervisor: 'Nandlal',
+      formulaNo: 'RF03',
+      operatorSignature: 'Nandlal',
+      supervisorSignature: 'Suresh',
+      motorSpeed: '42',
+    });
     expect(save.status).toBe(200);
     expect(save.body.operatorSignature).toBe('Nandlal');
 
@@ -83,9 +91,15 @@ describe('logbook slice', () => {
     const planId = await freshPlan('M02', '2026-12-01');
     const id = (await request(app).post('/api/logbooks').send({ productionPlanId: planId })).body.id;
 
-    // Record the formulation run + the mass consumed, then submit.
+    // Record the formulation run + the mass consumed, then close.
     await request(app).patch(`/api/logbooks/${id}`).send({
-      operatorSignature: 'Nandlal', formulaNo: `${code} · Rev 1`, totalConsumedKg: '1000',
+      date: '2026-12-01',
+      shift: 'D',
+      supervisor: 'Nandlal',
+      operatorSignature: 'Nandlal',
+      supervisorSignature: 'Suresh',
+      formulaNo: `${code} · Rev 1`,
+      totalConsumedKg: '1000',
     });
     const submit = await request(app).post(`/api/logbooks/${id}/submit`);
     expect(submit.status).toBe(200);

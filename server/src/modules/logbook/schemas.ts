@@ -32,7 +32,9 @@ export const logbookUpdateSchema = z
     shoreHardness: s, productionPerHour: s, moldNo: s, productName: s,
     scrapKg: s, operatorSignature: s, supervisorSignature: s,
     totalRollsProduced: s, totalRollKgs: s, processWasteKg: s, lumpsWasteKg: s, rejectionKg: s, totalConsumedKg: s,
-    meterCheckedBy: s, meterCheckTime: s, meter: s, meterCountSet: s, attachedImage: s,
+    meterCheckedBy: s, meterCheckTime: s, meter: s, meterCountSet: s,
+    // Nullable in Postgres — drafts often echo null back from the API on partial save.
+    attachedImage: z.string().nullish(),
     dieZoneTemps: z.record(s), barrelZoneTemps: z.record(s), rejectionCounts: z.record(s),
     coilWeights: z.array(s),
     hourlyInspections: z.array(z.any()), traceabilityRows: z.array(z.any()), rolls: z.array(z.any()),

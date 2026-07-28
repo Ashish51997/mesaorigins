@@ -2,7 +2,7 @@ import { prisma, tenantTx } from '../../db';
 import { tenantContext } from '../../lib/tenantContext';
 import { audit } from '../../lib/audit';
 import { ApiError } from '../../middleware/error';
-import type { MaintenanceCreate } from './schemas';
+import type { MachineCreate, MaintenanceCreate } from './schemas';
 
 function org(): string {
   const ctx = tenantContext.getStore();
@@ -15,6 +15,27 @@ const withMachine = { machine: { select: { code: true, line: true, status: true 
 /** The org's machine registry (reference data for the maintenance form). */
 export function listMachines() {
   return prisma.machine.findMany({ orderBy: { code: 'asc' } });
+}
+
+/** Register a new extruder / line machine in the tenant. */
+export async function createMachine(input: MachineCreate) {
+  const code = input.code.trim().toUpperCase();
+  const existing = await prisma.machine.findFirst({ where: { organizationId: org(), code } });
+  if (existing) throw new ApiError(409, 'conflict', `Machine ${code} is already registered.`);
+  return tenantTx(async (tx) => {
+    const machine = await tx.machine.create({
+      data: {
+        organizationId: org(),
+        code,
+        line: input.line.trim(),
+        family: input.family.trim() || 'PVC',
+        logbookFormat: (input.logbookFormat ?? '').trim(),
+        status: input.status,
+      },
+    });
+    await audit(tx, { action: 'machine.create', entity: 'Machine', entityId: machine.id, after: { code: machine.code, line: machine.line } });
+    return machine;
+  });
 }
 
 /** Maintenance tasks for the org, each with its machine. */

@@ -10,7 +10,7 @@
 import { useState, useEffect } from 'react';
 import type { Dispatch, SetStateAction, ReactNode } from 'react';
 import {
-  ClipboardList, Lock, AlertTriangle, CheckCircle2, ArrowRight, Boxes, Gauge, List, BarChart3, Beaker, X, CalendarClock, Plus, Trash2
+  ClipboardList, Lock, AlertTriangle, CheckCircle2, ArrowRight, Boxes, Gauge, List, BarChart3, Beaker, CalendarClock, Plus, Trash2
 } from 'lucide-react';
 import { SalesOrder, ProductionPlan, Customer } from '../../types';
 import { useFormulations, useCreateFormulation, useUpdateFormulation, type ApiFormula, type ApiFormulaComponent } from '../../lib/queries/formulation';
@@ -19,6 +19,7 @@ import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
 import { TraceLink } from '../TraceLink';
 import { DataTable } from '../DataTable';
+import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { ApiError } from '../../lib/apiClient';
 import { useMachines } from '../../lib/queries/maintenance';
 import { useOrdersToPlan, usePlans, useOperators, useSchedulePlan, useReleasePlan, type ApiPlanOrder } from '../../lib/queries/planning';
@@ -165,14 +166,8 @@ function SchedulePlanModal({ order, onClose }: { order: ApiPlanOrder; onClose: (
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-start justify-center p-4 overflow-y-auto">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-md my-10 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between px-5 h-14 border-b border-slate-200 dark:border-slate-800">
-          <span className="font-bold text-sm">Plan {order.soNumber}</span>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="p-5 space-y-4">
+    <ResponsiveOverlay open onClose={onClose} title={`Plan ${order.soNumber}`}>
+      <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-slate-600 dark:text-slate-300">
             <span className="font-semibold text-slate-800 dark:text-slate-100">{order.product}</span>
             <span className="text-slate-300">·</span> {order.quantity} units
@@ -205,9 +200,8 @@ function SchedulePlanModal({ order, onClose }: { order: ApiPlanOrder; onClose: (
           <button onClick={confirm} disabled={!valid || !canPlan || schedule.isPending} title={canPlan ? undefined : 'No access — ask your administrator'} className="w-full h-14 rounded-lg bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
             {!canPlan ? 'No access to plan orders' : `Schedule on ${machines.find((m) => m.id === mId)?.code ?? 'machine'}, Shift ${shift}`}
           </button>
-        </div>
       </div>
-    </div>
+    </ResponsiveOverlay>
   );
 }
 
@@ -310,7 +304,7 @@ export function Formulations(p: PlannerData) {
           {!selected ? <EmptyState title="Pick a formulation." /> : selected.locked ? (
             <div className="text-[12px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 flex items-start gap-2">
               <Lock className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>This revision is locked and cannot be edited. {selected.lockReason} <button onClick={() => p.onOpen('capa')} className="underline font-bold">Open {selected.capaId}</button></div>
+              <div>This revision is locked and cannot be edited. {selected.lockReason} <button onClick={() => p.onOpen('sales_complaints')} className="underline font-bold">Open {selected.capaId}</button></div>
             </div>
           ) : (
             <>
@@ -389,12 +383,8 @@ function AddFormulationModal({ onClose }: { onClose: () => void }) {
 
   const inCls = 'w-full min-h-[38px] px-2.5 py-1.5 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 placeholder-slate-400';
   return (
-    <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add a formulation</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"><X className="w-4 h-4" /></button>
-        </div>
+    <ResponsiveOverlay open onClose={onClose} title="Add a formulation" wide>
+      <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block"><span className="block text-[11px] font-bold text-slate-500 mb-1">Code</span><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. RF04" className={inCls + ' font-mono uppercase'} /></label>
           <label className="block"><span className="block text-[11px] font-bold text-slate-500 mb-1">Product</span><input value={product} onChange={(e) => setProduct(e.target.value)} placeholder="Product this BOM makes" className={inCls} /></label>
@@ -422,7 +412,7 @@ function AddFormulationModal({ onClose }: { onClose: () => void }) {
           <button onClick={submit} disabled={!valid || create.isPending} className="min-h-[42px] px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add formulation</button>
         </div>
       </div>
-    </div>
+    </ResponsiveOverlay>
   );
 }
 

@@ -21,7 +21,7 @@ export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
   'Store Manager': ['dashboard', 'receive', 'issue_lot', 'rm_stock'],
   'Sales Executive': ['dashboard', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints'],
   'Dispatch Executive': ['dashboard', 'ready', 'dispatch_history'],
-  'Maintenance Head': ['dashboard', 'preventive'],
+  'Maintenance Head': ['dashboard', 'machines', 'preventive'],
   'Administrator': ['dashboard', 'users', 'acl', 'logbooks', 'logbook_templates', 'machine_tasks'],
 };
 
@@ -37,20 +37,20 @@ const ACTION_SCREEN: Record<string, string> = {
   'order.setPriority': 'orders',
   'order.plan': 'plan_board',
   'formula.edit': 'formulations',
-  'reading.save': 'hourly_grid',
-  'breakdown.raise': 'raise_breakdown',
+  'reading.save': 'logbooks',
+  'breakdown.raise': 'machine_tasks',
   'qa.pass': 'roll_queue',
   'qa.hold': 'roll_queue',
   'qa.override': 'roll_queue',
-  'incoming.accept': 'incoming',
+  'incoming.accept': 'receive',
   'lot.issue': 'issue_lot',
-  'fg.putaway': 'fg_putaway',
-  'pallet.release': 'fg_putaway',
-  'gatepass.release': 'gate_pass',
-  'gatepass.print': 'gate_pass',
+  'fg.putaway': 'rm_stock',
+  'pallet.release': 'ready',
+  'gatepass.release': 'ready',
+  'gatepass.print': 'ready',
   'dispatch.mark': 'ready',
   'logbook.edit': 'logbooks',
-  'breakdown.close': 'breakdowns',
+  'breakdown.close': 'preventive',
 };
 
 export function roleAllowsScreen(role: string, screenId: string): boolean {
@@ -96,5 +96,5 @@ export const ALL_SCREENS: string[] = [
   'dashboard', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints',
   'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates',
   'roll_queue', 'holds', 'receive', 'issue_lot', 'rm_stock', 'ready', 'dispatch_history',
-  'preventive', 'users', 'acl',
+  'preventive', 'machines', 'users', 'acl',
 ];

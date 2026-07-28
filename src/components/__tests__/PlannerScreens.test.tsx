@@ -40,7 +40,7 @@ describe('Planner — orders to plan (API)', () => {
 
     renderUI(<OrdersToPlan {...stub} />);
     expect(await screen.findByText('SO-2026-102')).toBeTruthy();
-    fireEvent.click(screen.getByText(/Plan this order/i));
+    fireEvent.click(screen.getByRole('button', { name: /^Plan$/i }));
     // modal opens; wait for machines to load so the schedule button is ready
     fireEvent.click(await screen.findByText(/Schedule on M07/i));
     await waitFor(() => expect(post).toHaveBeenCalledWith('/plans', expect.objectContaining({ salesOrderId: 'o1', machineId: 'm1', shift: 'D' })));

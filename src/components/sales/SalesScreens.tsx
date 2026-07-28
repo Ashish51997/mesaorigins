@@ -19,6 +19,7 @@ import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
 import { TraceLink } from '../TraceLink';
 import { DataTable, formatTableDate } from '../DataTable';
+import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { ApiError } from '../../lib/apiClient';
 
 import {
@@ -326,20 +327,8 @@ export function Inquiries(p: SalesData) {
       />
 
       {/* Side panel — log inquiry */}
-      {panelOpen && (
-        <div className="fixed inset-0 z-[80] flex justify-end" role="dialog" aria-modal="true" aria-labelledby="log-inquiry-title">
-          <button type="button" className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]" aria-label="Close" onClick={closePanel} />
-          <div className="relative w-full max-w-lg h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl flex flex-col animate-in slide-in-from-right">
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-              <div>
-                <h3 id="log-inquiry-title" className="text-[15px] font-semibold text-slate-900 dark:text-white">Log inquiry</h3>
-                <p className="text-[12px] text-slate-500 mt-0.5">Capture product, qty, and delivery for a customer.</p>
-              </div>
-              <button type="button" onClick={closePanel} className={`h-9 w-9 rounded-lg inline-flex items-center justify-center ${PRIMARY_OUTLINE}`}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+      <ResponsiveOverlay open={panelOpen} onClose={closePanel} title="Log inquiry" variant="drawer-right">
+            <p className="text-[12px] text-slate-500 px-5 pt-3">Capture product, qty, and delivery for a customer.</p>
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
               {customers.length === 0 && (
                 <div className="text-[12px] text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg px-3 py-2">
@@ -406,9 +395,7 @@ export function Inquiries(p: SalesData) {
                 <Plus className="w-4 h-4" /> Save inquiry
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </ResponsiveOverlay>
     </div>
   );
 }
@@ -795,12 +782,8 @@ function AddCustomerModal({ onClose }: { onClose: () => void }) {
     );
   };
   return (
-    <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add a customer</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"><X className="w-4 h-4" /></button>
-        </div>
+    <ResponsiveOverlay open onClose={onClose} title="Add a customer" wide>
+      <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ModalField label="Company name" value={f.name} onChange={(v) => set('name', v)} ph="e.g. Sunrise Pipes Pvt Ltd" span />
           <ModalField label="Contact person" value={f.contactPerson} onChange={(v) => set('contactPerson', v)} ph="Name" />
@@ -816,7 +799,7 @@ function AddCustomerModal({ onClose }: { onClose: () => void }) {
           <button onClick={submit} disabled={!f.name.trim() || createCustomer.isPending} className="min-h-[44px] px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold cursor-pointer inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add customer</button>
         </div>
       </div>
-    </div>
+    </ResponsiveOverlay>
   );
 }
 
@@ -1035,20 +1018,8 @@ export function SalesComplaints(p: SalesData) {
         ]}
       />
 
-      {panelOpen && (
-        <div className="fixed inset-0 z-[80] flex justify-end" role="dialog" aria-modal="true" aria-labelledby="log-complaint-title">
-          <button type="button" className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]" aria-label="Close" onClick={() => setPanelOpen(false)} />
-          <div className="relative w-full max-w-lg h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl flex flex-col">
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-              <div>
-                <h3 id="log-complaint-title" className="text-[15px] font-semibold text-slate-900 dark:text-white">Log complaint</h3>
-                <p className="text-[12px] text-slate-500 mt-0.5">Tie the defect to a dispatched batch and set severity.</p>
-              </div>
-              <button type="button" onClick={() => setPanelOpen(false)} className={`h-9 w-9 rounded-lg inline-flex items-center justify-center ${PRIMARY_OUTLINE}`}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+      <ResponsiveOverlay open={panelOpen} onClose={() => setPanelOpen(false)} title="Log complaint" variant="drawer-right">
+            <p className="text-[12px] text-slate-500 px-5 pt-3">Tie the defect to a dispatched batch and set severity.</p>
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
               <button
                 type="button"
@@ -1134,9 +1105,7 @@ export function SalesComplaints(p: SalesData) {
                 Save complaint · {days}d SLA
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </ResponsiveOverlay>
 
       {capaComplaint && <CapaModal complaint={capaComplaint} onClose={() => setCapaFor(null)} />}
     </div>
@@ -1178,17 +1147,11 @@ function CapaModal({ complaint, onClose }: { complaint: ApiComplaint; onClose: (
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-[15px] font-semibold text-slate-900 dark:text-white">CAPA · {complaint.complaintNumber}</h3>
-            <div className="text-[12px] text-slate-500 mt-1 flex flex-wrap items-center gap-1.5">
-              {complaint.product} · {complaint.batchNumber} {capaBadge(capa.status)}
-              <span className="text-slate-400">Due {formatTableDate(capa.dueDate)}</span>
-            </div>
-          </div>
-          <button type="button" onClick={onClose} className={`h-9 w-9 rounded-lg inline-flex items-center justify-center shrink-0 ${PRIMARY_OUTLINE}`}><X className="w-4 h-4" /></button>
+    <ResponsiveOverlay open onClose={onClose} title={`CAPA · ${complaint.complaintNumber}`} wide>
+      <div className="space-y-4">
+        <div className="text-[12px] text-slate-500 flex flex-wrap items-center gap-1.5">
+          {complaint.product} · {complaint.batchNumber} {capaBadge(capa.status)}
+          <span className="text-slate-400">Due {formatTableDate(capa.dueDate)}</span>
         </div>
         {closed && (
           <div className="text-[12px] font-medium text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-lg px-3 py-2">
@@ -1219,6 +1182,6 @@ function CapaModal({ complaint, onClose }: { complaint: ApiComplaint; onClose: (
           </div>
         )}
       </div>
-    </div>
+    </ResponsiveOverlay>
   );
 }

@@ -1,50 +1,118 @@
 /**
  * MaintenanceScreens.tsx — Maintenance Head (PROMPT 08, light). Home ·
- * Breakdowns · Preventive Schedule · Downtime Analytics · Machine History ·
- * Calibration Register. Reads operator-raised breakdowns (shared store): an
- * operator breakdown shows here with a red nudge → acknowledge → close, which
- * brings the machine back to running and clears the operator + MD views live.
+ * Machines · Preventive Schedule. Machine registry and schedule are API-backed.
  */
 
 import { useState } from 'react';
-import type { ReactNode } from 'react';
 import {
-  Wrench, CalendarClock, BarChart3, History, Thermometer, AlertTriangle, CheckCircle2, ArrowRight, Cpu, Clock, Plus, X
+  CalendarClock, CheckCircle2, Cpu, Plus
 } from 'lucide-react';
-import { initialMachines } from '../../mockData';
-import { useLiveMachines } from '../../lib/simulation';
-import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
 import { DataTable } from '../DataTable';
+import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { pushToast } from '../Notify';
 import { ApiError } from '../../lib/apiClient';
-import { useMachines, useMaintenanceTasks, useAddMaintenance, useCompleteMaintenance, type ApiMachine } from '../../lib/queries/maintenance';
+import { useMachines, useCreateMachine, useMaintenanceTasks, useAddMaintenance, useCompleteMaintenance, type ApiMachine } from '../../lib/queries/maintenance';
 
 export interface MaintData { onOpen: (m: string) => void; onTrace: (q: string) => void; user: string; }
 
-const MACHINES = initialMachines.map((m) => m.id);
-const lotOf = (id: string) => initialMachines.find((m) => m.id === id)?.currentLot ?? '';
-const dur = (b: { startedAt: number; endedAt?: number }) => Math.round(((b.endedAt ?? Date.now()) - b.startedAt) / 60000);
-function Card({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) {
-  return <div className="bg-white border border-slate-200 rounded-xl p-4"><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{title}</div>{right}</div>{children}</div>;
-}
-const STATUS = { running: { dot: 'bg-emerald-500', word: 'Running' }, attention: { dot: 'bg-amber-500', word: 'Needs a look' }, stopped: { dot: 'bg-rose-500', word: 'Stopped' } };
-
-/* ---------------------------------------------------------------- Home */
-
-function topCategory(bs: { category: string; startedAt: number; endedAt?: number }[]): string | undefined {
-  const t: Record<string, number> = {};
-  bs.forEach((b) => { t[b.category] = (t[b.category] ?? 0) + dur(b); });
-  return Object.entries(t).sort((a, b) => b[1] - a[1])[0]?.[0];
-}
-
-/* ---------------------------------------------------------------- Breakdowns */
-
-
-/* ---------------------------------------------------------------- Preventive Schedule */
-
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : 'Something went wrong — please try again.');
 const typeChip = (t: string) => <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">{t}</span>;
+const mtLbl = 'block text-[11px] font-bold text-slate-500 mb-1';
+const mtInp = 'w-full h-11 px-3 rounded-lg border border-slate-300 text-sm bg-white text-slate-700';
+
+const STATUS = { running: { dot: 'bg-emerald-500', word: 'Running' }, attention: { dot: 'bg-amber-500', word: 'Needs a look' }, stopped: { dot: 'bg-rose-500', word: 'Stopped' } } as const;
+type MachineStatus = keyof typeof STATUS;
+
+const FAMILIES = ['LDPE', 'PVC', 'SPVC', 'Other'] as const;
+const TASK_TYPES = ['Preventive', 'Calibration', 'Overhaul', 'Breakdown'] as const;
+const FREQS = ['Weekly', 'Monthly', 'Quarterly', 'Semiannually', 'Once (Breakdown)'] as const;
+
+/* ---------------------------------------------------------------- Machines registry */
+
+export function MachinesBoard(_p: MaintData) {
+  const machinesQ = useMachines();
+  const [showAdd, setShowAdd] = useState(false);
+  const machines = machinesQ.data ?? [];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-slate-900">Plant machines</h2>
+        <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-sm cursor-pointer shrink-0">
+          <Plus className="w-4 h-4" /> Add machine
+        </button>
+      </div>
+      <DataTable
+        title={`${machines.length} machine(s)`}
+        loading={machinesQ.isLoading}
+        rows={machines}
+        rowKey={(m) => m.id}
+        empty={<EmptyState icon={<Cpu className="w-8 h-8" />} title="No machines registered yet." hint="Add a machine to use it on the schedule, plans, and issue screens." />}
+        columns={[
+          { key: 'code', header: 'Code', cell: (m) => <span className="font-bold inline-flex items-center gap-1"><Cpu className="w-3.5 h-3.5 text-slate-400" /> {m.code}</span> },
+          { key: 'line', header: 'Line', cell: (m) => m.line || '—' },
+          { key: 'family', header: 'Family', cell: (m) => <span className="text-[12px] font-bold text-slate-600">{m.family || '—'}</span> },
+          { key: 'format', header: 'Logbook', cell: (m) => <span className="text-[12px] font-mono text-slate-500">{m.logbookFormat || '—'}</span> },
+          { key: 'status', header: 'Status', cell: (m) => {
+            const s = STATUS[(m.status as MachineStatus)] ?? STATUS.running;
+            return <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-slate-700"><span className={`w-2 h-2 rounded-full ${s.dot}`} />{s.word}</span>;
+          } },
+        ]}
+      />
+      {showAdd && <AddMachineModal onClose={() => setShowAdd(false)} />}
+    </div>
+  );
+}
+
+function AddMachineModal({ onClose }: { onClose: () => void }) {
+  const create = useCreateMachine();
+  const [code, setCode] = useState('');
+  const [line, setLine] = useState('');
+  const [family, setFamily] = useState<(typeof FAMILIES)[number]>('PVC');
+  const [status, setStatus] = useState<MachineStatus>('running');
+  const valid = code.trim() !== '' && line.trim() !== '';
+
+  const submit = () => {
+    if (!valid || create.isPending) return;
+    create.mutate(
+      { code: code.trim(), line: line.trim(), family, status },
+      {
+        onSuccess: (m) => { pushToast(`Machine ${m.code} registered.`); onClose(); },
+        onError: (e) => pushToast(errMsg(e)),
+      },
+    );
+  };
+
+  return (
+    <ResponsiveOverlay open onClose={onClose} title="Add a machine">
+      <div className="space-y-4">
+        <label className="block"><span className={mtLbl}>Code</span>
+          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="e.g. M10" className={`${mtInp} font-mono`} maxLength={16} />
+        </label>
+        <label className="block"><span className={mtLbl}>Line / description</span>
+          <input value={line} onChange={(e) => setLine(e.target.value)} placeholder="e.g. PVC / SPVC beading" className={mtInp} />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block"><span className={mtLbl}>Family</span>
+            <select value={family} onChange={(e) => setFamily(e.target.value as typeof family)} className={mtInp}>{FAMILIES.map((f) => <option key={f} value={f}>{f}</option>)}</select>
+          </label>
+          <label className="block"><span className={mtLbl}>Status</span>
+            <select value={status} onChange={(e) => setStatus(e.target.value as MachineStatus)} className={mtInp}>
+              {(Object.keys(STATUS) as MachineStatus[]).map((k) => <option key={k} value={k}>{STATUS[k].word}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <button onClick={onClose} className="min-h-[44px] px-4 rounded-full border border-slate-200 text-sm font-bold text-slate-600">Cancel</button>
+          <button onClick={submit} disabled={!valid || create.isPending} className="min-h-[44px] px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add machine</button>
+        </div>
+      </div>
+    </ResponsiveOverlay>
+  );
+}
+
+/* ---------------------------------------------------------------- Preventive Schedule */
 
 // Machine-linked maintenance tasks, backed by the API (tenant-scoped). Each task
 // belongs to a machine (FR-MNT-02); "Add task" creates one against a machine.
@@ -90,11 +158,6 @@ export function PreventiveSchedule(_p: MaintData) {
   );
 }
 
-const mtLbl = 'block text-[11px] font-bold text-slate-500 mb-1';
-const mtInp = 'w-full h-11 px-3 rounded-lg border border-slate-300 text-sm bg-white text-slate-700';
-const TASK_TYPES = ['Preventive', 'Calibration', 'Overhaul', 'Breakdown'] as const;
-const FREQS = ['Weekly', 'Monthly', 'Quarterly', 'Semiannually', 'Once (Breakdown)'] as const;
-
 function AddMaintenanceModal({ machines, onClose }: { machines: ApiMachine[]; onClose: () => void }) {
   const addTask = useAddMaintenance();
   const [machineId, setMachineId] = useState(machines[0]?.id ?? '');
@@ -117,12 +180,8 @@ function AddMaintenanceModal({ machines, onClose }: { machines: ApiMachine[]; on
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-lg w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">Add a maintenance task</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-4 h-4" /></button>
-        </div>
+    <ResponsiveOverlay open onClose={onClose} title="Add a maintenance task">
+      <div className="space-y-4">
         <label className="block"><span className={mtLbl}>Machine</span>
           <select value={machineId} onChange={(e) => setMachineId(e.target.value)} className={mtInp}>{machines.map((m) => <option key={m.id} value={m.id}>{m.code} — {m.line}</option>)}</select>
         </label>
@@ -148,15 +207,6 @@ function AddMaintenanceModal({ machines, onClose }: { machines: ApiMachine[]; on
           <button onClick={submit} disabled={!valid || addTask.isPending} className="min-h-[44px] px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Schedule task</button>
         </div>
       </div>
-    </div>
+    </ResponsiveOverlay>
   );
 }
-
-/* ---------------------------------------------------------------- Downtime Analytics */
-
-
-/* ---------------------------------------------------------------- Machine History */
-
-
-/* ---------------------------------------------------------------- Calibration Register */
-

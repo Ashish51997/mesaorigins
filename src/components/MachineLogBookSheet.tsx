@@ -45,6 +45,7 @@ interface MachineLogBookSheetProps {
   activeField?: string | null;
   onSelectField?: (field: string) => void;
   formulaOptions?: readonly string[];
+  employeeOptions?: readonly string[];
 }
 
 /* Selection context so cells can report focus / show the active highlight
@@ -209,10 +210,12 @@ export default function MachineLogBookSheet({
   onSelectSection,
   activeField,
   onSelectField,
-  formulaOptions = []
+  formulaOptions = [],
+  employeeOptions = []
 }: MachineLogBookSheetProps) {
   const t = template;
   const l = logbook;
+  const peopleOptions = employeeOptions.length > 0 ? employeeOptions : t.supervisors;
   const isPipe = (t.layout ?? 'coil') === 'pipe';
   const pod = t.pipeSpecs?.od;
   const pw = t.pipeSpecs?.weight;
@@ -252,7 +255,7 @@ export default function MachineLogBookSheet({
           <span>Machine No: <Cell w="60px" field="machineId" value={l.machineId} onChange={(v) => on.scalar('machineId', v)} readOnly /></span>
           <span>Date: <Cell kind="date" w="130px" field="date" value={l.date} onChange={(v) => on.scalar('date', v)} readOnly={readOnly} /></span>
           <span>Shift: <DropCell w="72px" field="shift" options={t.shifts} value={l.shift} onChange={(v) => on.scalar('shift', v)} readOnly={readOnly} /></span>
-          <span>Shift Supervisor: <DropCell w="150px" field="supervisor" options={t.supervisors} value={l.supervisor} onChange={(v) => on.scalar('supervisor', v)} readOnly={readOnly} /></span>
+          <span>Shift Supervisor: <DropCell w="150px" field="supervisor" options={peopleOptions} value={l.supervisor} onChange={(v) => on.scalar('supervisor', v)} readOnly={readOnly} /></span>
         </div>
 
         {/* ===================== 1) PROCESS PARAMETERS ===================== */}
@@ -359,7 +362,7 @@ export default function MachineLogBookSheet({
                         : <Cell numeric field={`hourly:${i}:weight`} value={insp.weight ?? ''} onChange={(v) => on.hourly(i, 'weight', v)} readOnly={readOnly} />}</td>
                       <td><Cell field={`hourly:${i}:colour`} value={insp.colour ?? ''} onChange={(v) => on.hourly(i, 'colour', v)} readOnly={readOnly} /></td>
                       <td><DropCell w="100px" field={`hourly:${i}:okNotOk`} options={['Ok', 'Not ok']} value={insp.okNotOk ?? ''} onChange={(v) => on.hourly(i, 'okNotOk', v)} placeholder="—" readOnly={readOnly} /></td>
-                      <td><DropCell w="120px" field={`hourly:${i}:inspectionBy`} options={t.supervisors} value={insp.inspectionBy} onChange={(v) => on.hourly(i, 'inspectionBy', v)} placeholder="—" readOnly={readOnly} /></td>
+                      <td><DropCell w="120px" field={`hourly:${i}:inspectionBy`} options={peopleOptions} value={insp.inspectionBy} onChange={(v) => on.hourly(i, 'inspectionBy', v)} placeholder="—" readOnly={readOnly} /></td>
                     </tr>
                   );
                 })}
@@ -429,7 +432,7 @@ export default function MachineLogBookSheet({
                       <td><Cell numeric field={`hourly:${i}:perMeter`} value={insp.perMeter} onChange={(v) => on.hourly(i, 'perMeter', v)} readOnly={readOnly} /></td>
                       <td><Cell field={`hourly:${i}:colour`} value={insp.colour} onChange={(v) => on.hourly(i, 'colour', v)} readOnly={readOnly} /></td>
                       <td><Cell field={`hourly:${i}:tearing`} value={insp.tearing} onChange={(v) => on.hourly(i, 'tearing', v)} readOnly={readOnly} /></td>
-                      <td><DropCell w="120px" field={`hourly:${i}:inspectionBy`} options={t.supervisors} value={insp.inspectionBy} onChange={(v) => on.hourly(i, 'inspectionBy', v)} placeholder="—" readOnly={readOnly} /></td>
+                      <td><DropCell w="120px" field={`hourly:${i}:inspectionBy`} options={peopleOptions} value={insp.inspectionBy} onChange={(v) => on.hourly(i, 'inspectionBy', v)} placeholder="—" readOnly={readOnly} /></td>
                     </tr>
                   );
                 })}
@@ -461,14 +464,14 @@ export default function MachineLogBookSheet({
                         <td><Cell w="52px" field={`trace:${idx}:colour`} value={row.colour} onChange={(v) => on.trace(idx, 'colour', v)} readOnly={readOnly} /></td>
                         <td><Cell w="60px" field={`trace:${idx}:code`} value={row.code} onChange={(v) => on.trace(idx, 'code', v)} readOnly={readOnly} /></td>
                         <td><Cell w="60px" numeric field={`trace:${idx}:pktKg`} value={row.pktKg ?? ''} onChange={(v) => on.trace(idx, 'pktKg', v)} readOnly={readOnly} /></td>
-                        <td><DropCell w="120px" field={`trace:${idx}:packedBy`} options={t.supervisors} value={row.packedBy ?? ''} onChange={(v) => on.trace(idx, 'packedBy', v)} placeholder="—" readOnly={readOnly} /></td>
+                        <td><DropCell w="120px" field={`trace:${idx}:packedBy`} options={peopleOptions} value={row.packedBy ?? ''} onChange={(v) => on.trace(idx, 'packedBy', v)} placeholder="—" readOnly={readOnly} /></td>
                       </tr>
                     ) : (
                       <tr key={n}>
                         <td><Cell w="150px" field={`trace:${idx}:lotNumber`} value={row.lotNumber} onChange={(v) => on.trace(idx, 'lotNumber', v)} readOnly={readOnly} /></td>
                         <td><Cell w="52px" field={`trace:${idx}:colour`} value={row.colour} onChange={(v) => on.trace(idx, 'colour', v)} readOnly={readOnly} /></td>
                         <td><Cell w="60px" field={`trace:${idx}:code`} value={row.code} onChange={(v) => on.trace(idx, 'code', v)} readOnly={readOnly} /></td>
-                        <td><DropCell w="120px" field={`trace:${idx}:winderPackedBy`} options={t.supervisors} value={row.winderPackedBy ?? ''} onChange={(v) => on.trace(idx, 'winderPackedBy', v)} placeholder="—" readOnly={readOnly} /></td>
+                        <td><DropCell w="120px" field={`trace:${idx}:winderPackedBy`} options={peopleOptions} value={row.winderPackedBy ?? ''} onChange={(v) => on.trace(idx, 'winderPackedBy', v)} placeholder="—" readOnly={readOnly} /></td>
                       </tr>
                     );
                   })}
@@ -517,7 +520,7 @@ export default function MachineLogBookSheet({
           <table className="lbgrid tight">
             <tbody>
               <tr>
-                <td className="lbl">Meter Checked manually by</td><td><DropCell w="140px" field="meterCheckedBy" options={t.supervisors} value={l.meterCheckedBy} onChange={(v) => on.scalar('meterCheckedBy', v)} readOnly={readOnly} /></td>
+                <td className="lbl">Meter Checked manually by</td><td><DropCell w="140px" field="meterCheckedBy" options={peopleOptions} value={l.meterCheckedBy} onChange={(v) => on.scalar('meterCheckedBy', v)} readOnly={readOnly} /></td>
                 <td className="lbl">Meter check time</td><td><Cell kind="time" field="meterCheckTime" value={l.meterCheckTime} onChange={(v) => on.scalar('meterCheckTime', v)} readOnly={readOnly} /></td>
                 <td className="lbl">Meter</td><td><Cell kind="meter" field="meter" value={l.meter} onChange={(v) => on.scalar('meter', v)} readOnly={readOnly} /></td>
                 <td className="lbl">Meter Count Set</td><td><Cell numeric field="meterCountSet" value={l.meterCountSet} onChange={(v) => on.scalar('meterCountSet', v)} readOnly={readOnly} /></td>
@@ -534,11 +537,11 @@ export default function MachineLogBookSheet({
           <div className="sign">
             <div>
               <div className="sign-lbl">Inspector signature</div>
-              <Cell field="operatorSignature" value={l.operatorSignature} onChange={(v) => on.scalar('operatorSignature', v)} readOnly={readOnly} />
+              <DropCell field="operatorSignature" options={peopleOptions} value={l.operatorSignature} onChange={(v) => on.scalar('operatorSignature', v)} readOnly={readOnly} />
             </div>
             <div>
               <div className="sign-lbl">Shift incharge signature</div>
-              <Cell field="supervisorSignature" value={l.supervisorSignature} onChange={(v) => on.scalar('supervisorSignature', v)} readOnly={readOnly} />
+              <DropCell field="supervisorSignature" options={peopleOptions} value={l.supervisorSignature} onChange={(v) => on.scalar('supervisorSignature', v)} readOnly={readOnly} />
             </div>
           </div>
         </div>

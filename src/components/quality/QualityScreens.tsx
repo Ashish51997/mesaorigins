@@ -9,13 +9,14 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   ClipboardCheck, PackageCheck, Boxes, AlertTriangle, CheckCircle2, XCircle, PauseCircle,
-  ArrowRight, X, Thermometer, Recycle
+  ArrowRight, Thermometer, Recycle
 } from 'lucide-react';
 import { pushToast } from '../Notify';
 import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
 import { TraceLink } from '../TraceLink';
 import { DataTable } from '../DataTable';
+import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { ApiError } from '../../lib/apiClient';
 import { useQualityQueue, useQualityInspections, useCreateInspection, type ApiQueueItem } from '../../lib/queries/quality';
 
@@ -91,14 +92,8 @@ function RollInspectionModal({ item, onClose }: { item: ApiQueueItem; onClose: (
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-start justify-center p-4 overflow-y-auto">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-md my-10 bg-white rounded-xl shadow-2xl border border-slate-200">
-        <div className="flex items-center justify-between px-5 h-14 border-b border-slate-200">
-          <span className="font-bold text-sm font-mono">{item.lotNumber}</span>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="p-5 space-y-4">
+    <ResponsiveOverlay open onClose={onClose} title={item.lotNumber}>
+      <div className="space-y-4">
           <div className="text-[12px] text-slate-500">Machine {item.machineId} · {item.product || '—'}{item.colour ? ` · ${item.colour}` : ''}{item.code ? ` · ${item.code}` : ''}</div>
           <label className="flex items-center gap-2 text-[12px] font-semibold text-slate-500">Roll weight
             <input value={weight} onChange={(e) => setWeight(e.target.value)} inputMode="decimal" className="w-24 h-10 px-3 rounded-lg border border-slate-300 font-mono text-sm" /><span className="text-xs text-slate-400">kg</span>
@@ -111,9 +106,8 @@ function RollInspectionModal({ item, onClose }: { item: ApiQueueItem; onClose: (
             <button disabled={create.isPending} onClick={() => decide('fail')} className="h-14 rounded-xl bg-rose-600 text-white font-bold inline-flex items-center justify-center gap-1 disabled:opacity-50"><XCircle className="w-5 h-5" /> FAIL</button>
           </div>
           <div className="text-[11px] text-slate-400">A PASS books this roll to finished-goods stock.</div>
-        </div>
       </div>
-    </div>
+    </ResponsiveOverlay>
   );
 }
 

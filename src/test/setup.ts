@@ -10,3 +10,18 @@ afterEach(() => cleanup());
 Element.prototype.scrollIntoView = function scrollIntoView() {
   /* no-op in jsdom */
 };
+
+// ResponsiveOverlay / DataTable / useIsNarrow rely on matchMedia (absent in jsdom).
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
+});

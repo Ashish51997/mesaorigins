@@ -18,6 +18,7 @@ import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
 import { TraceLink } from '../TraceLink';
 import { DataTable } from '../DataTable';
+import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { ApiError } from '../../lib/apiClient';
 import { useReadyOrders, useDispatches, useCreateDispatch, type ApiReadyOrder } from '../../lib/queries/dispatch';
 
@@ -94,14 +95,8 @@ function DispatchModal({ order, onClose }: { order: ApiReadyOrder; onClose: () =
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-start justify-center p-4 overflow-y-auto">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-md my-10 bg-white rounded-xl shadow-2xl border border-slate-200">
-        <div className="flex items-center justify-between px-5 h-14 border-b border-slate-200">
-          <span className="font-bold text-sm">Dispatch {order.soNumber}</span>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100"><XCircle className="w-4 h-4" /></button>
-        </div>
-        <div className="p-5 space-y-4">
+    <ResponsiveOverlay open onClose={onClose} title={`Dispatch ${order.soNumber}`}>
+      <div className="space-y-4">
           <div className="text-[12px] text-slate-500">{order.product} · {order.quantity} units · {order.customer.name}</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Vehicle plate" value={vehicle} onChange={setVehicle} ph="KA-01-AB-1234" />
@@ -112,9 +107,8 @@ function DispatchModal({ order, onClose }: { order: ApiReadyOrder; onClose: () =
           <button onClick={submit} disabled={!valid || !canDispatch || create.isPending} title={canDispatch ? undefined : 'No access — ask your administrator'} className="w-full h-14 rounded-xl bg-indigo-600 text-white font-bold text-base hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1">
             <Truck className="w-5 h-5" /> {canDispatch ? 'Dispatch & raise invoice' : 'No access to dispatch'}
           </button>
-        </div>
       </div>
-    </div>
+    </ResponsiveOverlay>
   );
 }
 

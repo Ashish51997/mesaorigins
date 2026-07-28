@@ -28,7 +28,11 @@ import {
   Globe,
   ChevronDown,
   ArrowRight,
-  ChevronsLeft
+  ChevronsLeft,
+  Compass,
+  LockKeyhole,
+  Sparkles,
+  Cpu
 } from 'lucide-react';
 
 import {
@@ -62,9 +66,9 @@ import {
 } from './mockData';
 
 // Component imports — only real, API-backed screens survive.
-import LogbookModule from './components/LogbookModule';
 import LoginScreen from './components/LoginScreen';
 import Logo from './components/Logo';
+import MobileBottomNav from './components/MobileBottomNav';
 import { setCurrentEmployee, useRoleRules, useGrants, useDelegations, checkFor, can, grantState } from './lib/accessStore';
 import { employeeForRole, employeeForEmail } from './lib/userStore';
 import { setDevUser } from './lib/apiIdentity';
@@ -82,7 +86,7 @@ import { RollInspectionQueue, Holds, QualityData } from './components/quality/Qu
 import { ReceiveMaterial, IssueLot, RMStockBoard, StoreData } from './components/store/StoreScreens';
 import { Inquiries, Quotations, Orders, SalesCustomers, SalesComplaints, SalesData } from './components/sales/SalesScreens';
 import { ReadyToDispatch, DispatchHistory, DispatchData } from './components/dispatch/DispatchScreens';
-import { PreventiveSchedule, MaintData } from './components/maintenance/MaintenanceScreens';
+import { PreventiveSchedule, MachinesBoard, MaintData } from './components/maintenance/MaintenanceScreens';
 import RoleDashboard from './components/RoleDashboard';
 import MachineTasks from './components/MachineTasks';
 import TemplateBuilder from './components/TemplateBuilder';
@@ -98,61 +102,34 @@ import { fetchFromFirestore, saveToFirestore } from './lib/firebaseSync';
 
 type ModuleType =
   | 'dashboard'
-  | 'customers'
-  | 'sales'
-  | 'planning'
-  | 'manufacturing'
   | 'logbooks'
-  | 'template_builder'
-  | 'quality'
-  | 'inventory'
-  | 'dispatch'
-  | 'capa'
-  | 'reports'
-  | 'migration'
   | 'orders_to_plan'
   | 'plan_board'
   | 'formulations'
   | 'machine_tasks'
   | 'logbook_templates'
-  | 'machine_capacity'
-  | 'material_availability'
-  | 'hourly_grid'
-  | 'raise_breakdown'
-  | 'shift_summary'
-  | 'incoming'
   | 'roll_queue'
   | 'holds'
-  | 'disposal_regrind'
-  | 'calibration'
   | 'receive'
   | 'issue_lot'
   | 'rm_stock'
-  | 'fg_putaway'
-  | 'regrind_lots'
   | 'inquiries'
   | 'quotations'
   | 'orders'
   | 'sales_customers'
   | 'sales_complaints'
   | 'ready'
-  | 'gate_pass'
-  | 'vehicles_today'
   | 'dispatch_history'
-  | 'breakdowns'
   | 'preventive'
-  | 'downtime'
-  | 'machine_history'
-  | 'calibration_reg'
-  | 'plant_overview'
-  | 'quality_memory'
-  | 'management_review'
+  | 'machines'
   | 'acl'
   | 'users';
 
 export default function App() {
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true,
+  );
   const [currentRole, setCurrentRole] = useState<string>(() => {
     const saved = localStorage.getItem('erp_session');
     if (saved) {
@@ -179,6 +156,21 @@ export default function App() {
     }
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  // Keep desktop sidebar expanded when leaving mobile widths.
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const sync = () => {
+      if (!mq.matches) setSidebarOpen(true);
+    };
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  const openModule = (id: ModuleType) => {
+    setActiveModule(id);
+  };
 
   // Shell state: trace search + Batch Passport, language, bell dropdown.
   const [traceQuery, setTraceQuery] = useState('');
@@ -245,6 +237,11 @@ export default function App() {
     // matching membership/org/role). Phase 2 replaces this with a Firebase token.
     setDevUser(devEmail);
   }, [currentRole, sessionEmp?.id, user?.email, devEmail]);
+
+  // Log books open from Machine Tasks only — fold any legacy deep-link.
+  React.useEffect(() => {
+    if (activeModule === 'logbooks') setActiveModule('machine_tasks');
+  }, [activeModule]);
 
   const getPermissionStatus = (role: string, moduleId: string): boolean => {
     const key = moduleId.includes(':') ? moduleId : `screen:${moduleId}`;
@@ -543,7 +540,6 @@ export default function App() {
     { id: 'formulations', label: 'Formulations (BOM)', icon: Settings, color: 'text-indigo-600' },
     { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
-    { id: 'logbooks', label: 'Production (LOG BOOK)', icon: FileSpreadsheet, color: 'text-amber-600' },
     { id: 'roll_queue', label: 'Roll Inspection', icon: CheckCircle2, color: 'text-rose-500' },
     { id: 'holds', label: 'Quality Holds', icon: ShieldAlert, color: 'text-amber-600' },
     { id: 'receive', label: 'Receive Material', icon: Package2, color: 'text-emerald-600' },
@@ -551,6 +547,7 @@ export default function App() {
     { id: 'rm_stock', label: 'RM Stock', icon: BarChart3, color: 'text-cyan-600' },
     { id: 'ready', label: 'Ready to Dispatch', icon: Truck, color: 'text-emerald-600' },
     { id: 'dispatch_history', label: 'Dispatch History', icon: Clock, color: 'text-slate-500' },
+    { id: 'machines', label: 'Machines', icon: Cpu, color: 'text-indigo-600' },
     { id: 'preventive', label: 'Preventive Maintenance', icon: CalendarDays, color: 'text-rose-500' },
     { id: 'users', label: 'People & Roles', icon: Users, color: 'text-indigo-600' },
     { id: 'acl', label: 'Roles & Access', icon: ShieldAlert, color: 'text-rose-600' },
@@ -562,7 +559,7 @@ export default function App() {
     { id: 'rm_stock', label: 'Stock & Inventory', icon: Package2, color: 'text-cyan-600' },
     { id: 'dispatch_history', label: 'Dispatch History', icon: Truck, color: 'text-slate-500' },
   ];
-  // Production Planner — Planning (incl. logbook templates) + Production (incl. machine tasks / log books).
+  // Production Planner — planning + machine tasks (log books open from a task).
   const plannerNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
     { id: 'orders_to_plan', label: 'Orders to Plan', icon: Briefcase, color: 'text-indigo-600' },
@@ -570,7 +567,6 @@ export default function App() {
     { id: 'formulations', label: 'Formulations (BOM)', icon: Settings, color: 'text-indigo-600' },
     { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
-    { id: 'logbooks', label: 'Production (LOG BOOK)', icon: FileSpreadsheet, color: 'text-amber-600' },
   ];
   const operatorNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
@@ -602,6 +598,7 @@ export default function App() {
   ];
   const maintNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'machines', label: 'Machines', icon: Cpu, color: 'text-indigo-600' },
     { id: 'preventive', label: 'Preventive Schedule', icon: CalendarDays, color: 'text-indigo-600' },
   ];
   const adminNavItems = [
@@ -630,12 +627,6 @@ export default function App() {
   // callbacks, so the legacy data arrays are stubbed empty.
   const nav = (m: string) => setActiveModule(m as ModuleType);
   const noop = () => {};
-  const salesData: SalesData = { inquiries: [], setInquiries: noop, salesOrders: [], setSalesOrders: noop, complaints: [], setComplaints: noop, customers: [], setCustomers: noop, onOpen: nav, onTrace: noop };
-  const plannerData: PlannerData = { salesOrders: [], setSalesOrders: noop, productionPlans: [], setProductionPlans: noop, customers: [], onOpen: nav, onTrace: noop };
-  const qualityData: QualityData = { onOpen: nav, onTrace: noop };
-  const storeData: StoreData = { onOpen: nav, onTrace: noop };
-  const dispatchData: DispatchData = { onOpen: nav, onTrace: noop };
-  const maintData: MaintData = { onOpen: nav, onTrace: noop, user: roleInfo(currentRole).user };
 
   // The menu the current role naturally offers…
   // Effective access comes from the server (the actor's DB role ± per-employee
@@ -659,42 +650,37 @@ export default function App() {
   const extraNav = navItems.filter((item) => !shownIds.has(item.id) && dbAllows(item.id));
   const currentNavItems = [...visibleNav, ...extraNav];
   const canViewActive = activeModule === 'dashboard' || currentNavItems.some((n) => n.id === activeModule) || dbAllows(activeModule);
-
-  // Landing on a screen you can't open falls back Home — no restricted wall (Q6).
-  React.useEffect(() => {
-    if (!canViewActive) setActiveModule('dashboard');
-  }, [canViewActive]);
-
-  const handleActiveTabFromDashboard = (tab: string) => {
-    const t = tab.toLowerCase();
-    if (t.includes('crm') || t.includes('cust')) {
-      setActiveModule('customers');
-    } else if (t.includes('sale') || t.includes('order')) {
-      setActiveModule('sales');
-    } else if (t.includes('plan') || t.includes('alloc')) {
-      setActiveModule('planning');
-    } else if (t.includes('bom') || t.includes('oee') || t.includes('recipe') || t.includes('standard')) {
-      setActiveModule('manufacturing');
-    } else if (t.includes('template') || t.includes('builder')) {
-      setActiveModule('template_builder');
-    } else if (t.includes('log') || t.includes('extru')) {
-      setActiveModule('logbooks');
-    } else if (t.includes('qual') || t.includes('pack')) {
-      setActiveModule('quality');
-    } else if (t.includes('inven') || t.includes('stock')) {
-      setActiveModule('inventory');
-    } else if (t.includes('disp') || t.includes('logis')) {
-      setActiveModule('dispatch');
-    } else if (t.includes('compl') || t.includes('capa')) {
-      setActiveModule('capa');
-    } else if (t.includes('rep') || t.includes('bi')) {
-      setActiveModule('reports');
-    } else if (t.includes('migr') || t.includes('excel')) {
-      setActiveModule('migration');
-    } else if (t.includes('acl') || t.includes('security') || t.includes('permission')) {
-      setActiveModule('acl');
-    }
+  const homeModule = homeForRole(currentRole) as ModuleType;
+  const accessibleRelated = relatedOf(activeModule).filter((id) => id !== activeModule && dbAllows(id));
+  const bestTraceTarget = (query: string): ModuleType => {
+    const q = query.trim().toLowerCase();
+    if (!q) return activeModule;
+    if (q.startsWith('inq')) return 'inquiries';
+    if (q.startsWith('so')) return 'orders';
+    if (q.startsWith('capa') || q.startsWith('compl') || q.startsWith('cmp')) return 'sales_complaints';
+    if (q.startsWith('inv') || q.startsWith('gp')) return 'dispatch_history';
+    if (q.startsWith('lot') || q.startsWith('roll') || q.startsWith('r-')) return 'roll_queue';
+    if (q.startsWith('m0') || q.startsWith('mc') || q.includes('machine')) return 'machine_tasks';
+    return activeModule;
   };
+  const handleTraceOpen = (query: string) => {
+    const clean = query.trim();
+    if (!clean) return;
+    setTraceQuery(clean);
+    setPassportQuery(clean);
+    const target = bestTraceTarget(clean);
+    if (dbAllows(target)) {
+      setActiveModule(target);
+      return;
+    }
+    if (dbAllows(homeModule)) setActiveModule(homeModule);
+  };
+  const salesData: SalesData = { inquiries: [], setInquiries: noop, salesOrders: [], setSalesOrders: noop, complaints: [], setComplaints: noop, customers: [], setCustomers: noop, onOpen: nav, onTrace: handleTraceOpen };
+  const plannerData: PlannerData = { salesOrders: [], setSalesOrders: noop, productionPlans: [], setProductionPlans: noop, customers: [], onOpen: nav, onTrace: handleTraceOpen };
+  const qualityData: QualityData = { onOpen: nav, onTrace: handleTraceOpen };
+  const storeData: StoreData = { onOpen: nav, onTrace: handleTraceOpen };
+  const dispatchData: DispatchData = { onOpen: nav, onTrace: handleTraceOpen };
+  const maintData: MaintData = { onOpen: nav, onTrace: handleTraceOpen, user: roleInfo(currentRole).user };
 
   if (!isLoaded) {
     return (
@@ -720,26 +706,27 @@ export default function App() {
     );
   }
 
+  const showSidebarLabels = sidebarOpen;
+
   return (
     <div className={`h-screen overflow-hidden bg-slate-50 flex ${theme === 'dark' ? 'dark' : ''}`} id="applet-root">
-      
-      {/* SIDEBAR NAVIGATION PANEL */}
+      {/* SIDEBAR — desktop only; mobile uses bottom nav + More sheet */}
       <aside 
-        className={`bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 flex flex-col transition-all duration-300 border-r border-slate-200 dark:border-slate-800 shrink-0 ${
+        className={`hidden md:flex bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 flex-col transition-all duration-300 border-r border-slate-200 dark:border-slate-800 shrink-0 ${
           sidebarOpen ? 'w-64' : 'w-20'
         }`}
       >
         {/* LOGO FRAME — logo + name + collapse toggle when open; only the logo when collapsed */}
-        <div className={`h-16 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 ${sidebarOpen ? 'px-4' : 'justify-center px-0'}`}>
+        <div className={`h-16 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 ${showSidebarLabels ? 'px-4' : 'justify-center px-0'}`}>
           <button
             onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }}
-            className={`shrink-0 rounded-lg ${sidebarOpen ? 'cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'}`}
-            title={sidebarOpen ? 'Mass Polimer' : 'Expand menu'}
-            aria-label={sidebarOpen ? 'Mass Polimer' : 'Expand menu'}
+            className={`shrink-0 rounded-lg ${showSidebarLabels ? 'cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'}`}
+            title={showSidebarLabels ? 'Mass Polimer' : 'Expand menu'}
+            aria-label={showSidebarLabels ? 'Mass Polimer' : 'Expand menu'}
           >
             <Logo className="h-9 w-9 rounded-lg shadow-xs" />
           </button>
-          {sidebarOpen && (
+          {showSidebarLabels && (
             <>
               <div className="min-w-0">
                 <h1 className="font-display font-bold text-slate-800 dark:text-white tracking-tight text-sm leading-none">Mass Polimer</h1>
@@ -759,7 +746,7 @@ export default function App() {
 
         {/* NAVIGATION SYSTEM */}
         <nav className="flex-1 py-3 px-3 overflow-y-auto">
-          {sidebarOpen && (
+          {showSidebarLabels && (
             <div className="relative mb-2">
               <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -775,14 +762,14 @@ export default function App() {
             const filtered = q ? currentNavItems.filter((i) => i.label.toLowerCase().includes(q)) : currentNavItems;
             const groups = groupNav(filtered);
             if (groups.length === 0) {
-              return sidebarOpen ? <div className="px-3 py-4 text-xs text-slate-400">No menu item matches “{menuQuery}”.</div> : null;
+              return showSidebarLabels ? <div className="px-3 py-4 text-xs text-slate-400">No menu item matches “{menuQuery}”.</div> : null;
             }
             return groups.map(({ step, items }, gi) => {
-              // Collapsible only when the sidebar is open and not searching (search shows all).
-              const collapsed = sidebarOpen && !q && collapsedGroups.has(step.key);
+              // Collapsible only when labels are shown and not searching (search shows all).
+              const collapsed = showSidebarLabels && !q && collapsedGroups.has(step.key);
               return (
-              <div key={step.key} className={gi > 0 ? (sidebarOpen ? 'mt-2.5' : 'mt-1 pt-1 border-t border-slate-100 dark:border-slate-800') : ''}>
-                {sidebarOpen && (
+              <div key={step.key} className={gi > 0 ? (showSidebarLabels ? 'mt-2.5' : 'mt-1 pt-1 border-t border-slate-100 dark:border-slate-800') : ''}>
+                {showSidebarLabels && (
                   <button onClick={() => toggleGroup(step.key)} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 transition-colors" aria-expanded={!collapsed}>
                     <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
                     <span className="flex-1 text-left truncate">{step.label}</span>
@@ -797,8 +784,8 @@ export default function App() {
                     return (
                       <button
                         key={item.id}
-                        onClick={() => setActiveModule(item.id as ModuleType)}
-                        className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${sidebarOpen ? '' : 'justify-center'} ${
+                        onClick={() => openModule(item.id as ModuleType)}
+                        className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${showSidebarLabels ? '' : 'justify-center'} ${
                           isActive
                             ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
                             : 'text-slate-500 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
@@ -807,7 +794,7 @@ export default function App() {
                       >
                         {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-current" aria-hidden="true" />}
                         <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${isActive ? '' : 'text-slate-500 dark:text-slate-400'}`} />
-                        {sidebarOpen && <span className="truncate">{t(item.label)}</span>}
+                        {showSidebarLabels && <span className="truncate">{t(item.label)}</span>}
                       </button>
                     );
                   })}
@@ -822,7 +809,7 @@ export default function App() {
         {/* PROFILE BAR */}
         <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs">
           {user && (
-            sidebarOpen ? (
+            showSidebarLabels ? (
               <div className="flex items-center gap-2.5 rounded-xl p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-3xs">
                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-bold text-white text-[11px] shrink-0 shadow-sm">
                   {(roleInfo(currentRole).user || 'U').split(/\s+/).map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase()}
@@ -853,11 +840,12 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0">
         
         {/* HEADER BAR — floating pill */}
-        <header className="h-16 bg-white border border-slate-200 px-4 sm:px-6 flex items-center justify-between shadow-md shrink-0 gap-3 m-3 sm:m-4 rounded-full">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="h-14 sm:h-16 bg-white border border-slate-200 px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0 gap-2 sm:gap-3 m-2 sm:m-3 md:m-4 rounded-full">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-1.5 rounded-full hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-700 shrink-0"
+              className="hidden md:inline-flex p-2 rounded-full hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-700 shrink-0"
+              aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
               <Menu className="h-4.5 w-4.5" />
             </button>
@@ -867,6 +855,9 @@ export default function App() {
               <span className="font-bold text-slate-800 uppercase tracking-wider">
                 {moduleLabel(activeModule)}
               </span>
+            </div>
+            <div className="text-xs font-bold text-slate-800 uppercase tracking-wider truncate lg:hidden">
+              {moduleLabel(activeModule)}
             </div>
           </div>
 
@@ -935,31 +926,88 @@ export default function App() {
         <PracticeBanner />
 
         {/* PRIMARY SCROLL VIEW */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 pb-4 md:pb-6">
           {!canViewActive ? (
-            <div className="text-center text-sm text-slate-400 mt-16" id="acl-redirect">Taking you home…</div>
+            <section
+              id="acl-redirect"
+              className="max-w-3xl mx-auto mt-8 rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+            >
+              <div className="px-6 py-5 border-b border-slate-100 bg-slate-50">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-100">
+                  <LockKeyhole className="h-5 w-5" />
+                </div>
+                <h2 className="mt-4 text-xl font-semibold text-slate-900">This page isn&apos;t available in your current access view</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  The old screen bounce has been removed. Choose a real destination below instead of being redirected automatically.
+                </p>
+              </div>
+              <div className="px-6 py-5 space-y-5">
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModule(homeModule)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                  >
+                    <Compass className="h-4 w-4" />
+                    Go to {moduleLabel(homeModule)}
+                  </button>
+                  {accessibleRelated.slice(0, 3).map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setActiveModule(id as ModuleType)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                    >
+                      {moduleLabel(id)}
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Requested screen</p>
+                  <p className="mt-1 text-sm font-medium text-slate-700">{moduleLabel(activeModule)}</p>
+                </div>
+              </div>
+            </section>
           ) : (
             <>
               {/* Quick links — suppressed on sales screens (they use an in-page pipeline tab bar). */}
               {(() => {
                 const salesScreens = new Set(['inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints']);
                 if (salesScreens.has(activeModule)) return null;
-                const rel = relatedOf(activeModule).filter((id) => id !== activeModule && getPermissionStatus(currentRole, id));
+                const rel = accessibleRelated;
                 if (rel.length === 0) return null;
                 const labelOf = (id: string) => FEATURES.find((f) => f.key === `screen:${id}`)?.label ?? moduleLabel(id as ModuleType);
                 return (
-                  <div className="flex flex-wrap items-center gap-2 mb-4" id="related-links">
-                    <span className="text-[11px] font-medium text-slate-400">Related</span>
-                    {rel.map((id) => (
-                      <button
-                        key={id}
-                        onClick={() => setActiveModule(id as ModuleType)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 dark:hover:text-slate-100 transition-all"
-                      >
-                        {labelOf(id)} <ArrowRight className="h-3 w-3" />
-                      </button>
-                    ))}
-                  </div>
+                  <section
+                    id="related-links"
+                    className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+                  >
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div className="min-w-0">
+                        <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Related
+                        </div>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Jump to the next connected screens in this section from <span className="font-medium text-slate-700">{moduleLabel(activeModule)}</span>. Only valid routes are shown.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {rel.map((id) => (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => setActiveModule(id as ModuleType)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all"
+                          >
+                            {labelOf(id)}
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
                 );
               })()}
 
@@ -967,23 +1015,12 @@ export default function App() {
                 <RoleDashboard role={currentRole} onOpen={(m) => setActiveModule(m as ModuleType)} />
               )}
 
-              {/* Manufacturing — Production LOG BOOK (API) */}
-              {activeModule === 'logbooks' && (
-                <LogbookModule
-                  templates={[]}
-                  setTemplates={() => {}}
-                  machineLogbooks={[]}
-                  setMachineLogbooks={() => {}}
-                  productionPlans={[]}
-                  salesOrders={[]}
-                  initialTab="operator"
-                />
-              )}
-
-              {/* Planning (API) */}
+              {/* Planning & Production (API) */}
               {activeModule === 'orders_to_plan' && <OrdersToPlan {...plannerData} />}
               {activeModule === 'plan_board' && <PlanBoardScreen {...plannerData} />}
               {activeModule === 'formulations' && <Formulations {...plannerData} />}
+              {activeModule === 'machine_tasks' && <MachineTasks />}
+              {activeModule === 'logbook_templates' && <TemplateBuilder />}
 
               {/* Quality (API) */}
               {activeModule === 'roll_queue' && <RollInspectionQueue {...qualityData} />}
@@ -1006,11 +1043,8 @@ export default function App() {
               {activeModule === 'dispatch_history' && <DispatchHistory {...dispatchData} />}
 
               {/* Maintenance (API) */}
+              {activeModule === 'machines' && <MachinesBoard {...maintData} />}
               {activeModule === 'preventive' && <PreventiveSchedule {...maintData} />}
-
-              {/* Machine Tasks (operator logging entry) + Template builder (admin) */}
-              {activeModule === 'machine_tasks' && <MachineTasks />}
-              {activeModule === 'logbook_templates' && <TemplateBuilder />}
 
               {/* Admin — People & Roles + Roles & Access (API) */}
               {activeModule === 'users' && <EmployeeDirectory />}
@@ -1018,6 +1052,15 @@ export default function App() {
             </>
           )}
         </main>
+
+        <MobileBottomNav
+          items={currentNavItems}
+          activeModule={activeModule}
+          onOpen={(id) => openModule(id as ModuleType)}
+          userName={user?.displayName || roleInfo(currentRole).user}
+          roleLabel={`${currentRole} · Shift ${roleInfo(currentRole).shift}`}
+          onSignOut={handleSignOut}
+        />
 
       </div>
 
