@@ -23,20 +23,26 @@ import { formatAgo } from '../../lib/simulation';
 
 /* ---------------------------------------------------------------- tones */
 
-/** Soft chip/card treatment. Defined in index.css so branding cannot remap it. */
+/**
+ * The three roles each tone plays, from the locked palette in index.css.
+ * They are not interchangeable — see the contrast table there.
+ */
+
+/** Chip / tinted card: soft ground + text token + base outline. */
 const TONE_CLASS: Record<Tone, string> = {
   green: 'tone-green',
   amber: 'tone-amber',
   red: 'tone-red',
 };
 
-/** Ink-only treatment, for a figure sitting on a white card. */
+/** Text token only, for a figure sitting on a white card. Never the base. */
 const TONE_INK: Record<Tone, string> = {
   green: 'tone-green-ink',
   amber: 'tone-amber-ink',
   red: 'tone-red-ink',
 };
 
+/** Base as a fill — bars, dots, swatches, status bands. Text on it is plant ink. */
 const TONE_SOLID: Record<Tone, string> = {
   green: 'tone-green-solid',
   amber: 'tone-amber-solid',

@@ -50,7 +50,8 @@ export function LineStatusCard({ view }: { view: LineStatusView }): ReactElement
       onClick={view.onOpen}
       className="w-full text-left bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-blue-500 hover:shadow-[var(--shadow-custom)] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition"
     >
-      {/* Status band — the one place a solid colour is used, with the word on it. */}
+      {/* Status band — the base tone as a fill, with the word on it in plant ink.
+          Never white: white is 2.17–3.90:1 on these mid-weight tones. */}
       <div className={`flex items-center justify-between gap-3 px-4 py-2.5 ${toneSolid(status.tone)}`}>
         <span className="inline-flex items-center gap-2 font-display text-[18px] font-bold">
           <status.icon className="w-5 h-5 shrink-0" aria-hidden="true" />

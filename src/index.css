@@ -411,28 +411,57 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-primary) !important; }
 
 /* =============================================================================
    DASHBOARD — operational status tones.
-   Exactly three tones exist: green (normal/pass), amber (attention/hold),
-   red (stopped/fail/overdue). These are literal hex values, deliberately NOT
-   wired to the theme variables above: the ambient theme remaps emerald/amber/
-   rose to brand colours, and operational colour must not drift with branding.
-   Every pair below is >= 7:1 against its own background (WCAG AAA), measured
-   for the light theme which is the shop-floor default.
+
+   The locked style-guide palette, sampled from the chips. Exactly three tones:
+   green (pass/normal), amber (hold/attention), red (fail/stopped/overdue).
+   Held as literal hex, deliberately NOT wired to the theme variables above:
+   the ambient theme remaps emerald/amber/rose to brand colours, and
+   operational colour must not drift with branding.
+
+   Each tone has three roles, and they are not interchangeable:
+     base — FILLS ONLY. Bars, dots, swatches, borders. Never behind small text.
+     soft — the chip/card background.
+     text — the only value allowed to carry a letterform.
+
+   Measured (sRGB, light theme — the shop-floor default):
+     text on soft   green 4.72:1 · amber 6.46:1 · red 6.15:1   → AA
+     text on white  green 5.32:1 · amber 7.20:1 · red 7.54:1   → AA
+     text on app bg green 4.95:1 · amber 6.71:1 · red 7.03:1   → AA
+     ink  on base   green 7.87:1 · amber 9.07:1 · red 5.04:1   → AA
+
+   B.2 bans white-on-amber and green-as-text. Both are enforced below, and
+   extended: white fails on ALL THREE bases (green 2.50:1, amber 2.17:1,
+   red 3.90:1), and every base fails as text (same figures), so no base is
+   ever used as a foreground anywhere in the dashboard. Solid bands take the
+   plant ink instead of white, which passes on all three.
+
    Colour never stands alone — StatusChip always renders colour + word + icon.
    ========================================================================== */
 
-.tone-green { color: #14532d; background: #dcfce7; border-color: #86efac; } /* 10.6:1 */
-.tone-amber { color: #713f12; background: #fef3c7; border-color: #fcd34d; } /*  9.1:1 */
-.tone-red   { color: #7f1d1d; background: #fee2e2; border-color: #fca5a5; } /* 10.4:1 */
+:root {
+  --pass-base: #55b685; --pass-soft: #d9f9e6; --pass-text: #1f7a4d;
+  --hold-base: #e9a23b; --hold-soft: #fcf3cc; --hold-text: #88451d;
+  --fail-base: #dd524c; --fail-soft: #f9e3e2; --fail-text: #9b2c28;
+}
 
-/* Solid variants for the line-status header and progress fills. */
-.tone-green-solid { background: #15803d; color: #ffffff; } /* 4.9:1, large text only */
-.tone-amber-solid { background: #b45309; color: #ffffff; }
-.tone-red-solid   { background: #b91c1c; color: #ffffff; }
+/* Chips and tinted cards: soft ground, text token, base as the outline. */
+.tone-green { color: var(--pass-text); background: var(--pass-soft); border-color: var(--pass-base); }
+.tone-amber { color: var(--hold-text); background: var(--hold-soft); border-color: var(--hold-base); }
+.tone-red   { color: var(--fail-text); background: var(--fail-soft); border-color: var(--fail-base); }
 
-/* Text-only tone, for a value that sits on a white card. */
-.tone-green-ink { color: #14532d; }
-.tone-amber-ink { color: #713f12; }
-.tone-red-ink   { color: #7f1d1d; }
+/* Base as a FILL — progress bars, chart bars, stage dots, legend swatches.
+   Any text placed on these takes the plant ink, never white: white is 2.17–3.90:1
+   on these mid-weight tones and fails AA on all three. */
+.tone-green-solid { background: var(--pass-base); color: var(--text-primary); }
+.tone-amber-solid { background: var(--hold-base); color: var(--text-primary); }
+.tone-red-solid   { background: var(--fail-base); color: var(--text-primary); }
+
+/* Text-only tone, for a value sitting on a white card. Always the text token —
+   the base is never a foreground (this is B.2's "green as text", which applies
+   equally to amber at 2.17:1 and red at 3.90:1). */
+.tone-green-ink { color: var(--pass-text); }
+.tone-amber-ink { color: var(--hold-text); }
+.tone-red-ink   { color: var(--fail-text); }
 
 /* Data values: the ink token is #0b0b0f on white (~19:1). Never use the muted
    grey for a number a person has to read at one metre. */
