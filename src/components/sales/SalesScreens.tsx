@@ -21,6 +21,8 @@ import { TraceLink } from '../TraceLink';
 import { DataTable, formatTableDate } from '../DataTable';
 import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { ApiError } from '../../lib/apiClient';
+// Lets a dashboard KPI land here with its filter already applied.
+import { useApplyNavFilter } from '../dashboard/navIntent';
 
 import {
   useCustomers, useCreateCustomer, useInquiries, useCreateInquiry, useQuoteInquiry,
@@ -162,6 +164,12 @@ export function Inquiries(p: SalesData) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<InquiryStatusFilter>('all');
+  // Arriving from "Open inquiries" on a role home lands pre-filtered.
+  useApplyNavFilter('inquiries', (f) => {
+    if (f === 'all' || f === 'open' || f === 'pending_quote' || f === 'quotation' || f === 'converted') {
+      setStatusFilter(f);
+    }
+  });
 
   const [cust, setCust] = useState('');
   const [product, setProduct] = useState('');
@@ -469,6 +477,12 @@ export function Orders(p: SalesData) {
   const [prio, setPrio] = useState<Record<string, 'low' | 'medium' | 'high'>>({});
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('all');
+  // "Orders waiting for planning" on a role home lands here already narrowed.
+  useApplyNavFilter('orders', (f) => {
+    if (f === 'all' || f === 'active' || f === 'pending' || f === 'in_production' || f === 'dispatched' || f === 'high') {
+      setStatusFilter(f);
+    }
+  });
   const canConfirm = useCan('action:order.approve');
 
   const confirm = (i: ApiInquiry) => {
@@ -842,6 +856,12 @@ export function SalesComplaints(p: SalesData) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<ComplaintFilter>('open');
+  // "Open complaints" and "Open CAPAs" both land here with the right cut showing.
+  useApplyNavFilter('sales_complaints', (f) => {
+    if (f === 'all' || f === 'open' || f === 'high' || f === 'capa_open' || f === 'resolved') {
+      setFilter(f);
+    }
+  });
   const [batchId, setBatchId] = useState('');
   const [sev, setSev] = useState<'low' | 'medium' | 'high'>('high');
   const [desc, setDesc] = useState('');

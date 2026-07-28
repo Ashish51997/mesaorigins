@@ -1,0 +1,18 @@
+{
+  // The dashboard layer is held to a stricter bar than the rest of the app:
+  // `npm run lint:dashboard` must pass with strict + noUncheckedIndexedAccess +
+  // exactOptionalPropertyTypes. Files it imports are checked too, so the
+  // dashboard's dependency chain is kept strict-clean as well.
+  //
+  // The repo-wide tsconfig is deliberately left alone: 178 pre-existing errors
+  // live in modules this rebuild does not touch (LogbookModule alone has 110),
+  // and flipping the global flags would mean rewriting code outside this scope.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noEmit": true
+  },
+  "include": ["src/components/dashboard/**/*"]
+}

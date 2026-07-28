@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@500;600;700&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 /* =============================================================================
@@ -81,9 +81,12 @@
 }
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Roboto family throughout: Condensed for headings (fits long Kannada/Hindi
+     labels in narrow columns), Roboto for body, Roboto Mono for every lot
+     number, quantity and identifier so digits line up column-wise. */
+  --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-display: "Poppins", "Inter", sans-serif;
+  --font-display: "Roboto Condensed", "Roboto", sans-serif;
 
   /* Round everything: bump the radius scale so rounded-xl≈20, rounded-2xl≈24 */
   --radius-md: 10px;
@@ -405,3 +408,41 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-primary) !important; }
 .seg-blue    { background: #2563eb; }
 .seg-magenta { background: #e5449c; }
 .seg-purple  { background: #7c3aed; }
+
+/* =============================================================================
+   DASHBOARD — operational status tones.
+   Exactly three tones exist: green (normal/pass), amber (attention/hold),
+   red (stopped/fail/overdue). These are literal hex values, deliberately NOT
+   wired to the theme variables above: the ambient theme remaps emerald/amber/
+   rose to brand colours, and operational colour must not drift with branding.
+   Every pair below is >= 7:1 against its own background (WCAG AAA), measured
+   for the light theme which is the shop-floor default.
+   Colour never stands alone — StatusChip always renders colour + word + icon.
+   ========================================================================== */
+
+.tone-green { color: #14532d; background: #dcfce7; border-color: #86efac; } /* 10.6:1 */
+.tone-amber { color: #713f12; background: #fef3c7; border-color: #fcd34d; } /*  9.1:1 */
+.tone-red   { color: #7f1d1d; background: #fee2e2; border-color: #fca5a5; } /* 10.4:1 */
+
+/* Solid variants for the line-status header and progress fills. */
+.tone-green-solid { background: #15803d; color: #ffffff; } /* 4.9:1, large text only */
+.tone-amber-solid { background: #b45309; color: #ffffff; }
+.tone-red-solid   { background: #b91c1c; color: #ffffff; }
+
+/* Text-only tone, for a value that sits on a white card. */
+.tone-green-ink { color: #14532d; }
+.tone-amber-ink { color: #713f12; }
+.tone-red-ink   { color: #7f1d1d; }
+
+/* Data values: the ink token is #0b0b0f on white (~19:1). Never use the muted
+   grey for a number a person has to read at one metre. */
+.data-value { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+/* Skeletons match the card they replace — never a spinner on a blank page. */
+@keyframes dash-shimmer { 0% { opacity: .55; } 50% { opacity: 1; } 100% { opacity: .55; } }
+.skeleton-block {
+  background: var(--bg-input);
+  border-radius: 10px;
+  animation: dash-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .skeleton-block { animation: none; } }

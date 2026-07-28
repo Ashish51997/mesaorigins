@@ -40,10 +40,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
+  // `body` is spread in only when there is one: under exactOptionalPropertyTypes
+  // RequestInit.body does not accept an explicit undefined.
   const res = await fetch(BASE + path, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 
   const text = await res.text();

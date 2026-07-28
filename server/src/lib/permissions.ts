@@ -13,16 +13,19 @@
 
 // Default screens per built-in role — mirrors the surviving (real) app screens.
 // Seeds the tenant Role rows; admins get everything regardless (isAdmin).
+// `plant_overview` and `quality_memory` are client-side composites: they read
+// data the role can already fetch and have no endpoint of their own, so they
+// are listed here only to keep the two catalogues identical.
 export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
-  'Managing Director': ['dashboard', 'rm_stock', 'dispatch_history'],
-  'Production Planner': ['dashboard', 'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates'],
-  'Operator': ['dashboard', 'machine_tasks', 'logbooks'],
-  'Quality Inspector': ['dashboard', 'roll_queue', 'holds'],
-  'Store Manager': ['dashboard', 'receive', 'issue_lot', 'rm_stock'],
-  'Sales Executive': ['dashboard', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints'],
-  'Dispatch Executive': ['dashboard', 'ready', 'dispatch_history'],
-  'Maintenance Head': ['dashboard', 'machines', 'preventive'],
-  'Administrator': ['dashboard', 'users', 'acl', 'logbooks', 'logbook_templates', 'machine_tasks'],
+  'Managing Director': ['dashboard', 'plant_overview', 'quality_memory', 'rm_stock', 'dispatch_history', 'sales_complaints'],
+  'Production Planner': ['dashboard', 'plant_overview', 'quality_memory', 'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates'],
+  'Operator': ['dashboard', 'plant_overview', 'machine_tasks', 'logbooks'],
+  'Quality Inspector': ['dashboard', 'plant_overview', 'quality_memory', 'roll_queue', 'holds'],
+  'Store Manager': ['dashboard', 'plant_overview', 'receive', 'issue_lot', 'rm_stock'],
+  'Sales Executive': ['dashboard', 'plant_overview', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints'],
+  'Dispatch Executive': ['dashboard', 'plant_overview', 'ready', 'dispatch_history'],
+  'Maintenance Head': ['dashboard', 'plant_overview', 'machines', 'preventive'],
+  'Administrator': ['dashboard', 'plant_overview', 'users', 'acl', 'logbooks', 'logbook_templates', 'machine_tasks'],
 };
 
 // Roles that implicitly see everything. 'Owner' is the top-level superuser:

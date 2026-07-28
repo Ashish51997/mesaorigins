@@ -32,7 +32,8 @@ import {
   Compass,
   LockKeyhole,
   Sparkles,
-  Cpu
+  Cpu,
+  Network
 } from 'lucide-react';
 
 import {
@@ -87,7 +88,26 @@ import { ReceiveMaterial, IssueLot, RMStockBoard, StoreData } from './components
 import { Inquiries, Quotations, Orders, SalesCustomers, SalesComplaints, SalesData } from './components/sales/SalesScreens';
 import { ReadyToDispatch, DispatchHistory, DispatchData } from './components/dispatch/DispatchScreens';
 import { PreventiveSchedule, MachinesBoard, MaintData } from './components/maintenance/MaintenanceScreens';
-import RoleDashboard from './components/RoleDashboard';
+// Dashboard layer — Layer 1 (RoleHome), Layer 2 (QualityMemory), Layer 3
+// (PlantOverview), plus the persistent header and the Trace passport drawer.
+import { AppHeader } from './components/dashboard/AppHeader';
+import { RoleHome } from './components/dashboard/RoleHome';
+import { QualityMemory } from './components/dashboard/QualityMemory';
+import { PlantOverview } from './components/dashboard/PlantOverview';
+import { BatchPassport } from './components/dashboard/BatchPassport';
+import { buildRoleHome, lineViews, type PlantData, type RoleContext } from './components/dashboard/roleContent';
+import { setNavIntent, clearNavIntent } from './components/dashboard/navIntent';
+import { EMPTY_PLANT } from './components/dashboard/plantData';
+import { useLiveMachines } from './lib/simulation';
+import { useFormulations } from './lib/queries/formulation';
+import { useCustomers, useInquiries, useOrders } from './lib/queries/sales';
+import { usePlans } from './lib/queries/planning';
+import { useQualityInspections } from './lib/queries/quality';
+import { useStock } from './lib/queries/inventory';
+import { useDispatches } from './lib/queries/dispatch';
+import { useComplaints } from './lib/queries/capa';
+import { useMaintenanceTasks } from './lib/queries/maintenance';
+import { initialMachines, initialBatchLineages } from './mockData';
 import MachineTasks from './components/MachineTasks';
 import TemplateBuilder from './components/TemplateBuilder';
 import { EmployeeDirectory, RolesAccess } from './components/admin/AdminScreens';
@@ -101,7 +121,9 @@ import { clearSessionToken } from './lib/apiIdentity';
 import { fetchFromFirestore, saveToFirestore } from './lib/firebaseSync';
 
 type ModuleType =
-  | 'dashboard'
+  | 'dashboard'        // Layer 1 — "Today", one per role
+  | 'plant_overview'   // Layer 3 — the shared stage map
+  | 'quality_memory'   // Layer 2 — rejections, complaints, CAPA
   | 'logbooks'
   | 'orders_to_plan'
   | 'plan_board'
@@ -529,7 +551,8 @@ export default function App() {
 
   // Navigation schema
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
     { id: 'inquiries', label: 'Inquiries', icon: Briefcase, color: 'text-emerald-600' },
     { id: 'quotations', label: 'Quotations', icon: FileSpreadsheet, color: 'text-indigo-600' },
     { id: 'orders', label: 'Orders', icon: CheckCircle2, color: 'text-blue-600' },
@@ -542,6 +565,7 @@ export default function App() {
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
     { id: 'roll_queue', label: 'Roll Inspection', icon: CheckCircle2, color: 'text-rose-500' },
     { id: 'holds', label: 'Quality Holds', icon: ShieldAlert, color: 'text-amber-600' },
+    { id: 'quality_memory', label: 'Quality Memory', icon: BarChart3, color: 'text-amber-600' },
     { id: 'receive', label: 'Receive Material', icon: Package2, color: 'text-emerald-600' },
     { id: 'issue_lot', label: 'Issue Lot', icon: Gauge, color: 'text-indigo-600' },
     { id: 'rm_stock', label: 'RM Stock', icon: BarChart3, color: 'text-cyan-600' },
@@ -555,36 +579,46 @@ export default function App() {
 
   // Managing Director — real read-only exec: dashboard KPIs + read-only boards.
   const mdNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
+    { id: 'quality_memory', label: 'Quality Memory', icon: BarChart3, color: 'text-amber-600' },
     { id: 'rm_stock', label: 'Stock & Inventory', icon: Package2, color: 'text-cyan-600' },
     { id: 'dispatch_history', label: 'Dispatch History', icon: Truck, color: 'text-slate-500' },
+    { id: 'sales_complaints', label: 'Complaints', icon: ShieldAlert, color: 'text-rose-600' },
   ];
   // Production Planner — planning + machine tasks (log books open from a task).
   const plannerNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
     { id: 'orders_to_plan', label: 'Orders to Plan', icon: Briefcase, color: 'text-indigo-600' },
     { id: 'plan_board', label: 'Production Plan', icon: CalendarDays, color: 'text-teal-600' },
     { id: 'formulations', label: 'Formulations (BOM)', icon: Settings, color: 'text-indigo-600' },
     { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
+    { id: 'quality_memory', label: 'Quality Memory', icon: BarChart3, color: 'text-amber-600' },
   ];
   const operatorNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
   ];
   const qualityNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
     { id: 'roll_queue', label: 'Roll Inspection Queue', icon: CheckCircle2, color: 'text-rose-500' },
     { id: 'holds', label: 'Holds', icon: ShieldAlert, color: 'text-amber-600' },
+    { id: 'quality_memory', label: 'Quality Memory', icon: BarChart3, color: 'text-amber-600' },
   ];
   const storeNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
     { id: 'receive', label: 'Receive Material', icon: Package2, color: 'text-emerald-600' },
     { id: 'issue_lot', label: 'Issue Lot to Machine', icon: Gauge, color: 'text-indigo-600' },
     { id: 'rm_stock', label: 'RM Stock Board', icon: BarChart3, color: 'text-cyan-600' },
   ];
   const salesNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
     { id: 'inquiries', label: 'Inquiries', icon: Briefcase, color: 'text-emerald-600' },
     { id: 'quotations', label: 'Quotations', icon: FileSpreadsheet, color: 'text-indigo-600' },
     { id: 'orders', label: 'Orders', icon: CheckCircle2, color: 'text-blue-600' },
@@ -592,17 +626,20 @@ export default function App() {
     { id: 'sales_complaints', label: 'Complaints', icon: ShieldAlert, color: 'text-rose-600' },
   ];
   const dispatchNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
     { id: 'ready', label: 'Ready to Dispatch', icon: CheckCircle2, color: 'text-emerald-600' },
     { id: 'dispatch_history', label: 'Dispatch History', icon: Clock, color: 'text-slate-500' },
   ];
   const maintNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
     { id: 'machines', label: 'Machines', icon: Cpu, color: 'text-indigo-600' },
     { id: 'preventive', label: 'Preventive Schedule', icon: CalendarDays, color: 'text-indigo-600' },
   ];
   const adminNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'dashboard', label: 'Today', icon: LayoutDashboard, color: 'text-indigo-600' },
+    { id: 'plant_overview', label: 'Plant Overview', icon: Network, color: 'text-cyan-600' },
     { id: 'users', label: 'People & Roles', icon: Users, color: 'text-indigo-600' },
     { id: 'acl', label: 'Roles & Access', icon: ShieldAlert, color: 'text-rose-600' },
     { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
@@ -652,28 +689,14 @@ export default function App() {
   const canViewActive = activeModule === 'dashboard' || currentNavItems.some((n) => n.id === activeModule) || dbAllows(activeModule);
   const homeModule = homeForRole(currentRole) as ModuleType;
   const accessibleRelated = relatedOf(activeModule).filter((id) => id !== activeModule && dbAllows(id));
-  const bestTraceTarget = (query: string): ModuleType => {
-    const q = query.trim().toLowerCase();
-    if (!q) return activeModule;
-    if (q.startsWith('inq')) return 'inquiries';
-    if (q.startsWith('so')) return 'orders';
-    if (q.startsWith('capa') || q.startsWith('compl') || q.startsWith('cmp')) return 'sales_complaints';
-    if (q.startsWith('inv') || q.startsWith('gp')) return 'dispatch_history';
-    if (q.startsWith('lot') || q.startsWith('roll') || q.startsWith('r-')) return 'roll_queue';
-    if (q.startsWith('m0') || q.startsWith('mc') || q.includes('machine')) return 'machine_tasks';
-    return activeModule;
-  };
+  // Trace opens the Batch Passport over whatever screen you are on. It no longer
+  // navigates as well: jumping the user somewhere else while a drawer opens lost
+  // them the context they were looking the lot up from.
   const handleTraceOpen = (query: string) => {
     const clean = query.trim();
     if (!clean) return;
     setTraceQuery(clean);
     setPassportQuery(clean);
-    const target = bestTraceTarget(clean);
-    if (dbAllows(target)) {
-      setActiveModule(target);
-      return;
-    }
-    if (dbAllows(homeModule)) setActiveModule(homeModule);
   };
   const salesData: SalesData = { inquiries: [], setInquiries: noop, salesOrders: [], setSalesOrders: noop, complaints: [], setComplaints: noop, customers: [], setCustomers: noop, onOpen: nav, onTrace: handleTraceOpen };
   const plannerData: PlannerData = { salesOrders: [], setSalesOrders: noop, productionPlans: [], setProductionPlans: noop, customers: [], onOpen: nav, onTrace: handleTraceOpen };
@@ -681,6 +704,78 @@ export default function App() {
   const storeData: StoreData = { onOpen: nav, onTrace: handleTraceOpen };
   const dispatchData: DispatchData = { onOpen: nav, onTrace: handleTraceOpen };
   const maintData: MaintData = { onOpen: nav, onTrace: handleTraceOpen, user: roleInfo(currentRole).user };
+
+  /* ------------------------------------------------------------------ *
+   * Dashboard layer.
+   *
+   * The role homes read the live API wherever an endpoint exists. Shift log
+   * books are the exception: there is no aggregate logbook endpoint (only
+   * per-plan open/save), so rejection weight, rejection reasons and the roll
+   * register come from the seeded records held in this component. That is the
+   * only mock-backed input; everything else below is server data.
+   * ------------------------------------------------------------------ */
+  const live = useLiveMachines();
+  const customersQ = useCustomers();
+  const inquiriesQ = useInquiries();
+  const ordersQ = useOrders();
+  const plansQ = usePlans();
+  const inspectionsQ = useQualityInspections();
+  const stockQ = useStock();
+  const dispatchesQ = useDispatches();
+  const complaintsQ = useComplaints();
+  const maintenanceQ = useMaintenanceTasks();
+  const formulationsQ = useFormulations();
+
+  const dashboardLoading =
+    customersQ.isLoading || ordersQ.isLoading || plansQ.isLoading || stockQ.isLoading;
+
+  const plantData = React.useMemo(() => ({
+    ...EMPTY_PLANT,
+    customers: customersQ.data ?? [],
+    inquiries: inquiriesQ.data ?? [],
+    salesOrders: ordersQ.data ?? [],
+    productionPlans: plansQ.data ?? [],
+    machineLogbooks,
+    inspections: inspectionsQ.data ?? [],
+    packingRecords,
+    rawMaterialStock: stockQ.data?.rawMaterials ?? [],
+    finishedGoodsStock: stockQ.data?.finishedGoods ?? [],
+    dispatches: dispatchesQ.data ?? [],
+    complaints: complaintsQ.data ?? [],
+    // A CAPA arrives merged onto its complaint rather than as its own list.
+    capas: (complaintsQ.data ?? []).flatMap((c) => (c.capa ? [c.capa] : [])),
+    maintenanceTasks: maintenanceQ.data ?? [],
+    machines: initialMachines,
+    formulations: formulationsQ.data ?? [],
+  }), [
+    customersQ.data, inquiriesQ.data, ordersQ.data, plansQ.data, inspectionsQ.data,
+    stockQ.data, dispatchesQ.data, complaintsQ.data, maintenanceQ.data, formulationsQ.data,
+    machineLogbooks, packingRecords,
+  ]);
+
+  /** Navigate and seed the destination's filter — this is what makes a KPI a deep link. */
+  const openWithFilter = (screen: string, filter?: string): void => {
+    // Plain navigation drops any filter still pending, so a stale intent can
+    // never apply itself to a screen the user reached some other way.
+    if (filter) setNavIntent(screen, filter);
+    else clearNavIntent();
+    setActiveModule(screen as ModuleType);
+  };
+
+  const roleCtx: RoleContext = {
+    role: normalizeRole(currentRole),
+    user: user?.displayName || roleInfo(currentRole).user,
+    shift: roleInfo(currentRole).shift,
+    data: plantData,
+    live,
+    canOpen: dbAllows,
+    open: openWithFilter,
+    now: new Date(),
+  };
+
+  const roleHome = buildRoleHome(roleCtx);
+  // Freshest machine reading drives the header's "updated N ago" badge.
+  const lastUpdated = live.reduce((newest, m) => Math.max(newest, m.updatedAt), 0) || Date.now();
 
   if (!isLoaded) {
     return (
@@ -839,88 +934,62 @@ export default function App() {
       {/* CORE MODULE CONTAINER */}
       <div className="flex-1 flex flex-col min-w-0">
         
-        {/* HEADER BAR — floating pill */}
-        <header className="h-14 sm:h-16 bg-white border border-slate-200 px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0 gap-2 sm:gap-3 m-2 sm:m-3 md:m-4 rounded-full">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {/* HEADER — persistent on every screen: who is on shift, Trace, language,
+            freshness. The menu toggle and theme switch stay as shell chrome. */}
+        <AppHeader
+          userName={user?.displayName || roleInfo(currentRole).user}
+          role={currentRole}
+          shift={roleInfo(currentRole).shift}
+          lang={lang}
+          updatedAt={lastUpdated}
+          onTrace={handleTraceOpen}
+          left={
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hidden md:inline-flex p-2 rounded-full hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-700 shrink-0"
+              className="hidden md:inline-flex items-center justify-center w-11 h-11 rounded-full hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 shrink-0"
               aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
-              <Menu className="h-4.5 w-4.5" />
+              <Menu className="h-5 w-5" />
             </button>
-            <div className="text-xs hidden lg:block truncate">
-              <span className="text-slate-400 font-medium">Mass Polimer ERP</span>
-              <span className="mx-2 text-slate-300">/</span>
-              <span className="font-bold text-slate-800 uppercase tracking-wider">
-                {moduleLabel(activeModule)}
-              </span>
-            </div>
-            <div className="text-xs font-bold text-slate-800 uppercase tracking-wider truncate lg:hidden">
-              {moduleLabel(activeModule)}
-            </div>
-          </div>
+          }
+          right={
+            <div className="flex items-center gap-2 shrink-0">
+              {queued.length > 0 && (
+                <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 h-11 rounded-lg tone-amber border text-[13px] font-bold">
+                  <Clock className="h-4 w-4" /> {queued.length} waiting to send
+                </span>
+              )}
 
-          <div className="flex-1" />
-
-          <div className="flex items-center gap-2 text-xs font-semibold shrink-0">
-            <div className="hidden sm:flex flex-col items-end leading-tight pr-1">
-              <span className="font-bold text-slate-800 text-[12px]">{user?.displayName || roleInfo(currentRole).user}</span>
-              <span className="text-[10px] text-slate-500">{currentRole} · Shift {roleInfo(currentRole).shift}</span>
-            </div>
-
-            <div className="hidden sm:flex items-center rounded-lg border border-slate-200 overflow-hidden">
-              {(['EN', 'KN', 'HI'] as const).map((l) => (
+              {/* Light is the shop-floor default; dark stays available as a secondary. */}
+              <div
+                className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-full border border-slate-200 bg-slate-50 shrink-0"
+                role="group"
+                aria-label="Theme"
+              >
                 <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  className={`px-2 py-1.5 text-[10px] font-bold ${lang === l ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                  onClick={() => setTheme('light')}
+                  aria-pressed={theme === 'light'}
+                  title="Light theme"
+                  className={`flex items-center justify-center min-w-[44px] h-10 px-2.5 rounded-full text-[13px] font-bold transition-all cursor-pointer ${
+                    theme === 'light' ? 'bg-white text-blue-700 shadow-sm border border-slate-200' : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  {l}
+                  <Sun className="h-4 w-4" />
                 </button>
-              ))}
+                <button
+                  onClick={() => setTheme('dark')}
+                  aria-pressed={theme === 'dark'}
+                  title="Dark theme"
+                  className={`flex items-center justify-center min-w-[44px] h-10 px-2.5 rounded-full text-[13px] font-bold transition-all cursor-pointer ${
+                    theme === 'dark' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Moon className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-
-            {queued.length > 0 && (
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
-                <Clock className="h-3.5 w-3.5" /> {queued.length} waiting to send
-              </span>
-            )}
-
-
-            {/* Global light / dark switch — applies to every screen, persists */}
-            <div
-              className="flex items-center gap-0.5 p-0.5 rounded-full border border-slate-200 bg-slate-50 shrink-0"
-              role="group"
-              aria-label="Theme"
-            >
-              <button
-                onClick={() => setTheme('light')}
-                aria-pressed={theme === 'light'}
-                title="Light theme"
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                  theme === 'light'
-                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <Sun className="h-3.5 w-3.5" /> <span className="hidden md:inline">Light</span>
-              </button>
-              <button
-                onClick={() => setTheme('dark')}
-                aria-pressed={theme === 'dark'}
-                title="Dark theme"
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                  theme === 'dark'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <Moon className="h-3.5 w-3.5" /> <span className="hidden md:inline">Dark</span>
-              </button>
-            </div>
-          </div>
-        </header>
+          }
+        />
 
         <OfflineBanner />
         <PracticeBanner />
@@ -936,9 +1005,12 @@ export default function App() {
                 <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-100">
                   <LockKeyhole className="h-5 w-5" />
                 </div>
-                <h2 className="mt-4 text-xl font-semibold text-slate-900">This page isn&apos;t available in your current access view</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  The old screen bounce has been removed. Choose a real destination below instead of being redirected automatically.
+                <h2 className="mt-4 font-display text-[22px] font-bold text-slate-900">
+                  You don&apos;t have access to this screen — ask your administrator
+                </h2>
+                <p className="mt-1.5 text-[15px] text-slate-600">
+                  Nothing is wrong; this screen simply isn&apos;t part of your role. You can go back to
+                  your own work below.
                 </p>
               </div>
               <div className="px-6 py-5 space-y-5">
@@ -1011,8 +1083,34 @@ export default function App() {
                 );
               })()}
 
+              {/* Layer 1 — "Today". Same template for every role, different content. */}
               {activeModule === 'dashboard' && (
-                <RoleDashboard role={currentRole} onOpen={(m) => setActiveModule(m as ModuleType)} />
+                <RoleHome
+                  content={roleHome}
+                  lines={lineViews(roleCtx, roleHome.lineIds)}
+                  currentUser={roleCtx.user}
+                  loading={dashboardLoading}
+                />
+              )}
+
+              {/* Layer 3 — the shared stage map of the whole chain. */}
+              {activeModule === 'plant_overview' && (
+                <PlantOverview data={plantData} live={live} onOpen={openWithFilter} canOpen={dbAllows} />
+              )}
+
+              {/* Layer 2 — rejections, complaints, CAPA register, maintenance load. */}
+              {activeModule === 'quality_memory' && (
+                <QualityMemory
+                  logbooks={plantData.machineLogbooks}
+                  complaints={plantData.complaints}
+                  capas={plantData.capas}
+                  maintenance={plantData.maintenanceTasks}
+                  customers={plantData.customers}
+                  plans={plantData.productionPlans}
+                  onOpen={openWithFilter}
+                  onTrace={handleTraceOpen}
+                  canOpen={dbAllows}
+                />
               )}
 
               {/* Planning & Production (API) */}
@@ -1066,6 +1164,12 @@ export default function App() {
 
       {/* Global shell overlays */}
       <ToastHost />
+      {/* Trace opens here from any screen, whatever identifier was typed. */}
+      <BatchPassport
+        query={passportQuery}
+        lineages={initialBatchLineages}
+        onClose={() => setPassportQuery(null)}
+      />
       <RoleSwitcher current={currentRole} currentEmail={devEmail} onSelectEmployee={becomeEmployee} />
 
     </div>

@@ -7,7 +7,7 @@ export interface BottomSheetProps {
   title?: ReactNode;
   children: ReactNode;
   /** Slightly taller / wider content pad for dense forms */
-  wide?: boolean;
+  wide?: boolean | undefined;
   /** Extra class on the panel */
   className?: string;
 }

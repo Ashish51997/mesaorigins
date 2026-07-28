@@ -18,7 +18,9 @@ export interface LiveMachine {
   status: 'running' | 'attention' | 'stopped';
   zoneTemp: number;      // representative live zone temperature (°C)
   limit: number;         // upper limit for that zone
-  reason?: string;       // words for attention/stopped
+  // Explicitly `| undefined` so callers can clear the reason by assigning
+  // undefined under exactOptionalPropertyTypes (see tsconfig.dashboard.json).
+  reason?: string | undefined; // words for attention/stopped
   rollsDone: number;
   updatedAt: number;
 }

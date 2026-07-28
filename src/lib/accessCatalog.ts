@@ -19,7 +19,11 @@ const A = (verb: string, label: string, area: string): Feature => ({ key: `actio
 
 export const FEATURES: Feature[] = [
   // General
-  S('dashboard', 'Home', 'General'),
+  S('dashboard', 'Today', 'General'),
+  // Layer 3 — the shared stage map of the whole chain. Everyone sees it.
+  S('plant_overview', 'Plant Overview', 'General'),
+  // Layer 2 — rejection Pareto, complaints, CAPA register, maintenance load.
+  S('quality_memory', 'Quality Memory', 'Quality'),
   // Planning & Production
   S('orders_to_plan', 'Orders to Plan', 'Planning & Production'),
   S('plan_board', 'Plan Board', 'Planning & Production'),
@@ -73,16 +77,20 @@ export const WIRED_ACTIONS: string[] = [
 
 // Role preset: the screens each role sees by default (bare ids). Administrator = all.
 // Mirrors server/src/lib/permissions.ts ROLE_DEFAULT_SCREENS.
+// `plant_overview` (Layer 3) is on every preset on purpose: it is the shared
+// mental model, and it is only ever a map — each stage still opens through the
+// owning screen's own permission. `quality_memory` (Layer 2) is limited to the
+// three roles that review quality: inspector, planner/production head, and MD.
 export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
-  'Managing Director': ['dashboard', 'rm_stock', 'dispatch_history'],
-  'Production Planner': ['dashboard', 'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates'],
-  'Operator': ['dashboard', 'machine_tasks', 'logbooks'],
-  'Quality Inspector': ['dashboard', 'roll_queue', 'holds'],
-  'Store Manager': ['dashboard', 'receive', 'issue_lot', 'rm_stock'],
-  'Sales Executive': ['dashboard', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints'],
-  'Dispatch Executive': ['dashboard', 'ready', 'dispatch_history'],
-  'Maintenance Head': ['dashboard', 'machines', 'preventive'],
-  'Administrator': ['dashboard', 'users', 'acl', 'logbooks', 'logbook_templates', 'machine_tasks'],
+  'Managing Director': ['dashboard', 'plant_overview', 'quality_memory', 'rm_stock', 'dispatch_history', 'sales_complaints'],
+  'Production Planner': ['dashboard', 'plant_overview', 'quality_memory', 'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates'],
+  'Operator': ['dashboard', 'plant_overview', 'machine_tasks', 'logbooks'],
+  'Quality Inspector': ['dashboard', 'plant_overview', 'quality_memory', 'roll_queue', 'holds'],
+  'Store Manager': ['dashboard', 'plant_overview', 'receive', 'issue_lot', 'rm_stock'],
+  'Sales Executive': ['dashboard', 'plant_overview', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints'],
+  'Dispatch Executive': ['dashboard', 'plant_overview', 'ready', 'dispatch_history'],
+  'Maintenance Head': ['dashboard', 'plant_overview', 'machines', 'preventive'],
+  'Administrator': ['dashboard', 'plant_overview', 'users', 'acl', 'logbooks', 'logbook_templates', 'machine_tasks'],
 };
 
 export function roleSeesScreenByDefault(role: string, screenId: string): boolean {
