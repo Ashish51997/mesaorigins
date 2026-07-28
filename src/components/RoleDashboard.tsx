@@ -43,11 +43,11 @@ export default function RoleDashboard({ role, onOpen }: { role: string; onOpen: 
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Plant at a glance</h2>
         <p className="text-[12px] text-slate-500">Live figures from the value chain — {role}.</p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
         <Kpi icon={<Briefcase className="w-3.5 h-3.5" />} label="Orders pending" value={s.orders.pending} sub={`${s.orders.planned} planned · ${s.orders.dispatched} dispatched`} tone="indigo" onClick={go('orders')} />
         <Kpi icon={<FileSpreadsheet className="w-3.5 h-3.5" />} label="Open inquiries" value={s.inquiriesOpen} sub="awaiting quote / order" tone="indigo" onClick={go('inquiries')} />
         <Kpi icon={<CalendarDays className="w-3.5 h-3.5" />} label="Plans running" value={s.plans.running} sub={`${s.plans.scheduled} scheduled`} tone="cyan" onClick={go('plan_board')} />
-        <Kpi icon={<CheckCircle2 className="w-3.5 h-3.5" />} label="Logbooks submitted" value={s.logbooksSubmitted} sub="production recorded" tone="emerald" onClick={go('logbooks')} />
+        <Kpi icon={<CheckCircle2 className="w-3.5 h-3.5" />} label="Logbooks submitted" value={s.logbooksSubmitted} sub="production recorded" tone="emerald" onClick={go('machine_tasks')} />
         <Kpi icon={<ShieldAlert className="w-3.5 h-3.5" />} label="Open complaints" value={s.complaintsOpen} sub={`${s.capasOpen} CAPA open`} tone="rose" onClick={go('sales_complaints')} />
         <Kpi icon={<Package2 className="w-3.5 h-3.5" />} label="RM stock" value={`${s.stock.rawMaterialKg} kg`} sub="raw material on hand" tone="amber" onClick={go('rm_stock')} />
         <Kpi icon={<Truck className="w-3.5 h-3.5" />} label="FG stock" value={`${s.stock.finishedGoodsKg} kg`} sub="finished goods on hand" tone="amber" />

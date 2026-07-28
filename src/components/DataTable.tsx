@@ -1,10 +1,13 @@
 /**
  * Shared data table used across ERP list screens (sales, planning, QA, etc.).
- * Navy-accent plant board: sticky header, zebra rows, hairline rules, scannable.
+ * Desktop: sticky-header table. Mobile (< md): stacked cards.
  */
 import type { ReactNode } from 'react';
+import { useIsNarrow } from '../hooks/useIsNarrow';
 
 export type DataTableAlign = 'left' | 'right' | 'center';
+
+export type DataTableMobileRole = 'title' | 'subtitle' | 'badge' | 'meta' | 'action' | 'hide';
 
 export interface DataTableColumn<T> {
   key: string;
@@ -14,6 +17,8 @@ export interface DataTableColumn<T> {
   className?: string;
   headerClassName?: string;
   cell: (row: T) => ReactNode;
+  /** How this column appears in the mobile card layout */
+  mobile?: DataTableMobileRole;
 }
 
 export interface DataTableProps<T> {
@@ -47,6 +52,15 @@ export function formatTableDate(value?: string | null): string {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function resolveMobileRole<T>(col: DataTableColumn<T>, index: number, columns: DataTableColumn<T>[]): DataTableMobileRole {
+  if (col.mobile) return col.mobile;
+  if (index === 0) return 'title';
+  if (index === 1) return 'subtitle';
+  // Heuristic: last column often holds actions
+  if (index === columns.length - 1 && columns.length > 2) return 'action';
+  return 'meta';
+}
+
 function SkeletonRows({ cols, dense }: { cols: number; dense?: boolean }) {
   const h = dense ? 'h-3' : 'h-3.5';
   return (
@@ -65,6 +79,117 @@ function SkeletonRows({ cols, dense }: { cols: number; dense?: boolean }) {
   );
 }
 
+function SkeletonCards() {
+  return (
+    <div className="p-3 space-y-3" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 space-y-2 animate-pulse">
+          <div className="h-4 w-2/3 rounded bg-slate-100 dark:bg-slate-800" />
+          <div className="h-3 w-1/2 rounded bg-slate-100 dark:bg-slate-800" />
+          <div className="h-3 w-full rounded bg-slate-100 dark:bg-slate-800" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MobileCardList<T>({
+  columns,
+  rows,
+  rowKey,
+  onRowClick,
+}: {
+  columns: DataTableColumn<T>[];
+  rows: T[];
+  rowKey: (row: T) => string;
+  onRowClick?: (row: T) => void;
+}) {
+  const clickable = Boolean(onRowClick);
+  const roles = columns.map((col, i) => resolveMobileRole(col, i, columns));
+
+  return (
+    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+      {rows.map((row) => {
+        const titleCols = columns.filter((_, i) => roles[i] === 'title');
+        const subtitleCols = columns.filter((_, i) => roles[i] === 'subtitle');
+        const badgeCols = columns.filter((_, i) => roles[i] === 'badge');
+        const metaCols = columns.filter((_, i) => roles[i] === 'meta');
+        const actionCols = columns.filter((_, i) => roles[i] === 'action');
+
+        return (
+          <div
+            key={rowKey(row)}
+            role={clickable ? 'button' : undefined}
+            tabIndex={clickable ? 0 : undefined}
+            onClick={clickable ? () => onRowClick?.(row) : undefined}
+            onKeyDown={
+              clickable
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onRowClick?.(row);
+                    }
+                  }
+                : undefined
+            }
+            className={[
+              'px-4 py-3.5 text-left transition-colors',
+              clickable ? 'cursor-pointer active:bg-blue-50/80 dark:active:bg-slate-800' : '',
+            ].join(' ')}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-0.5">
+                {titleCols.map((col) => (
+                  <div key={col.key} className="text-[15px] font-semibold text-slate-900 dark:text-white truncate">
+                    {col.cell(row)}
+                  </div>
+                ))}
+                {subtitleCols.map((col) => (
+                  <div key={col.key} className="text-[13px] text-slate-500 dark:text-slate-400 truncate">
+                    {col.cell(row)}
+                  </div>
+                ))}
+              </div>
+              {badgeCols.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 shrink-0 justify-end">
+                  {badgeCols.map((col) => (
+                    <div key={col.key}>{col.cell(row)}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {metaCols.length > 0 && (
+              <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                {metaCols.map((col) => (
+                  <div key={col.key} className="min-w-0">
+                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 truncate">
+                      {col.header}
+                    </dt>
+                    <dd className="text-[13px] text-slate-700 dark:text-slate-200 truncate">{col.cell(row)}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+
+            {actionCols.length > 0 && (
+              <div
+                className="mt-3 flex flex-wrap gap-2"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                {actionCols.map((col) => (
+                  <div key={col.key}>{col.cell(row)}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function DataTable<T>({
   columns,
   rows,
@@ -79,6 +204,8 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   const pad = dense ? 'py-2 px-3' : 'py-3 px-3.5';
   const clickable = Boolean(onRowClick);
+  const isNarrow = useIsNarrow();
+
 
   return (
     <div
@@ -110,77 +237,79 @@ export function DataTable<T>({
       )}
 
       {loading ? (
-        <SkeletonRows cols={Math.min(columns.length, 5)} dense={dense} />
+        isNarrow ? <SkeletonCards /> : <SkeletonRows cols={Math.min(columns.length, 5)} dense={dense} />
       ) : rows.length === 0 ? (
         <div className="px-4 py-8">{empty ?? (
           <div className="py-4 text-center text-sm text-slate-400">No rows.</div>
         )}</div>
+      ) : isNarrow ? (
+        <MobileCardList columns={columns} rows={rows} rowKey={rowKey} onRowClick={onRowClick} />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-[13px] border-collapse">
-            <thead className="sticky top-0 z-[1]">
-              <tr className="bg-slate-50/95 dark:bg-slate-950/90 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
-                {columns.map((col, ci) => (
-                  <th
-                    key={col.key}
-                    scope="col"
-                    className={[
-                      pad,
-                      'text-[11px] font-medium text-slate-500 dark:text-slate-400',
-                      'whitespace-nowrap select-none normal-case tracking-normal',
-                      alignCls[col.align ?? 'left'],
-                      col.headerClassName ?? '',
-                      col.className ?? '',
-                      ci === 0 ? 'pl-4 sm:pl-5' : '',
-                      ci === columns.length - 1 ? 'pr-4 sm:pr-5' : '',
-                    ].join(' ')}
-                  >
-                    {col.header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, ri) => (
-                <tr
-                  key={rowKey(row)}
-                  onClick={clickable ? () => onRowClick?.(row) : undefined}
-                  className={[
-                    'group border-b border-slate-100 dark:border-slate-800/80 last:border-b-0',
-                    'transition-colors duration-100',
-                    ri % 2 === 1 ? 'bg-slate-50/60 dark:bg-slate-950/40' : 'bg-white dark:bg-slate-900',
-                    clickable
-                      ? 'cursor-pointer hover:bg-blue-600/[0.04] dark:hover:bg-slate-800'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50',
-                  ].join(' ')}
-                >
+            <table className="w-full min-w-[640px] text-[13px] border-collapse">
+              <thead className="sticky top-0 z-[1]">
+                <tr className="bg-slate-50/95 dark:bg-slate-950/90 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
                   {columns.map((col, ci) => (
-                    <td
+                    <th
                       key={col.key}
+                      scope="col"
                       className={[
                         pad,
-                        'align-middle text-slate-700 dark:text-slate-200 relative',
+                        'text-[11px] font-medium text-slate-500 dark:text-slate-400',
+                        'whitespace-nowrap select-none normal-case tracking-normal',
                         alignCls[col.align ?? 'left'],
+                        col.headerClassName ?? '',
                         col.className ?? '',
-                        ci === 0 ? 'pl-4 sm:pl-5 font-medium text-slate-800 dark:text-slate-100' : '',
+                        ci === 0 ? 'pl-4 sm:pl-5' : '',
                         ci === columns.length - 1 ? 'pr-4 sm:pr-5' : '',
-                        col.align === 'right' ? 'tabular-nums font-mono text-[12px]' : '',
                       ].join(' ')}
                     >
-                      {clickable && ci === 0 && (
-                        <span
-                          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity dark:bg-slate-300"
-                          aria-hidden
-                        />
-                      )}
-                      {col.cell(row)}
-                    </td>
+                      {col.header}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((row, ri) => (
+                  <tr
+                    key={rowKey(row)}
+                    onClick={clickable ? () => onRowClick?.(row) : undefined}
+                    className={[
+                      'group border-b border-slate-100 dark:border-slate-800/80 last:border-b-0',
+                      'transition-colors duration-100',
+                      ri % 2 === 1 ? 'bg-slate-50/60 dark:bg-slate-950/40' : 'bg-white dark:bg-slate-900',
+                      clickable
+                        ? 'cursor-pointer hover:bg-blue-600/[0.04] dark:hover:bg-slate-800'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                    ].join(' ')}
+                  >
+                    {columns.map((col, ci) => (
+                      <td
+                        key={col.key}
+                        className={[
+                          pad,
+                          'align-middle text-slate-700 dark:text-slate-200 relative',
+                          alignCls[col.align ?? 'left'],
+                          col.className ?? '',
+                          ci === 0 ? 'pl-4 sm:pl-5 font-medium text-slate-800 dark:text-slate-100' : '',
+                          ci === columns.length - 1 ? 'pr-4 sm:pr-5' : '',
+                          col.align === 'right' ? 'tabular-nums font-mono text-[12px]' : '',
+                        ].join(' ')}
+                      >
+                        {clickable && ci === 0 && (
+                          <span
+                            className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity dark:bg-slate-300"
+                            aria-hidden
+                          />
+                        )}
+                        {col.cell(row)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
       )}
     </div>
   );

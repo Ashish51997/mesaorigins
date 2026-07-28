@@ -13,7 +13,7 @@ import { roleSeesScreenByDefault } from './accessCatalog';
  *   3. role override matrix (PermissionRule)
  *   4. role preset default (screens: role's default set; actions: allow)
  *
- * Backward compatible: a bare module id (e.g. 'reports') is treated as 'screen:reports',
+ * Backward compatible: a bare module id (e.g. 'orders') is treated as 'screen:orders',
  * and the extra params are optional, so existing 5-arg calls keep working.
  */
 export function checkPermission(

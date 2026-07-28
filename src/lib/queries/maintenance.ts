@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../apiClient';
 
 export interface ApiMachine {
-  id: string; code: string; line: string; family: string; status: string;
+  id: string; code: string; line: string; family: string; logbookFormat: string; status: string;
 }
 export interface ApiMaintenanceTask {
   id: string; machineId: string; taskName: string; type: string; frequency: string;
@@ -14,6 +14,13 @@ const keys = { machines: ['machines'] as const, maintenance: ['maintenance'] as 
 
 export function useMachines() {
   return useQuery({ queryKey: keys.machines, queryFn: () => api.get<ApiMachine[]>('/machines') });
+}
+export function useCreateMachine() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.post<ApiMachine>('/machines', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.machines }),
+  });
 }
 export function useMaintenanceTasks() {
   return useQuery({ queryKey: keys.maintenance, queryFn: () => api.get<ApiMaintenanceTask[]>('/maintenance') });

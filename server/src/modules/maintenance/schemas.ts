@@ -9,3 +9,12 @@ export const maintenanceCreateSchema = z.object({
   cost: z.coerce.number().min(0).default(0),
 });
 export type MaintenanceCreate = z.infer<typeof maintenanceCreateSchema>;
+
+export const machineCreateSchema = z.object({
+  code: z.string().trim().min(1, 'Machine code is required').max(16, 'Code is too long'),
+  line: z.string().trim().min(1, 'Line / description is required').max(120),
+  family: z.string().trim().min(1, 'Family is required').max(40).default('PVC'),
+  logbookFormat: z.string().trim().max(40).optional().default(''),
+  status: z.enum(['running', 'attention', 'stopped']).default('running'),
+});
+export type MachineCreate = z.infer<typeof machineCreateSchema>;

@@ -165,7 +165,13 @@ type HourlyLike = {
 
 type LogbookLike = {
   operatorSignature?: string;
+  supervisorSignature?: string;
   date?: string;
+  shift?: string;
+  supervisor?: string;
+  productName?: string;
+  formulaNo?: string;
+  drawingNo?: string;
   extruderStartTime?: string;
   productSetTime?: string;
   meterCheckTime?: string;
@@ -230,19 +236,24 @@ function pushFormat(
   if (bad) issues.push({ field, label, kind: 'format', message });
 }
 
-/** Collect issues that should block Submit & lock. */
+function pushRequired(issues: LogbookFieldIssue[], field: string, label: string, value: string | null | undefined) {
+  if (!(value ?? '').trim()) {
+    issues.push({ field, label, kind: 'required', message: `${label} is empty.` });
+  }
+}
+
+/** Collect issues that should block Close (finalize & lock). Save/submit progress allows empty fields. */
 export function validateLogbookForSubmit(lb: LogbookLike, template: TemplateLike): LogbookFieldIssue[] {
   const issues: LogbookFieldIssue[] = [];
   const isPipe = (template.layout ?? 'coil') === 'pipe';
 
-  if (!(lb.operatorSignature ?? '').trim()) {
-    issues.push({
-      field: 'operatorSignature',
-      label: 'Operator signature',
-      kind: 'required',
-      message: 'The operator must sign the sheet before submitting.',
-    });
-  }
+  pushRequired(issues, 'date', 'Date', lb.date);
+  pushRequired(issues, 'shift', 'Shift', lb.shift);
+  pushRequired(issues, 'supervisor', 'Shift supervisor', lb.supervisor);
+  pushRequired(issues, 'productName', 'Product name', lb.productName);
+  pushRequired(issues, 'formulaNo', 'Formula no', lb.formulaNo);
+  pushRequired(issues, 'operatorSignature', 'Operator signature', lb.operatorSignature);
+  pushRequired(issues, 'supervisorSignature', 'Shift supervisor signature', lb.supervisorSignature);
 
   pushFormat(issues, 'date', 'Date', isInvalidDate(lb.date), 'Date must be a valid calendar date.');
   pushFormat(issues, 'extruderStartTime', 'Extruder start time', isInvalidTime(lb.extruderStartTime), 'Extruder start time must be HH:MM.');

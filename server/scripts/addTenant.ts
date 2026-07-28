@@ -37,7 +37,7 @@ async function provision(): Promise<void> {
     for (const name of [...new Set(MEMBERS.map((m) => m.role))]) {
       await tx.role.upsert({
         where: { organizationId_name: { organizationId: ORG, name } },
-        update: {},
+        update: { screens: ROLE_DEFAULT_SCREENS[name] ?? [], isAdmin: ADMIN_ROLES.has(name) },
         create: { organizationId: ORG, name, screens: ROLE_DEFAULT_SCREENS[name] ?? [], isAdmin: ADMIN_ROLES.has(name), isSystem: true },
       });
     }

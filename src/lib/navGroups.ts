@@ -1,8 +1,12 @@
 /**
  * navGroups.ts — groups sidebar menu items into stepwise sections that follow the plant
- * value chain (Overview → Sales → Planning → Production → Quality → Stores → Dispatch →
+ * value chain (Overview → Sales → Planning & Production → Quality → Stores → Dispatch →
  * Maintenance → Admin). Used by the sidebar to render group headers and by the menu
  * search to keep results ordered.
+ *
+ * Only real, rendered screens are listed here — placeholder / dummy route IDs are
+ * intentionally omitted so Related links never jump to dead destinations.
+ * Log books are opened from Machine Tasks only (not a sidebar destination).
  */
 
 export interface NavStep { key: string; label: string; }
@@ -10,8 +14,7 @@ export interface NavStep { key: string; label: string; }
 export const NAV_STEPS: NavStep[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'sales', label: 'Sales & Orders' },
-  { key: 'planning', label: 'Planning' },
-  { key: 'production', label: 'Production' },
+  { key: 'planning', label: 'Planning & Production' },
   { key: 'quality', label: 'Quality' },
   { key: 'stores', label: 'Stores' },
   { key: 'dispatch', label: 'Dispatch' },
@@ -20,41 +23,36 @@ export const NAV_STEPS: NavStep[] = [
 ];
 
 const STEP_OF: Record<string, string> = {
-  dashboard: 'overview', plant_overview: 'overview', management_review: 'overview', quality_memory: 'overview', reports: 'overview',
-  customers: 'sales', sales: 'sales', inquiries: 'sales', quotations: 'sales', orders: 'sales', sales_customers: 'sales', sales_complaints: 'sales',
-  planning: 'planning', orders_to_plan: 'planning', plan_board: 'planning', formulations: 'planning', machine_capacity: 'planning', material_availability: 'planning', logbook_templates: 'planning',
-  manufacturing: 'production', logbooks: 'production', template_builder: 'production', machine_tasks: 'production', hourly_grid: 'production', raise_breakdown: 'production', shift_summary: 'production',
-  quality: 'quality', incoming: 'quality', roll_queue: 'quality', holds: 'quality', disposal_regrind: 'quality', calibration: 'quality',
-  inventory: 'stores', receive: 'stores', issue_lot: 'stores', rm_stock: 'stores', fg_putaway: 'stores', regrind_lots: 'stores',
-  dispatch: 'dispatch', ready: 'dispatch', gate_pass: 'dispatch', vehicles_today: 'dispatch', dispatch_history: 'dispatch',
-  breakdowns: 'maintenance', preventive: 'maintenance', downtime: 'maintenance', machine_history: 'maintenance', calibration_reg: 'maintenance',
-  users: 'admin', acl: 'admin', capa: 'admin', migration: 'admin'
+  dashboard: 'overview',
+  inquiries: 'sales', quotations: 'sales', orders: 'sales', sales_customers: 'sales', sales_complaints: 'sales',
+  orders_to_plan: 'planning', plan_board: 'planning', formulations: 'planning', logbook_templates: 'planning',
+  machine_tasks: 'planning',
+  roll_queue: 'quality', holds: 'quality',
+  receive: 'stores', issue_lot: 'stores', rm_stock: 'stores',
+  ready: 'dispatch', dispatch_history: 'dispatch',
+  machines: 'maintenance', preventive: 'maintenance',
+  users: 'admin', acl: 'admin',
 };
 
 export const stepOf = (id: string): string => STEP_OF[id] ?? 'overview';
 
 // Curated cross-step relations that follow the actual workflow (order → plan, roll → hold,
 // FG → dispatch, etc.). Same-step siblings are added automatically after these.
+// Log books are not linked here — open them from Machine Tasks.
 const CROSS: Record<string, string[]> = {
   inquiries: ['quotations'], quotations: ['orders'], orders: ['orders_to_plan'],
-  sales_complaints: ['capa', 'holds'], sales_customers: ['orders'],
-  orders_to_plan: ['orders', 'plan_board'], plan_board: ['machine_capacity', 'material_availability', 'logbook_templates'],
-  formulations: ['material_availability', 'issue_lot'], material_availability: ['rm_stock'],
-  logbook_templates: ['plan_board', 'logbooks'],
-  logbooks: ['roll_queue', 'template_builder', 'hourly_grid', 'machine_tasks'], template_builder: ['logbooks'],
-  machine_tasks: ['logbooks', 'plan_board'],
-  hourly_grid: ['logbooks', 'raise_breakdown'], raise_breakdown: ['breakdowns'], shift_summary: ['logbooks'],
-  incoming: ['rm_stock', 'receive'], roll_queue: ['holds', 'disposal_regrind', 'logbooks'],
-  holds: ['disposal_regrind'], disposal_regrind: ['regrind_lots'], calibration: ['calibration_reg'],
-  receive: ['rm_stock', 'incoming'], issue_lot: ['rm_stock', 'formulations'], rm_stock: ['issue_lot'],
-  fg_putaway: ['ready'], regrind_lots: ['disposal_regrind'],
-  ready: ['gate_pass', 'fg_putaway'], gate_pass: ['vehicles_today', 'dispatch_history'],
-  vehicles_today: ['gate_pass'], dispatch_history: ['gate_pass'],
-  breakdowns: ['machine_history', 'preventive'], preventive: ['machine_history', 'calibration_reg'],
-  downtime: ['breakdowns', 'machine_history'], machine_history: ['breakdowns'], calibration_reg: ['calibration'],
-  plant_overview: ['quality_memory', 'reports'], quality_memory: ['capa', 'reports'],
-  management_review: ['reports'], reports: ['management_review'], capa: ['quality_memory', 'sales_complaints'],
-  inventory: ['rm_stock', 'fg_putaway'], users: ['acl'], acl: ['users'], migration: ['reports']
+  sales_complaints: ['holds', 'orders'], sales_customers: ['orders'],
+  orders_to_plan: ['orders', 'plan_board'], plan_board: ['machine_tasks'],
+  formulations: ['issue_lot', 'rm_stock'],
+  logbook_templates: ['plan_board', 'machine_tasks'],
+  machine_tasks: ['plan_board'],
+  roll_queue: ['holds'],
+  holds: ['roll_queue', 'sales_complaints'],
+  receive: ['rm_stock'], issue_lot: ['rm_stock', 'formulations'], rm_stock: ['issue_lot', 'receive'],
+  ready: ['dispatch_history', 'rm_stock'], dispatch_history: ['ready'],
+  machines: ['preventive', 'machine_tasks'],
+  preventive: ['machines', 'machine_tasks'],
+  users: ['acl'], acl: ['users'],
 };
 
 // Related features for a given screen: curated cross-links first, then same-step siblings.
@@ -63,7 +61,7 @@ export function relatedOf(id: string): string[] {
   const siblings = step ? Object.keys(STEP_OF).filter((x) => STEP_OF[x] === step && x !== id) : [];
   const out: string[] = [];
   for (const x of [...(CROSS[id] ?? []), ...siblings]) {
-    if (x !== id && !out.includes(x)) out.push(x);
+    if (x !== id && !out.includes(x) && STEP_OF[x]) out.push(x);
   }
   return out.slice(0, 6);
 }

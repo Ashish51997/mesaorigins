@@ -16,6 +16,21 @@ describe('maintenance slice', () => {
     expect(r.body[0]).toHaveProperty('code');
   });
 
+  it('registers a new machine and rejects duplicate codes', async () => {
+    const code = `T${uniq().slice(0, 4).toUpperCase()}`;
+    const add = await request(app).post('/api/machines').send({
+      code, line: 'Test line', family: 'PVC', logbookFormat: 'QR/MFG/013', status: 'running',
+    });
+    expect(add.status).toBe(201);
+    expect(add.body.code).toBe(code);
+    expect(add.body.line).toBe('Test line');
+
+    const dup = await request(app).post('/api/machines').send({
+      code, line: 'Another line', family: 'LDPE',
+    });
+    expect(dup.status).toBe(409);
+  });
+
   it('adds a maintenance task for a machine, then completes it', async () => {
     const machines = await request(app).get('/api/machines');
     const machine = machines.body[0];

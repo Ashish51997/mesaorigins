@@ -231,6 +231,13 @@ export async function submitLogbook(id: string) {
   const issues = validateLogbookForSubmit(
     {
       operatorSignature: lb.operatorSignature,
+      supervisorSignature: lb.supervisorSignature,
+      date: lb.date,
+      shift: lb.shift,
+      supervisor: lb.supervisor,
+      productName: lb.productName,
+      formulaNo: lb.formulaNo,
+      drawingNo: lb.drawingNo,
       motorSpeed: lb.motorSpeed,
       ampere: lb.ampere,
       takeupSpeed: lb.takeupSpeed,

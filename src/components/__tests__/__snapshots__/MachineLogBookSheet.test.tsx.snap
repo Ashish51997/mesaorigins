@@ -10,17 +10,17 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
 .sheet-wrap{background:#e9e7e0;padding:16px;font-family:Arial,Helvetica,sans-serif;color:#111}
 .toolbar{max-width:920px;margin:0 auto 10px;display:flex;justify-content:flex-end}
 .print-btn{border:1px solid #0f4c81;background:#0f4c81;color:#fff;border-radius:6px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer}
-.sheet{max-width:920px;margin:0 auto;background:#fff;border:2px solid #111;padding:10px 12px 14px;font-size:12px}
+.sheet{max-width:920px;margin:0 auto;background:#fff;border:2px solid #111;padding:10px 12px 14px;font-size:13px}
 .sheet *{box-sizing:border-box}
 
-.cin{border:0;background:transparent;font-family:inherit;font-size:12px;width:100%;padding:1px 2px;outline:none;color:#0a2a6b}
+.cin{border:0;background:transparent;font-family:inherit;font-size:14px;width:100%;min-height:28px;padding:4px 6px;outline:none;color:#0a2a6b}
 .cin:focus{background:#eef4fb}
 .cin.oor{background:#fbeedb;color:#a9660a;font-weight:700}
 .cin.active{background:#dbe9fb;box-shadow:0 0 0 2px #0f4c81 inset;border-radius:3px}
 .cin[readonly]{cursor:default}
-.cin-pick{min-width:7.5rem;font-size:11px}
+.cin-pick{min-width:8.5rem;font-size:13px;min-height:30px}
 .sign-lbl{font-size:10px;font-weight:700;color:#444;margin-bottom:2px}
-.sign .cin{border-bottom:1px solid #999;min-height:22px}
+.sign .cin{border-bottom:1px solid #999;min-height:28px}
 
 /* permissible-value hint on measurement cells */
 .rc{position:relative;display:block}
@@ -29,7 +29,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
 
 /* click-to-open dropdown */
 .drop{position:relative;display:inline-block}
-.drop-btn{display:inline-flex;align-items:center;justify-content:space-between;gap:4px;width:100%;min-height:22px;border:0;background:transparent;font-family:inherit;font-size:12px;cursor:pointer;padding:1px 2px;color:#0a2a6b;border-radius:3px}
+.drop-btn{display:inline-flex;align-items:center;justify-content:space-between;gap:4px;width:100%;min-height:28px;border:0;background:transparent;font-family:inherit;font-size:14px;cursor:pointer;padding:4px 6px;color:#0a2a6b;border-radius:3px}
 .drop-btn:hover{background:#eef4fb}
 .drop-btn.active{background:#dbe9fb;box-shadow:0 0 0 2px #0f4c81 inset}
 .drop-btn:disabled{cursor:default}
@@ -67,12 +67,12 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
 .band .bright{float:right;font-weight:600;font-size:11px}
 
 .lbgrid{width:100%;border-collapse:collapse;border:1px solid #111;border-top:0}
-.lbgrid th,.lbgrid td{border:1px solid #111;padding:2px 3px;text-align:center;vertical-align:middle}
+.lbgrid th,.lbgrid td{border:1px solid #111;padding:3px 4px;text-align:center;vertical-align:middle}
 .lbgrid th{background:#f3f1ea;font-size:10px;font-weight:700;line-height:1.1}
 .lbgrid th .sp{font-weight:400;font-size:9px}
-.lbgrid td{height:22px}
+.lbgrid td{height:30px}
 .lbgrid .lbl{background:#f7f6f1;font-weight:600;text-align:left;white-space:nowrap;font-size:11px}
-.lbgrid.tight td{height:20px}
+.lbgrid.tight td{height:28px}
 .lbgrid .tcell{font-weight:700;background:#f7f6f1;white-space:nowrap}
 
 /* section 2 layout */
@@ -86,13 +86,13 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
 .coil-cell{display:flex;align-items:center;border-bottom:1px solid #ddd;border-right:1px solid #ddd;padding:0 2px}
 .coil-cell .cn{font-size:10px;font-weight:700;width:24px;flex:0 0 24px}
 .insp-grid{border:0;flex:1}
-.insp-grid td{height:26px}
+.insp-grid td{height:32px}
 
 /* section 3 */
 .trace{display:flex;gap:0;border:1px solid #111;border-top:0}
 .trace-grid{border:0;border-right:1px solid #111}
 .trace-grid:last-child{border-right:0}
-.trace-grid td{height:22px;text-align:left}
+.trace-grid td{height:28px;text-align:left}
 
 /* section 4 */
 .rej{border:1px solid #111;border-top:0;padding:5px 8px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px}
@@ -122,16 +122,6 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
 }
 
     </style>
-    <div
-      class="toolbar"
-    >
-      <button
-        class="print-btn"
-        type="button"
-      >
-        Print sheet
-      </button>
-    </div>
     <div
       class="sheet"
     >
@@ -165,7 +155,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
           <tbody>
             <tr>
               <td>
-                1) Process parameters
+                1) Process Parameters
               </td>
               <td>
                 2) Inspection Report
@@ -173,7 +163,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td
                 class="dc"
               >
-                Doc No: 
+                Doc no: 
                 QR/MFG/013
               </td>
             </tr>
@@ -187,7 +177,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td
                 class="dc"
               >
-                Rev No: 
+                Rev no: 
                 02
               </td>
             </tr>
@@ -198,7 +188,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td
                 class="dc"
               >
-                Rev Date: 
+                Rev date: 
                 14-07-2025
               </td>
             </tr>
@@ -4327,7 +4317,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
           <span
             class="rej-hd"
           >
-            Reason for Rejections:
+            Reason for rejections:
           </span>
           <span
             class="rej-item"
@@ -4551,11 +4541,37 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
             >
               Inspector signature
             </div>
-            <input
-              class="cin"
-              type="text"
-              value=""
-            />
+            <span
+              class="drop"
+            >
+              <button
+                class="drop-btn"
+                type="button"
+              >
+                <span
+                  class="drop-ph"
+                >
+                  Select
+                </span>
+                <svg
+                  aria-hidden="true"
+                  class="lucide lucide-chevron-down"
+                  fill="none"
+                  height="13"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="13"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="m6 9 6 6 6-6"
+                  />
+                </svg>
+              </button>
+            </span>
           </div>
           <div>
             <div
@@ -4563,11 +4579,37 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
             >
               Shift incharge signature
             </div>
-            <input
-              class="cin"
-              type="text"
-              value=""
-            />
+            <span
+              class="drop"
+            >
+              <button
+                class="drop-btn"
+                type="button"
+              >
+                <span
+                  class="drop-ph"
+                >
+                  Select
+                </span>
+                <svg
+                  aria-hidden="true"
+                  class="lucide lucide-chevron-down"
+                  fill="none"
+                  height="13"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="13"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="m6 9 6 6 6-6"
+                  />
+                </svg>
+              </button>
+            </span>
           </div>
         </div>
       </div>

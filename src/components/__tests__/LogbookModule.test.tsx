@@ -25,7 +25,7 @@ const apiPlan = {
   machine: { code: 'M08', logbookFormat: template.docNo }, salesOrder: { soNumber: 'SO-2026-150', product: 'RPVC 20mm' }, logbook: null,
 };
 
-function blankLogbook() {
+function blankLogbook(overrides: Record<string, unknown> = {}) {
   return {
     id: 'lb-1', productionPlanId: PLAN_ID, templateId: template.id, status: 'draft',
     rolls: [], scrapKg: '', operatorSignature: '', supervisorSignature: '',
@@ -40,21 +40,23 @@ function blankLogbook() {
     traceabilityRows: Array.from({ length: template.traceability.tableCount * template.traceability.rowsPerTable }, () => ({ lotNumber: '', colour: '', code: '', winderPackedBy: '' })),
     totalRollsProduced: '', totalRollKgs: '', processWasteKg: '', lumpsWasteKg: '', rejectionKg: '', totalConsumedKg: '',
     rejectionCounts: {}, meterCheckedBy: '', meterCheckTime: '', meter: '', meterCountSet: '',
+    ...overrides,
   };
 }
 
-function setupApi(plans: unknown[] = [apiPlan]) {
+function setupApi(plans: unknown[] = [apiPlan], logbook: Record<string, unknown> = blankLogbook()) {
   get.mockImplementation((path: string) => {
     if (path === '/logbook/templates') return Promise.resolve([template]);
     if (path === '/logbook/plans') return Promise.resolve(plans);
+    if (path === '/logbook/formulas') return Promise.resolve([{ id: 'f1', code: 'RF03', rev: 2, label: 'RF03 · Rev 2' }]);
     return Promise.resolve([]);
   });
   post.mockImplementation((path: string) => {
-    if (path === '/logbooks') return Promise.resolve(blankLogbook());
-    if (path.endsWith('/submit')) return Promise.resolve({ ...blankLogbook(), status: 'submitted' });
+    if (path === '/logbooks') return Promise.resolve(logbook);
+    if (path.endsWith('/submit')) return Promise.resolve({ ...logbook, status: 'submitted' });
     return Promise.resolve({});
   });
-  patch.mockResolvedValue(blankLogbook());
+  patch.mockResolvedValue(logbook);
 }
 
 function renderModule(initialTab: 'operator' | 'admin' = 'operator') {
@@ -108,45 +110,61 @@ describe('LogbookModule (operator)', () => {
     expect(withValue.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('submitting saves then submits via the API', async () => {
+  it('submitting saves progress without locking (empty fields allowed)', async () => {
     setupApi();
     renderModule('operator');
     await screen.findByText(/Fill panel/i);
     await waitFor(() => expect(panelInput('Machine No').value).toBe('M08')); // wait for the logbook to load
-    fireEvent.change(panelInput('Operator (signature)'), { target: { value: 'Nandlal' } });
-    fireEvent.click(screen.getByText('Submit & lock'));
-    await waitFor(() => expect(post).toHaveBeenCalledWith('/logbooks/lb-1/submit'));
-    expect(patch).toHaveBeenCalled();
-  });
-
-  it('blocks submit without operator signature', async () => {
-    setupApi();
-    renderModule('operator');
-    await screen.findByText(/Fill panel/i);
-    await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
     post.mockClear();
-    fireEvent.click(screen.getByText('Submit & lock'));
-    expect(await screen.findByText(/Fix these before submitting/i)).toBeTruthy();
-    expect(screen.getAllByText(/operator must sign/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByText('Submit'));
+    await waitFor(() => expect(patch).toHaveBeenCalled());
     expect(post).not.toHaveBeenCalledWith('/logbooks/lb-1/submit');
   });
 
-  it('blocks submit when a value is outside the permissible range', async () => {
+  it('closing without required fields shows empty-field errors', async () => {
     setupApi();
     renderModule('operator');
     await screen.findByText(/Fill panel/i);
     await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
-    fireEvent.change(panelInput('Operator (signature)'), { target: { value: 'Nandlal' } });
-    const zoneLabel = template.dieZones[0];
-    const zoneSpan = screen.getAllByText(new RegExp(`^${zoneLabel}`)).find((el) => el.closest('label'));
-    const zoneInput = zoneSpan?.closest('label')?.querySelector('input') as HTMLInputElement;
-    expect(zoneInput).toBeTruthy();
-    fireEvent.change(zoneInput, { target: { value: '1' } });
     post.mockClear();
-    fireEvent.click(screen.getByText('Submit & lock'));
-    expect(await screen.findByText(/Fix these before submitting/i)).toBeTruthy();
+    fireEvent.click(screen.getByText('Close'));
+    expect(await screen.findByText(/Fix these before closing/i)).toBeTruthy();
+    expect(screen.getAllByText(/is empty/i).length).toBeGreaterThan(0);
+    expect(post).not.toHaveBeenCalledWith('/logbooks/lb-1/submit');
+  });
+
+  it('closing with invalid range is blocked', async () => {
+    const zone = template.dieZones[0];
+    setupApi([apiPlan], blankLogbook({
+      supervisor: template.supervisors[0] ?? 'Nandlal',
+      formulaNo: 'RF03',
+      operatorSignature: 'Nandlal',
+      supervisorSignature: 'Suresh',
+      dieZoneTemps: Object.fromEntries(template.dieZones.map((z) => [z, z === zone ? '1' : ''])),
+    }));
+    renderModule('operator');
+    await screen.findByText(/Fill panel/i);
+    await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
+    post.mockClear();
+    fireEvent.click(screen.getByText('Close'));
+    expect(await screen.findByText(/Fix these before closing/i)).toBeTruthy();
     expect(screen.getAllByText(/must be between/i).length).toBeGreaterThan(0);
     expect(post).not.toHaveBeenCalledWith('/logbooks/lb-1/submit');
+  });
+
+  it('closing a filled sheet saves then submits via the API', async () => {
+    setupApi([apiPlan], blankLogbook({
+      supervisor: template.supervisors[0] ?? 'Nandlal',
+      formulaNo: 'RF03',
+      operatorSignature: 'Nandlal',
+      supervisorSignature: 'Suresh',
+    }));
+    renderModule('operator');
+    await screen.findByText(/Fill panel/i);
+    await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
+    fireEvent.click(screen.getByText('Close'));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/logbooks/lb-1/submit'));
+    expect(patch).toHaveBeenCalled();
   });
 
   it('uses a date picker for the Date field and strips letters from numeric fields', async () => {

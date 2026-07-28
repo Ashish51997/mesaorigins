@@ -1,7 +1,7 @@
 import express, { type RequestHandler } from 'express';
 import { requirePermission } from '../../middleware/authz';
 import { validateBody } from '../../middleware/validate';
-import { maintenanceCreateSchema } from './schemas';
+import { machineCreateSchema, maintenanceCreateSchema } from './schemas';
 import * as svc from './service';
 
 const ah = (fn: (req: express.Request, res: express.Response) => Promise<unknown>): RequestHandler =>
@@ -13,8 +13,11 @@ const ah = (fn: (req: express.Request, res: express.Response) => Promise<unknown
 
 export const maintenanceRouter = express.Router();
 
-// Machine registry — reference data available to any signed-in org member.
+// Machine registry — list is available to any signed-in org member; create is
+// gated to the Maintenance Machines screen (Maintenance Head + grants).
 maintenanceRouter.get('/machines', ah(() => svc.listMachines()));
+maintenanceRouter.post('/machines', requirePermission('screen:machines'), validateBody(machineCreateSchema),
+  ah(async (req, res) => { res.status(201); return svc.createMachine(req.body); }));
 
 // Maintenance tasks (Maintenance Head's Preventive Schedule).
 maintenanceRouter.get('/maintenance', requirePermission('screen:preventive'), ah(() => svc.listMaintenance()));
