@@ -33,7 +33,8 @@ import {
   LockKeyhole,
   Sparkles,
   Cpu,
-  Network
+  Network,
+  Users2
 } from 'lucide-react';
 
 import {
@@ -204,6 +205,8 @@ export default function App() {
     return next;
   });
   const [passportQuery, setPassportQuery] = useState<string | null>(null);
+  // "Sign in as…" is opened from the sidebar user card now, not a floating pill.
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const queued = useQueue();
   const lang = useLang();
   const t = useT();
@@ -867,8 +870,10 @@ export default function App() {
                 {showSidebarLabels && (
                   <button onClick={() => toggleGroup(step.key)} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 transition-colors" aria-expanded={!collapsed}>
                     <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+                    {/* No count here: a numeral beside a section header reads as
+                        an unread badge, but it was only ever how many links the
+                        section holds — which the expanded list already shows. */}
                     <span className="flex-1 text-left truncate">{step.label}</span>
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">{items.length}</span>
                   </button>
                 )}
                 {!collapsed && (
@@ -905,23 +910,38 @@ export default function App() {
         <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs">
           {user && (
             showSidebarLabels ? (
-              <div className="flex items-center gap-2.5 rounded-xl p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-3xs">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-bold text-white text-[11px] shrink-0 shadow-sm">
-                  {(roleInfo(currentRole).user || 'U').split(/\s+/).map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase()}
+              <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-3xs">
+                <div className="flex items-center gap-2.5 p-2">
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-bold text-white text-[11px] shrink-0 shadow-sm">
+                    {(roleInfo(currentRole).user || 'U').split(/\s+/).map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-800 dark:text-slate-100 text-xs leading-tight truncate">{user?.displayName || roleInfo(currentRole).user}</p>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">{currentRole} · Shift {roleInfo(currentRole).shift}</span>
+                  </div>
+                  <button onClick={handleSignOut} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0 cursor-pointer" title="Sign out" aria-label="Sign out">
+                    <LogOut className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-slate-800 dark:text-slate-100 text-xs leading-tight truncate">{user?.displayName || roleInfo(currentRole).user}</p>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">{currentRole} · Shift {roleInfo(currentRole).shift}</span>
-                </div>
-                <button onClick={handleSignOut} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0 cursor-pointer" title="Sign out" aria-label="Sign out">
-                  <LogOut className="h-4 w-4" />
+                {/* Replaces the floating pill: the switcher now lives on the card
+                    that already says who you are. */}
+                <button
+                  onClick={() => setSwitcherOpen(true)}
+                  className="w-full flex items-center justify-center gap-1.5 min-h-[44px] px-2 rounded-b-xl border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-500 hover:text-blue-700 hover:bg-blue-50/50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Sign in as another employee"
+                >
+                  <Users2 className="h-3.5 w-3.5" /> Switch employee
                 </button>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-bold text-white text-[11px] shadow-sm" title={`${roleInfo(currentRole).user} · ${currentRole}`}>
+                <button
+                  onClick={() => setSwitcherOpen(true)}
+                  className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-bold text-white text-[11px] shadow-sm cursor-pointer"
+                  title={`${roleInfo(currentRole).user} · ${currentRole} — switch employee`}
+                >
                   {(roleInfo(currentRole).user || 'U').split(/\s+/).map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase()}
-                </div>
+                </button>
                 <button onClick={handleSignOut} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer" title="Sign out" aria-label="Sign out">
                   <LogOut className="h-3.5 w-3.5" />
                 </button>
@@ -960,33 +980,16 @@ export default function App() {
                 </span>
               )}
 
-              {/* Light is the shop-floor default; dark stays available as a secondary. */}
-              <div
-                className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-full border border-slate-200 bg-slate-50 shrink-0"
-                role="group"
-                aria-label="Theme"
+              {/* One toggle, not two buttons. Light is the shop-floor default;
+                  the icon shows the theme you would switch TO. */}
+              <button
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                title={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+                aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+                className="hidden sm:inline-flex items-center justify-center w-11 h-11 rounded-full border border-slate-200 bg-white text-slate-600 hover:border-blue-500 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 shrink-0 cursor-pointer"
               >
-                <button
-                  onClick={() => setTheme('light')}
-                  aria-pressed={theme === 'light'}
-                  title="Light theme"
-                  className={`flex items-center justify-center min-w-[44px] h-10 px-2.5 rounded-full text-[13px] font-bold transition-all cursor-pointer ${
-                    theme === 'light' ? 'bg-white text-blue-700 shadow-sm border border-slate-200' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Sun className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setTheme('dark')}
-                  aria-pressed={theme === 'dark'}
-                  title="Dark theme"
-                  className={`flex items-center justify-center min-w-[44px] h-10 px-2.5 rounded-full text-[13px] font-bold transition-all cursor-pointer ${
-                    theme === 'dark' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Moon className="h-4 w-4" />
-                </button>
-              </div>
+                {theme === 'light' ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
+              </button>
             </div>
           }
         />
@@ -1170,7 +1173,12 @@ export default function App() {
         lineages={initialBatchLineages}
         onClose={() => setPassportQuery(null)}
       />
-      <RoleSwitcher current={currentRole} currentEmail={devEmail} onSelectEmployee={becomeEmployee} />
+      <RoleSwitcher
+        currentEmail={devEmail}
+        open={switcherOpen}
+        onClose={() => setSwitcherOpen(false)}
+        onSelectEmployee={(email, role, name) => { becomeEmployee(email, role, name); setSwitcherOpen(false); }}
+      />
 
     </div>
   );

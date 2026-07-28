@@ -9,12 +9,77 @@
  */
 
 import type { ReactElement, ReactNode } from 'react';
-import { useState } from 'react';
-import { Search, ScanLine } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Search, ScanLine, Globe, Check } from 'lucide-react';
 import { setLang, type Lang } from '../../lib/i18n';
 import { FreshnessBadge } from './primitives';
 
 const LANGS: Lang[] = ['EN', 'KN', 'HI'];
+
+/* ------------------------------------------------------ LanguageSelector */
+
+/**
+ * One compact control instead of three pills. Three permanently-lit options
+ * spent header width on a setting that changes once a year; a globe plus the
+ * current code says the same thing and gives the Trace box back its room.
+ */
+function LanguageSelector({ lang }: { lang: Lang }): ReactElement {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+
+  // Close on an outside tap or Escape — a menu on a tablet has no hover to lose.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e: MouseEvent): void => {
+      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrap} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Language: ${lang}. Change language`}
+        className="inline-flex items-center gap-1.5 h-11 min-w-[48px] px-2.5 rounded-full border border-slate-200 bg-white text-[14px] font-bold text-slate-900 hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+      >
+        <Globe className="w-4 h-4 text-slate-600" aria-hidden="true" />
+        {lang}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-1.5 z-50 w-36 rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-custom)] p-1"
+        >
+          {LANGS.map((l) => (
+            <button
+              key={l}
+              type="button"
+              role="menuitemradio"
+              aria-checked={lang === l}
+              onClick={() => { setLang(l); setOpen(false); }}
+              className={`w-full flex items-center justify-between gap-2 min-h-[48px] px-3 rounded-lg text-[15px] font-semibold text-left
+                ${lang === l ? 'bg-blue-50 text-blue-700' : 'text-slate-900 hover:bg-slate-50'}`}
+            >
+              {l}
+              {lang === l && <Check className="w-4 h-4" aria-hidden="true" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* -------------------------------------------------------- TraceSearchBox */
 
@@ -105,25 +170,9 @@ export function AppHeader({
           <FreshnessBadge updatedAt={updatedAt} />
         </div>
 
-        {/* Language pills — 48 px targets, the plant runs in three languages. */}
-        <div
-          className="hidden sm:flex items-center rounded-full border border-slate-200 overflow-hidden shrink-0"
-          role="group"
-          aria-label="Language"
-        >
-          {LANGS.map((l) => (
-            <button
-              key={l}
-              type="button"
-              onClick={() => setLang(l)}
-              aria-pressed={lang === l}
-              className={`min-w-[48px] h-11 px-3 text-[14px] font-bold transition
-                ${lang === l ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
+        {/* One compact language control — the plant runs in three languages,
+            but the setting is chosen once, not read every glance. */}
+        <LanguageSelector lang={lang} />
 
         {right}
       </div>

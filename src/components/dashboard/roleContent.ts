@@ -8,7 +8,10 @@
  *   • Speak in physical quantities — rolls, kg, tonnes, °C, days — never indices.
  *   • Every KPI and task carries an onOpen. A KPI whose target the role cannot
  *     open is dropped here (see `visibleKpis`) rather than rendered dead.
- *   • Alerts are assembled as what / where / what-to-do, never a bare reading.
+ *   • An alert is a short headline + chips + one action line, never a run-on
+ *     sentence welding three facts together.
+ *   • A task states its count once: the numeral is large and alone, and the
+ *     sentence beside it never repeats the number.
  */
 
 import {
@@ -65,11 +68,35 @@ function rollsAwaitingQa(data: PlantData): number {
   return n;
 }
 
+/** The first few rolls behind that count, so the queue row is concrete. */
+function rollsWaitingPreview(data: PlantData): string[] {
+  const out: string[] = [];
+  for (const lb of data.machineLogbooks) {
+    for (const r of lb.rolls) {
+      if (r.status !== 'pending') continue;
+      out.push(`${r.rollNumber} · ${lb.machineId}`);
+      if (out.length === 3) return out;
+    }
+  }
+  return out;
+}
+
 /** The lower end of a machine's melt range; the simulation only carries the limit. */
 const meltFloor = (limit: number): number => limit - 20;
 
 /**
- * Live machine alerts, phrased as what happened → where → what to do.
+ * Join a sentence to a trailing clause without doubling its full stop — the
+ * source text (a CAPA lock reason, a stop reason) often already ends in one.
+ */
+function sentence(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return '';
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/**
+ * Live machine alerts. The headline carries the single fact; the machine and
+ * the reason travel as chips so the headline stays one readable line.
  * `only` restricts to one operator's machines; empty means the whole plant.
  */
 function machineAlerts(ctx: RoleContext, only: string[]): DashboardAlert[] {
@@ -81,8 +108,8 @@ function machineAlerts(ctx: RoleContext, only: string[]): DashboardAlert[] {
     if (m.status === 'stopped') {
       out.push({
         id: `line-stopped-${m.id}`,
-        what: `Line ${line} is stopped${m.reason ? ` — ${m.reason}` : ''}.`,
-        where: `Machine ${m.id}`,
+        headline: `Line ${line} is stopped`,
+        chips: [`Machine ${m.id}`, ...(m.reason ? [m.reason] : [])],
         todo: 'Tell the maintenance head now and record the stop reason in the log book.',
         tone: 'red',
         critical: true,
@@ -91,8 +118,8 @@ function machineAlerts(ctx: RoleContext, only: string[]): DashboardAlert[] {
     } else if (m.status === 'attention' || m.zoneTemp > m.limit) {
       out.push({
         id: `line-temp-${m.id}`,
-        what: `Line ${line} melt temperature is ${Math.round(m.zoneTemp)} °C, above the ${m.limit} °C limit.`,
-        where: `Machine ${m.id}`,
+        headline: `Line ${line} is ${Math.round(m.zoneTemp)} °C, over the limit`,
+        chips: [`Machine ${m.id}`, `Limit ${m.limit} °C`],
         todo: 'Inform the shift supervisor before winding the next roll.',
         tone: 'amber',
         critical: true,
@@ -184,7 +211,8 @@ function operatorHome(ctx: RoleContext): RoleHomeContent {
       target: 'machine_tasks',
       task: {
         id: 'op-logbook',
-        label: `${unfinished} log ${unfinished === 1 ? 'book' : 'books'} still being filled in — submit before shift end`,
+        label: `log ${unfinished === 1 ? 'book' : 'books'} still being filled in — submit before shift end`,
+        preview: myLogbooks.filter((lb) => lb.status === 'draft').slice(0, 3).map((lb) => `${lb.machineId} · ${lb.date}`),
         count: unfinished,
         icon: ClipboardList,
         tone: 'amber' as const,
@@ -207,7 +235,7 @@ function operatorHome(ctx: RoleContext): RoleHomeContent {
 
   return {
     title: `Your shift on ${lines.length === 1 ? `Machine ${lines[0]?.replace(/^M/, '') ?? ''}` : 'your machines'}`,
-    subtitle: `${ctx.user} · Shift ${ctx.shift} — everything below is yours to do.`,
+    subtitle: 'Everything below is yours to do.',
     alerts: machineAlerts(ctx, lines),
     tasks,
     kpis: visibleKpis(ctx, [
@@ -253,8 +281,8 @@ function qualityHome(ctx: RoleContext): RoleHomeContent {
   if (oldestHold) {
     alerts.push({
       id: `qa-hold-${oldestHold.id}`,
-      what: `Roll ${oldestHold.rollNumber} has been on hold for ${daysSince(oldestHold.date, ctx.now)} days. Reason: ${oldestHold.remarks || 'not recorded'}.`,
-      where: `Lot ${oldestHold.lotNumber}`,
+      headline: `Roll ${oldestHold.rollNumber} has been on hold for ${daysSince(oldestHold.date, ctx.now)} days`,
+      chips: [`Lot ${oldestHold.lotNumber}`, oldestHold.remarks || 'Reason not recorded'],
       todo: 'Decide pass or reject today so the lot can move to packing.',
       tone: 'red',
       critical: true,
@@ -264,14 +292,16 @@ function qualityHome(ctx: RoleContext): RoleHomeContent {
 
   return {
     title: 'Your inspection queue',
-    subtitle: `${ctx.user} · Shift ${ctx.shift} — oldest rolls first.`,
+    subtitle: 'Oldest rolls first.',
     alerts,
     tasks: visibleTasks(ctx, [
       {
         target: 'roll_queue',
         task: {
           id: 'qa-rolls',
-          label: `${waiting} ${waiting === 1 ? 'roll' : 'rolls'} waiting for QA check`,
+          label: `${waiting === 1 ? 'roll' : 'rolls'} waiting for QA check`,
+          zeroLabel: 'No rolls waiting for QA check',
+          preview: rollsWaitingPreview(ctx.data).slice(0, 3),
           count: waiting, icon: ClipboardCheck, tone: waiting > 0 ? 'amber' : 'green',
           onOpen: () => ctx.open('roll_queue'),
         },
@@ -280,7 +310,9 @@ function qualityHome(ctx: RoleContext): RoleHomeContent {
         target: 'holds',
         task: {
           id: 'qa-holds',
-          label: `${holds.length} ${holds.length === 1 ? 'lot' : 'lots'} on hold waiting for your decision`,
+          label: `${holds.length === 1 ? 'lot' : 'lots'} on hold waiting for your decision`,
+          zeroLabel: 'No lots on hold',
+          preview: holds.slice(0, 3).map((h) => `${h.rollNumber} · ${daysSince(h.date, ctx.now)}d`),
           count: holds.length, icon: PauseCircle, tone: holds.length > 0 ? 'red' : 'green',
           onOpen: () => ctx.open('holds'),
         },
@@ -289,7 +321,9 @@ function qualityHome(ctx: RoleContext): RoleHomeContent {
         target: 'receive',
         task: {
           id: 'qa-rm',
-          label: `${rmIn.length} incoming raw-material ${rmIn.length === 1 ? 'lot' : 'lots'} to inspect`,
+          label: `raw-material ${rmIn.length === 1 ? 'grade' : 'grades'} to inspect`,
+          zeroLabel: 'No raw material waiting to be inspected',
+          preview: rmIn.slice(0, 3).map((r) => r.itemName),
           count: rmIn.length, icon: ArrowDownToLine, tone: 'amber',
           onOpen: () => ctx.open('receive'),
         },
@@ -337,8 +371,8 @@ function storeHome(ctx: RoleContext): RoleHomeContent {
 
   const alerts: DashboardAlert[] = heldPallets.length > 0 ? [{
     id: 'store-held',
-    what: `${heldPallets.length} ${heldPallets.length === 1 ? 'pallet is' : 'pallets are'} on quality hold and must not be moved.`,
-    where: heldPallets.map((p) => p.palletNumber).slice(0, 3).join(', '),
+    headline: `${heldPallets.length} ${heldPallets.length === 1 ? 'pallet is' : 'pallets are'} on quality hold`,
+    chips: heldPallets.slice(0, 3).map((p) => p.palletNumber),
     todo: 'Keep them in the hold bay until quality releases them.',
     tone: 'red',
     critical: true,
@@ -347,14 +381,16 @@ function storeHome(ctx: RoleContext): RoleHomeContent {
 
   return {
     title: 'Your store today',
-    subtitle: `${ctx.user} · Shift ${ctx.shift} — lots to issue and pallets to put away.`,
+    subtitle: 'Lots to issue and pallets to put away.',
     alerts,
     tasks: visibleTasks(ctx, [
       {
         target: 'issue_lot',
         task: {
           id: 'store-issue',
-          label: `${toIssue.length} ${toIssue.length === 1 ? 'lot' : 'lots'} to issue to machines`,
+          label: `${toIssue.length === 1 ? 'lot' : 'lots'} to issue to machines`,
+          zeroLabel: 'Nothing waiting to be issued',
+          preview: toIssue.slice(0, 3).map((p) => `${p.machineId} · shift ${p.shift}`),
           count: toIssue.length, icon: Boxes, tone: toIssue.length > 0 ? 'amber' : 'green',
           onOpen: () => ctx.open('issue_lot'),
         },
@@ -363,7 +399,9 @@ function storeHome(ctx: RoleContext): RoleHomeContent {
         target: 'rm_stock',
         task: {
           id: 'store-putaway',
-          label: `${pallets.length} ${pallets.length === 1 ? 'pallet' : 'pallets'} to put away`,
+          label: `${pallets.length === 1 ? 'pallet' : 'pallets'} to put away`,
+          zeroLabel: 'No pallets waiting to be put away',
+          preview: pallets.slice(0, 3).map((r) => r.palletNumber),
           count: pallets.length, icon: PackagePlus, tone: 'amber',
           onOpen: () => ctx.open('rm_stock'),
         },
@@ -418,8 +456,8 @@ function dispatchHome(ctx: RoleContext): RoleHomeContent {
 
   const alerts: DashboardAlert[] = gatePassPending.slice(0, 2).map((d) => ({
     id: `dispatch-gate-${d.id}`,
-    what: `Vehicle ${d.vehicleNumber} is expected today and its gate pass is not ready.`,
-    where: `${d.transporter} · invoice ${d.invoiceNumber}`,
+    headline: `Vehicle ${d.vehicleNumber} has no gate pass yet`,
+    chips: [d.transporter, `Invoice ${d.invoiceNumber}`],
     todo: 'Prepare the gate pass before the vehicle reaches the gate.',
     tone: 'amber',
     critical: false,
@@ -428,14 +466,16 @@ function dispatchHome(ctx: RoleContext): RoleHomeContent {
 
   return {
     title: 'Your dispatches today',
-    subtitle: `${ctx.user} · Shift ${ctx.shift} — vehicles, checklists and gate passes.`,
+    subtitle: 'Vehicles, checklists and gate passes.',
     alerts,
     tasks: visibleTasks(ctx, [
       {
         target: 'ready',
         task: {
           id: 'dispatch-ready',
-          label: `${readyOrders.length} ${readyOrders.length === 1 ? 'order' : 'orders'} packed and ready to load`,
+          label: `${readyOrders.length === 1 ? 'order' : 'orders'} packed and ready to load`,
+          zeroLabel: 'Nothing packed and waiting to load',
+          preview: readyOrders.slice(0, 3).map((o) => `${o.soNumber} · ${customerName(ctx.data, o.customerId)}`),
           count: readyOrders.length, icon: PackageCheck, tone: readyOrders.length > 0 ? 'amber' : 'green',
           onOpen: () => ctx.open('ready'),
         },
@@ -444,7 +484,9 @@ function dispatchHome(ctx: RoleContext): RoleHomeContent {
         target: 'ready',
         task: {
           id: 'dispatch-gate',
-          label: `${gatePassPending.length} gate ${gatePassPending.length === 1 ? 'pass' : 'passes'} still to prepare`,
+          label: `gate ${gatePassPending.length === 1 ? 'pass' : 'passes'} still to prepare`,
+          zeroLabel: 'Every gate pass is ready',
+          preview: gatePassPending.slice(0, 3).map((d) => `${d.vehicleNumber}`),
           count: gatePassPending.length, icon: ClipboardList, tone: gatePassPending.length > 0 ? 'amber' : 'green',
           onOpen: () => ctx.open('ready'),
         },
@@ -453,7 +495,9 @@ function dispatchHome(ctx: RoleContext): RoleHomeContent {
         target: 'dispatch_history',
         task: {
           id: 'dispatch-track',
-          label: `${expected.length} ${expected.length === 1 ? 'vehicle' : 'vehicles'} expected today`,
+          label: `${expected.length === 1 ? 'vehicle' : 'vehicles'} expected today`,
+          zeroLabel: 'No vehicles expected today',
+          preview: expected.slice(0, 3).map((d) => `${d.vehicleNumber} · ${d.transporter}`),
           count: expected.length, icon: Truck, tone: 'green',
           onOpen: () => ctx.open('dispatch_history'),
         },
@@ -505,8 +549,9 @@ function plannerHome(ctx: RoleContext): RoleHomeContent {
       .sort((a, b) => a.rev - b.rev)[0];
     alerts.push({
       id: `planner-locked-${f.id}`,
-      what: `${f.code} Rev ${f.rev} is locked${f.capaId ? ` by ${f.capaId}` : ''}${f.lockReason ? ` — ${f.lockReason}` : ''}.`,
-      where: `Formulation for ${f.product}`,
+      headline: `${f.code} Rev ${f.rev} is locked${f.capaId ? ` by ${f.capaId}` : ''}`,
+      // `sentence()` keeps the seeded lock reason from ending in "..".
+      chips: [f.product, ...(f.lockReason ? [sentence(f.lockReason)] : [])],
       todo: next ? `Use Rev ${next.rev} when planning this product.` : 'Do not plan this product until quality releases a new revision.',
       tone: 'amber',
       critical: false,
@@ -517,8 +562,8 @@ function plannerHome(ctx: RoleContext): RoleHomeContent {
   for (const m of stopped.slice(0, 1)) {
     alerts.push({
       id: `planner-stopped-${m.id}`,
-      what: `Machine ${m.id} is stopped${m.reason ? ` — ${m.reason}` : ''}, so its capacity is not available.`,
-      where: `Machine ${m.id}`,
+      headline: `Machine ${m.id} is stopped, so its capacity is gone`,
+      chips: [...(m.reason ? [m.reason] : [])],
       todo: 'Move its scheduled orders to another line or hold the plan.',
       tone: 'red',
       critical: true,
@@ -528,14 +573,16 @@ function plannerHome(ctx: RoleContext): RoleHomeContent {
 
   return {
     title: 'Orders waiting for a machine',
-    subtitle: `${ctx.user} · Shift ${ctx.shift} — confirmed orders against the capacity you actually have.`,
+    subtitle: 'Confirmed orders against the capacity you actually have.',
     alerts,
     tasks: visibleTasks(ctx, [
       {
         target: 'orders_to_plan',
         task: {
           id: 'plan-unplanned',
-          label: `${unplanned.length} confirmed ${unplanned.length === 1 ? 'order is' : 'orders are'} waiting for planning`,
+          label: `confirmed ${unplanned.length === 1 ? 'order is' : 'orders are'} waiting for planning`,
+          zeroLabel: 'Every confirmed order has a machine',
+          preview: unplanned.slice(0, 3).map((o) => `${o.soNumber} · ${customerName(ctx.data, o.customerId)}`),
           count: unplanned.length, icon: ClipboardList, tone: unplanned.length > 0 ? 'amber' : 'green',
           onOpen: () => ctx.open('orders_to_plan'),
         },
@@ -544,7 +591,9 @@ function plannerHome(ctx: RoleContext): RoleHomeContent {
         target: 'plan_board',
         task: {
           id: 'plan-board',
-          label: `${running} of ${ctx.live.length} lines running — check the board before you commit`,
+          label: `of ${ctx.live.length} lines running — check the board before you commit`,
+          count: running,
+          preview: stopped.slice(0, 3).map((m) => `${m.id} stopped`),
           icon: Factory, tone: stopped.length > 0 ? 'amber' : 'green',
           onOpen: () => ctx.open('plan_board'),
         },
@@ -553,7 +602,8 @@ function plannerHome(ctx: RoleContext): RoleHomeContent {
         target: 'formulations',
         task: {
           id: 'plan-locked',
-          label: `${lockedFormulas.length} ${lockedFormulas.length === 1 ? 'formulation is' : 'formulations are'} locked by a CAPA`,
+          label: `${lockedFormulas.length === 1 ? 'formulation is' : 'formulations are'} locked by a CAPA`,
+          preview: lockedFormulas.slice(0, 3).map((f) => `${f.code} Rev ${f.rev}`),
           count: lockedFormulas.length, icon: Beaker, tone: 'amber' as const,
           onOpen: () => ctx.open('formulations'),
         },
@@ -612,8 +662,8 @@ function salesHome(ctx: RoleContext): RoleHomeContent {
   if (stale && stale.age > 0) {
     alerts.push({
       id: `sales-stale-${stale.inquiry.id}`,
-      what: `Inquiry ${stale.inquiry.inquiryNumber} has been open for ${stale.age} days.`,
-      where: customerName(ctx.data, stale.inquiry.customerId),
+      headline: `Inquiry ${stale.inquiry.inquiryNumber} has been open ${stale.age} days`,
+      chips: [customerName(ctx.data, stale.inquiry.customerId)],
       todo: 'Send the quotation today or tell the customer when it will reach them.',
       tone: 'amber',
       critical: false,
@@ -625,8 +675,8 @@ function salesHome(ctx: RoleContext): RoleHomeContent {
     const clock = responseClock(urgentComplaint.date, urgentComplaint.severity === 'high' ? 3 : 7, ctx.now);
     alerts.push({
       id: `sales-complaint-${urgentComplaint.id}`,
-      what: `Complaint ${urgentComplaint.complaintNumber} is open. ${clock.word}.`,
-      where: customerName(ctx.data, urgentComplaint.customerId),
+      headline: `Complaint ${urgentComplaint.complaintNumber} is still open`,
+      chips: [customerName(ctx.data, urgentComplaint.customerId), clock.word],
       todo: 'Reply to the customer and record what you told them.',
       tone: clock.tone,
       critical: clock.tone === 'red',
@@ -636,14 +686,16 @@ function salesHome(ctx: RoleContext): RoleHomeContent {
 
   return {
     title: 'Your customers today',
-    subtitle: `${ctx.user} · Shift ${ctx.shift} — inquiries, quotations and orders.`,
+    subtitle: 'Inquiries, quotations and orders.',
     alerts,
     tasks: visibleTasks(ctx, [
       {
         target: 'inquiries',
         task: {
           id: 'sales-open',
-          label: `${open.length} open ${open.length === 1 ? 'inquiry' : 'inquiries'} to quote`,
+          label: `open ${open.length === 1 ? 'inquiry' : 'inquiries'} to quote`,
+          zeroLabel: 'No inquiries waiting for a quotation',
+          preview: open.slice(0, 3).map((i) => `${i.inquiryNumber} · ${customerName(ctx.data, i.customerId)}`),
           count: open.length, icon: FileSpreadsheet, tone: open.length > 0 ? 'amber' : 'green',
           onOpen: () => ctx.open('inquiries', 'open'),
         },
@@ -652,7 +704,9 @@ function salesHome(ctx: RoleContext): RoleHomeContent {
         target: 'quotations',
         task: {
           id: 'sales-quoted',
-          label: `${quoted.length} ${quoted.length === 1 ? 'quotation is' : 'quotations are'} awaiting the customer`,
+          label: `${quoted.length === 1 ? 'quotation is' : 'quotations are'} awaiting the customer`,
+          zeroLabel: 'No quotations waiting on a customer',
+          preview: quoted.slice(0, 3).map((i) => `${i.inquiryNumber} · ${customerName(ctx.data, i.customerId)}`),
           count: quoted.length, icon: Send, tone: 'green',
           onOpen: () => ctx.open('quotations'),
         },
@@ -661,7 +715,9 @@ function salesHome(ctx: RoleContext): RoleHomeContent {
         target: 'orders',
         task: {
           id: 'sales-confirm',
-          label: `${awaitingConfirmation.length} ${awaitingConfirmation.length === 1 ? 'order is' : 'orders are'} waiting for planning`,
+          label: `${awaitingConfirmation.length === 1 ? 'order is' : 'orders are'} waiting for planning`,
+          zeroLabel: 'No orders waiting for planning',
+          preview: awaitingConfirmation.slice(0, 3).map((o) => `${o.soNumber} · ${customerName(ctx.data, o.customerId)}`),
           count: awaitingConfirmation.length, icon: ClipboardList, tone: 'green',
           onOpen: () => ctx.open('orders', 'pending'),
         },
@@ -724,8 +780,8 @@ function directorHome(ctx: RoleContext): RoleHomeContent {
   if (breached) {
     alerts.push({
       id: `md-complaint-${breached.c.complaintNumber}`,
-      what: `Complaint ${breached.c.complaintNumber} has passed its response time. ${breached.clock.word}.`,
-      where: customerName(ctx.data, breached.c.customerId),
+      headline: `Complaint ${breached.c.complaintNumber} has passed its response time`,
+      chips: [customerName(ctx.data, breached.c.customerId), breached.clock.word],
       todo: 'Ask sales for the reply that went to the customer.',
       tone: 'red',
       critical: true,
@@ -736,8 +792,8 @@ function directorHome(ctx: RoleContext): RoleHomeContent {
   if (oldestCapa && daysUntil(oldestCapa.dueDate, ctx.now) < 0) {
     alerts.push({
       id: `md-capa-${oldestCapa.id}`,
-      what: `A CAPA is ${-daysUntil(oldestCapa.dueDate, ctx.now)} days overdue.`,
-      where: `${oldestCapa.responsiblePerson} is responsible`,
+      headline: `A CAPA is ${-daysUntil(oldestCapa.dueDate, ctx.now)} days overdue`,
+      chips: [oldestCapa.responsiblePerson, `Due ${oldestCapa.dueDate}`],
       todo: 'Ask for a closing date at the review meeting.',
       tone: 'red',
       critical: false,
@@ -761,14 +817,17 @@ function directorHome(ctx: RoleContext): RoleHomeContent {
 
   return {
     title: 'The plant this month',
-    subtitle: `${ctx.user} — the management-review numbers, live.`,
+    subtitle: 'The management-review numbers, live.',
     alerts,
     tasks: visibleTasks(ctx, [
       {
         target: 'sales_complaints',
         task: {
           id: 'md-complaints',
-          label: `${openComplaints.length} open ${openComplaints.length === 1 ? 'complaint' : 'complaints'} on the response clock`,
+          label: `open ${openComplaints.length === 1 ? 'complaint' : 'complaints'} on the response clock`,
+          zeroLabel: 'No open complaints',
+          preview: openComplaints.slice(0, 3).map((c) =>
+            `${c.complaintNumber} · ${responseClock(c.date, c.severity === 'high' ? 3 : 7, ctx.now).word}`),
           count: openComplaints.length, icon: ShieldAlert,
           tone: openComplaints.length > 0 ? 'amber' : 'green',
           onOpen: () => ctx.open('sales_complaints', 'open'),
@@ -778,7 +837,9 @@ function directorHome(ctx: RoleContext): RoleHomeContent {
         target: 'sales_complaints',
         task: {
           id: 'md-capas',
-          label: `${openCapas.length} open ${openCapas.length === 1 ? 'CAPA' : 'CAPAs'}${overdueCapas.length > 0 ? `, ${overdueCapas.length} overdue` : ''}`,
+          label: `open ${openCapas.length === 1 ? 'CAPA' : 'CAPAs'}${overdueCapas.length > 0 ? `, ${overdueCapas.length} overdue` : ''}`,
+          zeroLabel: 'No open CAPAs',
+          preview: openCapas.slice(0, 3).map((c) => `${c.responsiblePerson} · due ${c.dueDate}`),
           count: openCapas.length, icon: ClipboardCheck,
           tone: overdueCapas.length > 0 ? 'red' : 'amber',
           onOpen: () => ctx.open('sales_complaints', 'capa_open'),
@@ -840,8 +901,8 @@ function maintenanceHome(ctx: RoleContext): RoleHomeContent {
 
   const alerts: DashboardAlert[] = stopped.map((m) => ({
     id: `maint-stopped-${m.id}`,
-    what: `Machine ${m.id} is stopped${m.reason ? ` — ${m.reason}` : ''}.`,
-    where: `Machine ${m.id}`,
+    headline: `Machine ${m.id} is stopped`,
+    chips: [...(m.reason ? [m.reason] : [])],
     todo: 'Attend the machine and close the breakdown when it runs again.',
     tone: 'red' as const,
     critical: true,
@@ -850,14 +911,16 @@ function maintenanceHome(ctx: RoleContext): RoleHomeContent {
 
   return {
     title: 'Your machines today',
-    subtitle: `${ctx.user} · Shift ${ctx.shift} — breakdowns first, then the schedule.`,
+    subtitle: 'Breakdowns first, then the schedule.',
     alerts,
     tasks: visibleTasks(ctx, [
       {
         target: 'preventive',
         task: {
           id: 'maint-overdue',
-          label: `${overdue.length} preventive ${overdue.length === 1 ? 'job is' : 'jobs are'} overdue`,
+          label: `preventive ${overdue.length === 1 ? 'job is' : 'jobs are'} overdue`,
+          zeroLabel: 'No preventive jobs overdue',
+          preview: overdue.slice(0, 3).map((t) => `${t.machineId} · ${t.type}`),
           count: overdue.length, icon: Wrench, tone: overdue.length > 0 ? 'red' : 'green',
           onOpen: () => ctx.open('preventive'),
         },
@@ -866,7 +929,9 @@ function maintenanceHome(ctx: RoleContext): RoleHomeContent {
         target: 'preventive',
         task: {
           id: 'maint-scheduled',
-          label: `${scheduled.length} scheduled ${scheduled.length === 1 ? 'job' : 'jobs'} coming up`,
+          label: `scheduled ${scheduled.length === 1 ? 'job' : 'jobs'} coming up`,
+          zeroLabel: 'Nothing on the preventive schedule',
+          preview: scheduled.slice(0, 3).map((t) => `${t.machineId} · ${t.dueDate}`),
           count: scheduled.length, icon: CalendarClock, tone: 'green',
           onOpen: () => ctx.open('preventive'),
         },
@@ -910,7 +975,7 @@ function wholePlantHome(ctx: RoleContext): RoleHomeContent {
   return {
     ...director,
     title: 'The whole plant',
-    subtitle: `${ctx.user} — every desk's work, in one place.`,
+    subtitle: "Every desk's work, in one place.",
     alerts: [...director.alerts, ...planner.alerts].slice(0, 5),
     tasks: [...director.tasks, ...planner.tasks],
     lineIds: ctx.live.map((m) => m.id),

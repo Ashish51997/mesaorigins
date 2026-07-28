@@ -4,13 +4,16 @@
  *
  * These assert the rules that are easy to break by accident later: seven
  * distinct homes from one template, no dead click targets, no terse enum
- * leaking into a status, and the what/where/what-to-do shape of an alert.
+ * leaking into a status, the headline/chips/action shape of an alert, and a
+ * queue that states its count exactly once.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ShieldAlert } from 'lucide-react';
 import { buildRoleHome, type RoleContext } from '../dashboard/roleContent';
+import type { DashboardAlert, DashboardTask } from '../dashboard/model';
 import { EMPTY_PLANT, type PlantData } from '../dashboard/plantData';
 import type { LiveMachine } from '../../lib/simulation';
 import { RoleHome } from '../dashboard/RoleHome';
@@ -125,14 +128,35 @@ describe('Layer 1 — one template, seven homes', () => {
     expect(open.kpis.length).toBeGreaterThan(0);
   });
 
-  it('phrases every alert as what happened, where, and what to do', () => {
+  it('gives every alert a short headline, its chips, and an action line', () => {
     for (const role of ROLES) {
       for (const a of buildRoleHome(ctxFor(role)).alerts) {
-        expect(a.what.length).toBeGreaterThan(0);
-        expect(a.where.length).toBeGreaterThan(0);
-        // "what to do" must be an instruction, not a restatement.
+        expect(a.headline.length).toBeGreaterThan(0);
+        // The headline is one fact, not three welded together: no trailing
+        // full stop, and short enough to sit on one line of a 72 px row.
+        expect(a.headline.trim()).not.toMatch(/\.$/);
+        expect(a.headline.length).toBeLessThanOrEqual(64);
+        // Secondary facts live in chips instead of the headline.
+        expect(Array.isArray(a.chips)).toBe(true);
+        // The action is an instruction, not a restatement.
         expect(a.todo.length).toBeGreaterThan(0);
-        expect(a.what.trim().endsWith('.')).toBe(true);
+      }
+    }
+  });
+
+  it('never doubles a full stop when a source sentence already ends in one', () => {
+    // The seeded RF03 lock reason ends in "." — appending another gave "..".
+    const planner = buildRoleHome(ctxFor('Production Planner'));
+    for (const a of planner.alerts) {
+      expect(`${a.headline} ${a.chips.join(' ')} ${a.todo}`).not.toMatch(/\.\./);
+    }
+  });
+
+  it('states a queue count once — the sentence never repeats the numeral', () => {
+    for (const role of ROLES) {
+      for (const t of buildRoleHome(ctxFor(role)).tasks) {
+        if (typeof t.count !== 'number') continue;
+        expect(t.label, `"${t.label}" repeats its count`).not.toMatch(new RegExp(`^\\s*${t.count}\\b`));
       }
     }
   });
@@ -199,35 +223,117 @@ describe('Status vocabulary', () => {
 });
 
 describe('Alert band', () => {
-  it('shows at most three alerts and hides the rest behind "more"', async () => {
-    const many = Array.from({ length: 5 }, (_, i) => ({
-      id: `a${i}`, what: `Thing ${i} happened.`, where: 'Line 1',
-      todo: 'Tell the supervisor.', tone: 'amber' as const, critical: false,
-    }));
-    const content = { ...buildRoleHome(ctxFor('Operator')), alerts: many };
-
-    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
-
-    expect(screen.getByText('Thing 0 happened.', { exact: false })).toBeTruthy();
-    expect(screen.queryByText('Thing 4 happened.', { exact: false })).toBeNull();
-
-    await userEvent.click(screen.getByRole('button', { name: /2 more alerts/i }));
-    expect(screen.getByText('Thing 4 happened.', { exact: false })).toBeTruthy();
+  const alert = (i: number, extra: Partial<DashboardAlert> = {}): DashboardAlert => ({
+    id: `a${i}`,
+    headline: `Thing ${i} needs a look`,
+    chips: ['Line 1'],
+    todo: 'Tell the supervisor.',
+    tone: 'amber',
+    critical: false,
+    ...extra,
   });
 
-  it('records name and time when a critical alert is acknowledged', async () => {
+  it('shows at most three alerts and hides the rest behind "more"', async () => {
     const content = {
       ...buildRoleHome(ctxFor('Operator')),
-      alerts: [{
-        id: 'crit', what: 'Line 2 melt temperature is 248 °C, above the 240 °C limit.',
-        where: 'Machine M02', todo: 'Inform the shift supervisor.', tone: 'red' as const, critical: true,
-      }],
+      alerts: Array.from({ length: 5 }, (_, i) => alert(i)),
     };
 
     render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
-    await userEvent.click(screen.getByRole('button', { name: /tap to acknowledge/i }));
+
+    expect(screen.getByText('Thing 0 needs a look')).toBeTruthy();
+    expect(screen.queryByText('Thing 4 needs a look')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: /2 more alerts/i }));
+    expect(screen.getByText('Thing 4 needs a look')).toBeTruthy();
+  });
+
+  it('carries the severity as a word beside the colour', () => {
+    const content = {
+      ...buildRoleHome(ctxFor('Operator')),
+      alerts: [alert(0, { tone: 'red' }), alert(1, { tone: 'amber' })],
+    };
+    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
+    expect(screen.getByText('Urgent')).toBeTruthy();
+    expect(screen.getByText('Attention')).toBeTruthy();
+  });
+
+  it('renders the secondary facts as chips, not inside the headline', () => {
+    const content = {
+      ...buildRoleHome(ctxFor('Operator')),
+      alerts: [alert(0, { chips: ['Machine M02', 'Limit 180 °C'] })],
+    };
+    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
+    expect(screen.getByText('Machine M02')).toBeTruthy();
+    expect(screen.getByText('Limit 180 °C')).toBeTruthy();
+  });
+
+  it('offers acknowledge only after the alert has been opened', async () => {
+    const content = {
+      ...buildRoleHome(ctxFor('Operator')),
+      alerts: [alert(0, { tone: 'red', critical: true, onOpen: vi.fn() })],
+    };
+
+    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
+
+    // Nothing to acknowledge until it has been read.
+    expect(screen.queryByRole('button', { name: /acknowledge/i })).toBeNull();
+    // …and no full-width bar anywhere.
+    expect(screen.queryByRole('button', { name: /tap to acknowledge/i })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: /^open$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /acknowledge this/i }));
 
     expect(screen.getByText(/Acknowledged by Ganesh Pai at/i)).toBeTruthy();
+  });
+});
+
+describe('Work queue', () => {
+  const task = (extra: Partial<DashboardTask> = {}): DashboardTask => ({
+    id: 't1',
+    label: 'open complaints on the response clock',
+    count: 2,
+    icon: ShieldAlert,
+    tone: 'amber',
+    onOpen: vi.fn(),
+    ...extra,
+  });
+
+  it('renders the count once, large and alone', () => {
+    // Strip the other bands so the only "2" on screen is the queue's own count.
+    const content = {
+      ...buildRoleHome(ctxFor('Operator')),
+      tasks: [task()], alerts: [], kpis: [], shiftFigures: [],
+    };
+    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
+
+    const queue = screen.getByRole('region', { name: /your work/i });
+    // The numeral is its own element; the sentence beside it carries no digit.
+    expect(within(queue).getByText('2')).toBeTruthy();
+    expect(within(queue).getByText('open complaints on the response clock')).toBeTruthy();
+  });
+
+  it('previews the items behind the count so the row earns its width', () => {
+    const content = {
+      ...buildRoleHome(ctxFor('Operator')),
+      tasks: [task({ preview: ['C-104 · 2 days left', 'C-108 · 5 days left'] })],
+      alerts: [],
+    };
+    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
+    expect(screen.getByText('C-104 · 2 days left')).toBeTruthy();
+    expect(screen.getByText('C-108 · 5 days left')).toBeTruthy();
+  });
+
+  it('de-emphasises a settled queue to a single quiet line', () => {
+    const content = {
+      ...buildRoleHome(ctxFor('Operator')),
+      tasks: [task({ count: 0, zeroLabel: 'No open CAPAs' })],
+      alerts: [],
+    };
+    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
+    expect(screen.getByRole('button', { name: /No open CAPAs/i })).toBeTruthy();
+    // The full-prominence sentence is not rendered for a settled queue.
+    expect(screen.queryByText('open complaints on the response clock')).toBeNull();
   });
 });
 

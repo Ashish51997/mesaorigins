@@ -14,14 +14,32 @@ import { useSyncExternalStore } from 'react';
 import type { AlertAck } from './model';
 
 let acks: Record<string, AlertAck> = {};
+/**
+ * Which alerts have been opened. Acknowledging is only offered once an alert
+ * has been read, so "acknowledged" means someone looked — not that a full-width
+ * bar happened to be under their thumb.
+ */
+let opened: Record<string, true> = {};
 
 const subs = new Set<() => void>();
 const emit = (): void => { subs.forEach((s) => s()); };
 const subscribe = (cb: () => void): (() => void) => { subs.add(cb); return () => { subs.delete(cb); }; };
 const snap = (): Record<string, AlertAck> => acks;
+const snapOpened = (): Record<string, true> => opened;
 
 export function useAcks(): Record<string, AlertAck> {
   return useSyncExternalStore(subscribe, snap, snap);
+}
+
+export function useOpenedAlerts(): Record<string, true> {
+  return useSyncExternalStore(subscribe, snapOpened, snapOpened);
+}
+
+/** Record that the alert's screen was opened, which unlocks acknowledging it. */
+export function markAlertOpened(alertId: string): void {
+  if (opened[alertId]) return;
+  opened = { ...opened, [alertId]: true };
+  emit();
 }
 
 /** Record an acknowledgement against the person who tapped it. */
@@ -34,5 +52,6 @@ export function acknowledgeAlert(alertId: string, by: string): void {
 /** Test seam — clears the session record. */
 export function resetAcks(): void {
   acks = {};
+  opened = {};
   emit();
 }

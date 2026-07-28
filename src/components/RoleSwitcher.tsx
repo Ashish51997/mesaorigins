@@ -1,29 +1,28 @@
 /**
- * RoleSwitcher.tsx — floating drawer to sign in AS any employee in the tenant.
+ * RoleSwitcher.tsx — drawer to sign in AS any employee in the tenant.
  * The list comes from the API (/directory); picking a person drives the dev
  * identity by their email, so the server resolves their real role + access.
+ *
+ * The floating pill that used to open this is gone: it sat over the bottom-right
+ * of every screen restating the role the sidebar user card already shows. The
+ * drawer is now opened from that card, which is where a person looks to check
+ * who they are signed in as.
  */
-import { useState } from 'react';
-import { Users2, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useDirectory } from '../lib/queries/admin';
 import ResponsiveOverlay from './ui/ResponsiveOverlay';
 
-export function RoleSwitcher({ current, currentEmail, onSelectEmployee }: {
-  current: string; currentEmail: string; onSelectEmployee: (email: string, role: string, name: string) => void;
+export function RoleSwitcher({ currentEmail, open, onClose, onSelectEmployee }: {
+  currentEmail: string;
+  open: boolean;
+  onClose: () => void;
+  onSelectEmployee: (email: string, role: string, name: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const dir = (useDirectory(open).data ?? []).slice().sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name));
+  const setOpen = (v: boolean): void => { if (!v) onClose(); };
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 md:bottom-5 md:right-5 z-50 inline-flex items-center gap-2 px-4 h-12 rounded-full bg-indigo-600 text-white font-bold text-xs shadow-lg hover:bg-indigo-700 no-print"
-        title="Switch employee"
-      >
-        <Users2 className="w-4 h-4" /> {current}
-      </button>
-
-      <ResponsiveOverlay open={open} onClose={() => setOpen(false)} title="Sign in as…" variant="drawer-right" panelClassName="!max-w-[360px]">
+      <ResponsiveOverlay open={open} onClose={onClose} title="Sign in as…" variant="drawer-right" panelClassName="!max-w-[360px]">
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5 min-h-0">
           {dir.length === 0 ? <div className="text-center text-[12px] text-slate-400 py-6">Loading team…</div> : dir.map((e) => {
             const activeE = e.email.toLowerCase() === (currentEmail || '').toLowerCase();

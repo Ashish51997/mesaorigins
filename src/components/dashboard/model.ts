@@ -11,26 +11,36 @@ import type { LucideIcon } from 'lucide-react';
 import type { StatusView, Tone } from './statusLanguage';
 
 /**
- * An alert always reads what happened → where → what to do. The three fields
- * are separate so the template can enforce that order and no caller can write
- * a bare "Temp high" alert.
+ * An alert still reads what happened → where → what to do, but the three parts
+ * are carried in shapes a compact row can lay out:
+ *
+ *   headline — the single most important fact, bold, one line
+ *   chips    — the secondary facts (customer, machine, deadline, product code)
+ *   todo     — the recommended action, one grey line
+ *
+ * Splitting them this way is what stops a caller writing the run-on sentence
+ * that combined all three facts into an unreadable headline.
  */
 export interface DashboardAlert {
   id: string;
-  /** What happened: "Melt temperature is 248 °C, above the 240 °C limit." */
-  what: string;
-  /** Where: "Line 2". */
-  where: string;
-  /** What to do: "Inform the shift supervisor." */
+  /** One short fact: "Complaint C-104 is 5 days overdue". No trailing clause. */
+  headline: string;
+  /** Secondary facts, rendered as small chips after the headline. */
+  chips: string[];
+  /** What to do: "Ask sales for the reply that went to the customer." */
   todo: string;
   tone: Tone;
-  /** Critical alerts must be acknowledged; the acknowledgement records name + time. */
+  /**
+   * Critical alerts want an acknowledgement, but it is offered only after the
+   * alert has been opened — acknowledging something you have not read is a
+   * habit the old full-width bar actively taught.
+   */
   critical: boolean;
-  /** Optional deep link to the screen that resolves the alert. */
+  /** Deep link to the screen that resolves the alert. */
   onOpen?: () => void;
 }
 
-/** An acknowledgement, kept per session so the strip can show who signed it off. */
+/** An acknowledgement, kept per session so the row can show who signed it off. */
 export interface AlertAck {
   alertId: string;
   by: string;
@@ -43,15 +53,31 @@ export interface AlertAck {
  */
 export interface DashboardTask {
   id: string;
-  /** "3 rolls waiting for QA check" */
+  /**
+   * The sentence WITHOUT its count — "rolls waiting for QA check", not
+   * "3 rolls waiting for QA check". The numeral is rendered once, large, on the
+   * left; repeating it in the sentence made every row read twice.
+   */
   label: string;
-  /** Optional count rendered large on the left. */
+  /** The figure itself. Rendered large and alone. */
   count?: number;
+  /**
+   * A few of the actual items behind the count, shown inline on the right so
+   * the row earns its width: order numbers with customers, complaint ids with
+   * days remaining. Two or three is enough to make the count concrete.
+   */
+  preview?: string[];
   icon: LucideIcon;
   tone: Tone;
   onOpen: () => void;
   /** Shown when the row is not actionable, so the control is never dead. */
   disabledReason?: string;
+  /**
+   * What to say when the count is zero — "No open CAPAs". A settled queue is
+   * good news and gets one quiet green line, not a full-height row competing
+   * with the work that still needs doing.
+   */
+  zeroLabel?: string;
 }
 
 /**

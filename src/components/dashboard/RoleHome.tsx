@@ -19,7 +19,7 @@ import { LineStatusCard } from './LineStatusCard';
 import {
   AlertCard, TaskQueueItem, KpiCard, SectionHeading, DashboardEmptyState, SkeletonHome,
 } from './primitives';
-import { useAcks, acknowledgeAlert } from './ackStore';
+import { useAcks, useOpenedAlerts, acknowledgeAlert, markAlertOpened } from './ackStore';
 
 /** Only three alerts are ever visible; the rest sit behind "more". */
 const VISIBLE_ALERTS = 3;
@@ -33,6 +33,7 @@ export function RoleHome({ content, lines, currentUser, loading = false }: {
 }): ReactElement {
   const [showAllAlerts, setShowAllAlerts] = useState(false);
   const acks = useAcks();
+  const openedAlerts = useOpenedAlerts();
 
   if (loading) return <SkeletonHome />;
 
@@ -45,57 +46,70 @@ export function RoleHome({ content, lines, currentUser, loading = false }: {
   const Primary = content.primary;
 
   return (
-    <div className="space-y-6 pb-24 lg:pb-6">
+    // Capped so a headline and its button never sit at opposite edges of a
+    // 2500 px monitor. The two-zone split below does the rest.
+    <div className="space-y-6 pb-24 lg:pb-6 max-w-[1700px]">
       {/* ---------------------------------------------------------- title */}
       <div>
         <h2 className="font-display text-[24px] leading-tight font-bold text-slate-900">{content.title}</h2>
         <p className="text-[15px] text-slate-600 mt-0.5">{content.subtitle}</p>
       </div>
 
-      {/* ---------------------------------------------------- alert band */}
-      {content.alerts.length > 0 && (
-        <section aria-label="Alerts">
-          <SectionHeading icon={AlertTriangle}>
-            Needs your attention
-          </SectionHeading>
-          <div className="space-y-2.5">
-            {visibleAlerts.map((a) => {
-              const ack = acks[a.id];
-              return (
-                <AlertCard
-                  key={a.id}
-                  alert={a}
-                  acknowledgedBy={ack?.by}
-                  acknowledgedAt={ack?.at}
-                  onAcknowledge={(id) => acknowledgeAlert(id, currentUser)}
-                />
-              );
-            })}
-          </div>
-          {hiddenCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowAllAlerts((v) => !v)}
-              className="mt-2.5 w-full min-h-[48px] rounded-xl border border-slate-200 bg-white text-[15px] font-semibold text-slate-900 hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
-            >
-              {showAllAlerts
-                ? 'Show fewer alerts'
-                : `${hiddenCount} more ${hiddenCount === 1 ? 'alert' : 'alerts'}`}
-              <ChevronDown className={`inline-block w-4 h-4 ml-1.5 transition-transform ${showAllAlerts ? 'rotate-180' : ''}`} aria-hidden="true" />
-            </button>
-          )}
-        </section>
-      )}
+      {/* ------------------------------------------------- the two zones --
+          >= 1200 px: attention on the left (~60 %), work on the right (~40 %),
+          so the whole of Today is above the fold. Below that — the 10-inch
+          tablet baseline — they stack and both run full width. */}
+      <div className="grid grid-cols-1 min-[1200px]:grid-cols-[minmax(0,6fr)_minmax(0,4fr)] gap-5 items-start">
+        {/* -------------------------------------------------- alert band */}
+        {content.alerts.length > 0 && (
+          <section aria-label="Alerts">
+            <SectionHeading icon={AlertTriangle}>
+              Needs your attention
+            </SectionHeading>
+            <div className="space-y-2">
+              {visibleAlerts.map((a) => {
+                const ack = acks[a.id];
+                return (
+                  <AlertCard
+                    key={a.id}
+                    alert={a}
+                    acknowledgedBy={ack?.by}
+                    acknowledgedAt={ack?.at}
+                    opened={Boolean(openedAlerts[a.id])}
+                    onOpen={markAlertOpened}
+                    onAcknowledge={(id) => acknowledgeAlert(id, currentUser)}
+                  />
+                );
+              })}
+            </div>
+            {hiddenCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAllAlerts((v) => !v)}
+                className="mt-2 w-full min-h-[48px] rounded-xl border border-slate-200 bg-white text-[15px] font-semibold text-slate-900 hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              >
+                {showAllAlerts
+                  ? 'Show fewer alerts'
+                  : `${hiddenCount} more ${hiddenCount === 1 ? 'alert' : 'alerts'}`}
+                <ChevronDown className={`inline-block w-4 h-4 ml-1.5 transition-transform ${showAllAlerts ? 'rotate-180' : ''}`} aria-hidden="true" />
+              </button>
+            )}
+          </section>
+        )}
 
-      {/* ---------------------------------------------------- task queue */}
-      {content.tasks.length > 0 && (
-        <section aria-label="Your work">
-          <SectionHeading icon={ListChecks}>Your work now</SectionHeading>
-          <div className="space-y-2">
-            {content.tasks.map((t) => <TaskQueueItem key={t.id} task={t} />)}
-          </div>
-        </section>
-      )}
+        {/* -------------------------------------------------- task queue --
+            Work leads, so this stays first in the DOM order on narrow screens
+            where the grid collapses. On very wide screens the right zone is
+            itself wide enough for two columns. */}
+        {content.tasks.length > 0 && (
+          <section aria-label="Your work" className="min-[1200px]:order-none">
+            <SectionHeading icon={ListChecks}>Your work now</SectionHeading>
+            <div className="grid grid-cols-1 min-[1800px]:grid-cols-2 gap-2">
+              {content.tasks.map((t) => <TaskQueueItem key={t.id} task={t} />)}
+            </div>
+          </section>
+        )}
+      </div>
 
       {/* ------------------------------------------------ primary action */}
       {Primary && (

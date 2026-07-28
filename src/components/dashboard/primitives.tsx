@@ -16,7 +16,10 @@
 
 import type { ReactElement, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { ChevronRight, Lock, RefreshCw, WifiOff, Inbox, type LucideIcon } from 'lucide-react';
+import {
+  ChevronRight, Lock, RefreshCw, WifiOff, Inbox, CheckCircle2, AlertTriangle, OctagonAlert,
+  type LucideIcon,
+} from 'lucide-react';
 import type { StatusView, Tone } from './statusLanguage';
 import type { DashboardAlert, DashboardTask, KpiSpec } from './model';
 import { formatAgo } from '../../lib/simulation';
@@ -156,60 +159,104 @@ export function KpiCard({ spec }: { spec: KpiSpec }): ReactElement {
 
 /* ------------------------------------------------------------- AlertCard */
 
+/** The word that travels with the severity colour, so colour never stands alone. */
+const SEVERITY_WORD: Record<Tone, string> = { red: 'Urgent', amber: 'Attention', green: 'Normal' };
+
+/** Left-edge accent. The card itself stays white — the pastel fill is gone. */
+const ACCENT_BORDER: Record<Tone, string> = {
+  green: 'border-l-[var(--pass-base)]',
+  amber: 'border-l-[var(--hold-base)]',
+  red: 'border-l-[var(--fail-base)]',
+};
+
+const SEVERITY_ICON: Record<Tone, LucideIcon> = {
+  green: CheckCircle2,
+  amber: AlertTriangle,
+  red: OctagonAlert,
+};
+
 /**
- * One alert, in the mandated order: what happened → where → what to do.
- * The three parts are separate fields on the model, so this component decides
- * the order and no caller can collapse it into a bare "Temp high".
+ * One alert as a compact row (~72 px), white with a 4 px severity accent.
  *
- * Critical alerts carry a tap-to-acknowledge that records name + time.
+ * Reading order is fixed by the component, left to right: severity icon →
+ * headline (the one fact that matters) → chips (the secondary facts) → the
+ * grey action line → a single Open button. Every severity uses this same
+ * anatomy; only the icon, the accent and the severity word differ, so nothing
+ * about the layout has to be re-learnt when a row turns red.
+ *
+ * Acknowledging appears only after the alert has been opened, as a quiet text
+ * link. The old full-width "Tap to acknowledge" bar was the biggest target on
+ * the card and taught people to clear alerts without reading them.
  */
-export function AlertCard({ alert, acknowledgedBy, acknowledgedAt, onAcknowledge }: {
+export function AlertCard({ alert, acknowledgedBy, acknowledgedAt, opened, onOpen, onAcknowledge }: {
   alert: DashboardAlert;
   acknowledgedBy?: string | undefined;
   acknowledgedAt?: number | undefined;
+  opened: boolean;
+  onOpen: (id: string) => void;
   onAcknowledge: (id: string) => void;
 }): ReactElement {
   const acked = Boolean(acknowledgedBy);
+  const Icon = SEVERITY_ICON[alert.tone];
   const time = acknowledgedAt
     ? new Date(acknowledgedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
     : '';
 
   return (
-    <div className={`rounded-xl border p-4 ${toneClass(alert.tone)}`}>
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          {/* what happened → where */}
-          <p className="text-[16px] font-semibold leading-snug">
-            {alert.what} <span className="font-normal">({alert.where})</span>
-          </p>
-          {/* what to do */}
-          <p className="mt-1 text-[15px] leading-snug opacity-95">{alert.todo}</p>
+    <div
+      className={`flex items-center gap-3 min-h-[72px] px-3 py-2.5 bg-white rounded-xl
+        border border-slate-200 border-l-4 ${ACCENT_BORDER[alert.tone]}`}
+    >
+      {/* Severity: icon + word, never colour on its own. */}
+      <span className={`flex flex-col items-center justify-center shrink-0 w-12 ${toneInk(alert.tone)}`}>
+        <Icon className="w-6 h-6" aria-hidden="true" />
+        <span className="mt-0.5 text-[11px] font-bold uppercase tracking-wide">
+          {SEVERITY_WORD[alert.tone]}
+        </span>
+      </span>
 
-          {acked && (
-            <p className="mt-2 text-[13px] font-semibold">
-              Acknowledged by {acknowledgedBy} at {time}
-            </p>
-          )}
-        </div>
+      <span className="min-w-0 flex-1">
+        {/* One fact, bold. The rest is chips. */}
+        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-[16px] font-bold text-slate-900 leading-snug">{alert.headline}</span>
+          {alert.chips.map((c) => (
+            <span
+              key={c}
+              className="inline-flex items-center h-6 px-2 rounded-md bg-slate-100 border border-slate-200 text-[12px] font-medium text-slate-700 whitespace-nowrap"
+            >
+              {c}
+            </span>
+          ))}
+        </span>
 
-        {alert.onOpen && (
+        {/* The recommended action, one grey line. */}
+        <span className="mt-0.5 block text-[14px] text-slate-600 leading-snug">{alert.todo}</span>
+
+        {/* Acknowledging is unlocked by opening, and stays quiet either way. */}
+        {acked ? (
+          <span className={`mt-1 inline-flex items-center gap-1 text-[13px] font-semibold ${toneInk('green')}`}>
+            <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+            Acknowledged by {acknowledgedBy} at {time}
+          </span>
+        ) : alert.critical && opened ? (
           <button
             type="button"
-            onClick={alert.onOpen}
-            className="shrink-0 min-h-[48px] min-w-[48px] px-3 rounded-lg bg-white/70 border border-current/20 text-[14px] font-bold hover:bg-white focus:outline-none focus:ring-2 focus:ring-current"
+            onClick={() => onAcknowledge(alert.id)}
+            className="mt-1 text-[13px] font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 rounded"
           >
-            Open
+            Acknowledge this
           </button>
-        )}
-      </div>
+        ) : null}
+      </span>
 
-      {alert.critical && !acked && (
+      {/* One primary action, right-aligned. */}
+      {alert.onOpen && (
         <button
           type="button"
-          onClick={() => onAcknowledge(alert.id)}
-          className="mt-3 w-full min-h-[48px] rounded-lg bg-white border-2 border-current text-[15px] font-bold hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-current"
+          onClick={() => { onOpen(alert.id); alert.onOpen?.(); }}
+          className="shrink-0 min-h-[48px] min-w-[64px] px-4 rounded-lg bg-blue-600 text-white text-[15px] font-bold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
         >
-          Tap to acknowledge
+          Open
         </button>
       )}
     </div>
@@ -219,20 +266,44 @@ export function AlertCard({ alert, acknowledgedBy, acknowledgedAt, onAcknowledge
 /* --------------------------------------------------------- TaskQueueItem */
 
 /**
- * One line of work, verb-phrased, one tap from the screen that resolves it.
- * The whole row is the target and it is >= 56 px tall — this is used with
- * gloved hands on a tablet at arm's length.
+ * A settled queue. Good news earns one quiet green line, not a full row
+ * competing for attention with the work that still needs doing.
+ */
+function SettledRow({ label, onOpen }: { label: string; onOpen: () => void }): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`w-full flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-left text-[14px] font-medium
+        ${toneInk('green')} hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600`}
+    >
+      <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+      {label}
+    </button>
+  );
+}
+
+/**
+ * One line of work: the count once and large, the sentence that names it, and
+ * a few of the actual items so the row earns the width it occupies. The whole
+ * row is the target and it is >= 56 px tall — gloved hands, tablet, arm's length.
  */
 export function TaskQueueItem({ task }: { task: DashboardTask }): ReactElement {
   const Icon = task.icon;
   const blocked = Boolean(task.disabledReason);
+  const settled = task.count === 0 && Boolean(task.zeroLabel);
+
+  if (settled && !blocked) {
+    return <SettledRow label={task.zeroLabel ?? ''} onOpen={task.onOpen} />;
+  }
+
   return (
     <button
       type="button"
       onClick={task.onOpen}
       disabled={blocked}
       title={task.disabledReason ?? task.label}
-      className={`w-full flex items-center gap-3 min-h-[56px] px-3 py-2.5 rounded-xl border bg-white text-left transition
+      className={`w-full flex items-start gap-3 min-h-[56px] px-3 py-2.5 rounded-xl border bg-white text-left transition
         ${blocked
           ? 'border-slate-200 cursor-not-allowed'
           : 'border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-600'}`}
@@ -241,14 +312,30 @@ export function TaskQueueItem({ task }: { task: DashboardTask }): ReactElement {
         <Icon className="w-5 h-5" aria-hidden="true" />
       </span>
 
+      {/* The numeral stands alone; the sentence beside it never repeats it. */}
       {typeof task.count === 'number' && (
-        <span className="font-display text-[26px] leading-none font-bold data-value tabular-nums w-10 text-right shrink-0">
+        <span className="font-display text-[26px] leading-none font-bold data-value tabular-nums min-w-[2ch] text-right shrink-0 pt-0.5">
           {task.count}
         </span>
       )}
 
       <span className="min-w-0 flex-1">
         <span className="block text-[16px] font-medium text-slate-900 leading-snug">{task.label}</span>
+
+        {/* The items behind the count, so it is concrete rather than abstract. */}
+        {task.preview && task.preview.length > 0 && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            {task.preview.map((p) => (
+              <span
+                key={p}
+                className="inline-flex items-center h-6 px-2 rounded-md bg-slate-50 border border-slate-200 font-mono text-[12px] text-slate-700 whitespace-nowrap"
+              >
+                {p}
+              </span>
+            ))}
+          </span>
+        )}
+
         {blocked && (
           <span className="mt-0.5 flex items-center gap-1 text-[13px] text-slate-600">
             <Lock className="w-3 h-3 shrink-0" aria-hidden="true" />
@@ -257,7 +344,7 @@ export function TaskQueueItem({ task }: { task: DashboardTask }): ReactElement {
         )}
       </span>
 
-      {!blocked && <ChevronRight className="w-5 h-5 shrink-0 text-slate-600" aria-hidden="true" />}
+      {!blocked && <ChevronRight className="w-5 h-5 shrink-0 text-slate-600 mt-2.5" aria-hidden="true" />}
     </button>
   );
 }
