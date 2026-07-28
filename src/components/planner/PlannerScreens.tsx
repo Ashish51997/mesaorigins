@@ -18,6 +18,7 @@ import { pushToast, pushNudge } from '../Notify';
 import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
 import { TraceLink } from '../TraceLink';
+import { DataTable } from '../DataTable';
 import { ApiError } from '../../lib/apiClient';
 import { useMachines } from '../../lib/queries/maintenance';
 import { useOrdersToPlan, usePlans, useOperators, useSchedulePlan, useReleasePlan, type ApiPlanOrder } from '../../lib/queries/planning';
@@ -101,18 +102,24 @@ export function OrdersToPlan(p: PlannerData) {
   const orders = ordersQ.data ?? [];
   return (
     <div className="space-y-3">
-      {ordersQ.isLoading ? <div className="text-[12px] text-slate-400 py-6 text-center">Loading…</div> : orders.length === 0 ? (
-        <EmptyState title="Nothing waiting to be planned." hint="Confirmed orders from sales appear here with their required date and priority." />
-      ) : orders.map((o) => (
-        <div key={o.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap"><TraceLink id={o.soNumber} onTrace={p.onTrace} className="font-bold text-slate-800 dark:text-slate-100" />{priorityChip(o.priority)}<DueBadge date={o.deliveryDate} /></div>
-            <div className="text-[13px] text-slate-600 dark:text-slate-300">{o.product}</div>
-            <div className="text-[11px] text-slate-500">{o.customer.name} · {o.quantity} units · required by {o.deliveryDate}</div>
-          </div>
-          <button onClick={() => setPlanning(o)} className="h-14 px-5 rounded-lg bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 inline-flex items-center gap-1">Plan this order <ArrowRight className="w-4 h-4" /></button>
-        </div>
-      ))}
+      <DataTable
+        title="Orders to plan"
+        loading={ordersQ.isLoading}
+        rows={orders}
+        rowKey={(o) => o.id}
+        empty={<EmptyState title="Nothing waiting to be planned." hint="Confirmed orders from sales appear here with their required date and priority." />}
+        columns={[
+          { key: 'so', header: 'SO', cell: (o) => <TraceLink id={o.soNumber} onTrace={p.onTrace} className="font-bold font-mono text-slate-800 dark:text-slate-100" /> },
+          { key: 'prio', header: 'Priority', cell: (o) => priorityChip(o.priority) },
+          { key: 'due', header: 'Due', cell: (o) => <DueBadge date={o.deliveryDate} /> },
+          { key: 'product', header: 'Product', cell: (o) => <span className="font-semibold">{o.product}</span> },
+          { key: 'customer', header: 'Customer', cell: (o) => o.customer.name },
+          { key: 'qty', header: 'Qty', align: 'right', className: 'font-mono whitespace-nowrap', cell: (o) => o.quantity.toLocaleString('en-IN') },
+          { key: 'act', header: '', align: 'right', cell: (o) => (
+            <button onClick={() => setPlanning(o)} className="h-9 px-4 rounded-lg bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 inline-flex items-center gap-1">Plan <ArrowRight className="w-3.5 h-3.5" /></button>
+          ) },
+        ]}
+      />
       {planning && <SchedulePlanModal order={planning} onClose={() => setPlanning(null)} />}
     </div>
   );
@@ -211,24 +218,26 @@ export function PlanBoardScreen(p: PlannerData) {
   const release = useReleasePlan();
   const plans = plansQ.data ?? [];
   return (
-    <Card title={`Production plan — ${plans.length} scheduled`}>
-      {plansQ.isLoading ? <div className="text-[12px] text-slate-400 py-6 text-center">Loading…</div> : plans.length === 0 ? (
-        <EmptyState title="No lines planned yet." hint="Plan a confirmed order and it lands on the board here." />
-      ) : (
-        <div className="space-y-1.5">
-          {plans.map((pl) => (
-            <div key={pl.id} className="flex items-center gap-2.5 text-[12px] border border-slate-100 dark:border-slate-800 rounded-lg px-3 py-2">
-              <span className="w-10 font-bold text-slate-800 dark:text-slate-100 shrink-0">{pl.machine.code}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${pl.shift === 'D' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>{pl.shift === 'D' ? '☀ Day' : '🌙 Night'}</span>
-              <TraceLink id={pl.salesOrder.soNumber} onTrace={p.onTrace} className="text-indigo-600 dark:text-indigo-400 font-semibold shrink-0" />
-              <span className="flex-1 min-w-0 truncate text-slate-600 dark:text-slate-300">{pl.salesOrder.product} · {pl.salesOrder.customer.name}</span>
-              <span className="text-slate-400 text-[11px] font-mono shrink-0 hidden sm:inline">{pl.scheduledStartDate.split('T')[0]}</span>
-              <button onClick={() => release.mutate(pl.id, { onSuccess: () => pushToast(`${pl.salesOrder.soNumber} released — back to the planning queue.`), onError: (e) => pushToast(errMsg(e)) })} disabled={release.isPending} className="shrink-0 text-[11px] font-bold text-slate-400 hover:text-rose-600 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 disabled:opacity-50" title="Release this plan back to the queue">Release</button>
-            </div>
-          ))}
-        </div>
-      )}
-    </Card>
+    <DataTable
+      title={`Production plan — ${plans.length} scheduled`}
+      loading={plansQ.isLoading}
+      rows={plans}
+      rowKey={(pl) => pl.id}
+      empty={<EmptyState title="No lines planned yet." hint="Plan a confirmed order and it lands on the board here." />}
+      dense
+      columns={[
+        { key: 'machine', header: 'Machine', className: 'font-bold whitespace-nowrap', cell: (pl) => pl.machine.code },
+        { key: 'shift', header: 'Shift', cell: (pl) => (
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pl.shift === 'D' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>{pl.shift === 'D' ? 'Day' : 'Night'}</span>
+        ) },
+        { key: 'so', header: 'SO', cell: (pl) => <TraceLink id={pl.salesOrder.soNumber} onTrace={p.onTrace} className="text-indigo-600 dark:text-indigo-400 font-semibold font-mono" /> },
+        { key: 'product', header: 'Product / Customer', cell: (pl) => <span className="truncate block max-w-[280px]">{pl.salesOrder.product} · {pl.salesOrder.customer.name}</span> },
+        { key: 'date', header: 'Start', className: 'font-mono whitespace-nowrap text-slate-400', cell: (pl) => pl.scheduledStartDate.split('T')[0] },
+        { key: 'act', header: '', align: 'right', cell: (pl) => (
+          <button onClick={() => release.mutate(pl.id, { onSuccess: () => pushToast(`${pl.salesOrder.soNumber} released — back to the planning queue.`), onError: (e) => pushToast(errMsg(e)) })} disabled={release.isPending} className="text-[11px] font-bold text-slate-400 hover:text-rose-600 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 disabled:opacity-50" title="Release this plan back to the queue">Release</button>
+        ) },
+      ]}
+    />
   );
 }
 

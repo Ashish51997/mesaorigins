@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 import { Users, Plus, X, ShieldAlert, Trash2, KeyRound, Pencil } from 'lucide-react';
 import { pushToast } from '../Notify';
 import { EmptyState } from '../EmptyState';
+import { DataTable } from '../DataTable';
 import { ApiError } from '../../lib/apiClient';
 import {
   useEmployees, useRoles, useCreateEmployee, useUpdateEmployee, useCreateRole, useUpdateRole,
@@ -59,38 +60,33 @@ export function EmployeeDirectory() {
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">People &amp; Roles</h2>
         <button onClick={() => setShowAdd(true)} className={btn}><Plus className="w-4 h-4" /> Add employee</button>
       </div>
-      <Card title={`${employees.length} employees`}>
-        {empQ.isLoading ? <div className="py-6 text-center text-sm text-slate-400">Loading…</div> : employees.length === 0 ? (
-          <EmptyState icon={<Users className="w-8 h-8" />} title="No employees yet." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead><tr className="text-slate-400 text-[10px] uppercase text-left"><th className="py-1.5">Employee</th><th>Code</th><th>Role</th><th>Status</th><th className="text-right">Access</th></tr></thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {employees.map((e) => (
-                  <tr key={e.id}>
-                    <td className="py-2"><div className="font-bold">{e.user.name}</div><div className="text-[11px] text-slate-500">{e.user.email} · {e.department}</div></td>
-                    <td className="py-2 font-mono text-[11px] text-slate-500">{e.employeeCode}</td>
-                    <td className="py-2">
-                      <select value={e.roleId ?? ''} onChange={(ev) => patch(e, { roleId: ev.target.value })} className="text-[12px] bg-transparent border border-slate-200 dark:border-slate-700 rounded px-2 py-1">
-                        {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                      </select>
-                    </td>
-                    <td className="py-2">
-                      <select value={e.status} onChange={(ev) => patch(e, { status: ev.target.value })} className="text-[12px] bg-transparent border border-slate-200 dark:border-slate-700 rounded px-2 py-1">
-                        {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                      </select>
-                    </td>
-                    <td className="py-2 text-right">
-                      <button onClick={() => setAccess(e)} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-bold"><KeyRound className="w-3.5 h-3.5" /> Access</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+      <DataTable
+        title={`${employees.length} employees`}
+        loading={empQ.isLoading}
+        rows={employees}
+        rowKey={(e) => e.id}
+        empty={<EmptyState icon={<Users className="w-8 h-8" />} title="No employees yet." />}
+        dense
+        columns={[
+          { key: 'emp', header: 'Employee', cell: (e) => (
+            <div><div className="font-bold">{e.user.name}</div><div className="text-[11px] text-slate-500">{e.user.email} · {e.department}</div></div>
+          ) },
+          { key: 'code', header: 'Code', className: 'font-mono text-[11px] text-slate-500', cell: (e) => e.employeeCode },
+          { key: 'role', header: 'Role', cell: (e) => (
+            <select value={e.roleId ?? ''} onChange={(ev) => patch(e, { roleId: ev.target.value })} className="text-[12px] bg-transparent border border-slate-200 dark:border-slate-700 rounded px-2 py-1">
+              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          ) },
+          { key: 'status', header: 'Status', cell: (e) => (
+            <select value={e.status} onChange={(ev) => patch(e, { status: ev.target.value })} className="text-[12px] bg-transparent border border-slate-200 dark:border-slate-700 rounded px-2 py-1">
+              {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+            </select>
+          ) },
+          { key: 'access', header: 'Access', align: 'right', cell: (e) => (
+            <button onClick={() => setAccess(e)} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-bold"><KeyRound className="w-3.5 h-3.5" /> Access</button>
+          ) },
+        ]}
+      />
       {showAdd && <AddEmployeeModal roles={roles} onClose={() => setShowAdd(false)} />}
       {access && <AccessModal employee={access} roles={roles} onClose={() => setAccess(null)} />}
     </div>
@@ -191,22 +187,26 @@ export function RolesAccess() {
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Roles &amp; Access</h2>
         <button onClick={() => setShowAdd(true)} className={btn}><Plus className="w-4 h-4" /> Add role</button>
       </div>
-      <Card title={`${roles.length} roles`}>
-        {rolesQ.isLoading ? <div className="py-6 text-center text-sm text-slate-400">Loading…</div> : (
-          <div className="space-y-2">
-            {roles.map((r) => (
-              <div key={r.id} className="flex items-center gap-3 border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">{roleBadge(r.name, r.isAdmin)} {r.isSystem && <span className="text-[9px] font-bold text-slate-400 uppercase">built-in</span>}</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">{r.isAdmin ? 'Full access' : `${r.screens.length} screen(s)`} · {r._count?.memberships ?? 0} employee(s)</div>
-                </div>
-                <button onClick={() => setEditing(r)} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 text-xs font-bold"><Pencil className="w-3.5 h-3.5" /> Edit</button>
-                {!r.isSystem && <button onClick={() => remove(r)} className="text-slate-400 hover:text-rose-600" title="Delete role"><Trash2 className="w-4 h-4" /></button>}
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+      <DataTable
+        title={`${roles.length} roles`}
+        loading={rolesQ.isLoading}
+        rows={roles}
+        rowKey={(r) => r.id}
+        empty={<EmptyState icon={<ShieldAlert className="w-8 h-8" />} title="No roles yet." />}
+        columns={[
+          { key: 'name', header: 'Role', cell: (r) => (
+            <div className="flex items-center gap-2">{roleBadge(r.name, r.isAdmin)} {r.isSystem && <span className="text-[9px] font-bold text-slate-400 uppercase">built-in</span>}</div>
+          ) },
+          { key: 'access', header: 'Access', cell: (r) => r.isAdmin ? 'Full access' : `${r.screens.length} screen(s)` },
+          { key: 'members', header: 'Employees', align: 'right', cell: (r) => r._count?.memberships ?? 0 },
+          { key: 'act', header: '', align: 'right', className: 'whitespace-nowrap', cell: (r) => (
+            <div className="inline-flex items-center gap-1.5">
+              <button onClick={() => setEditing(r)} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 text-xs font-bold"><Pencil className="w-3.5 h-3.5" /> Edit</button>
+              {!r.isSystem && <button onClick={() => remove(r)} className="text-slate-400 hover:text-rose-600 p-1" title="Delete role"><Trash2 className="w-4 h-4" /></button>}
+            </div>
+          ) },
+        ]}
+      />
       {showAdd && <RoleModal onClose={() => setShowAdd(false)} />}
       {editing && <RoleModal role={editing} onClose={() => setEditing(null)} />}
     </div>

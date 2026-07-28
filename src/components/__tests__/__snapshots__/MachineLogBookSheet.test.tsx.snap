@@ -18,6 +18,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
 .cin.oor{background:#fbeedb;color:#a9660a;font-weight:700}
 .cin.active{background:#dbe9fb;box-shadow:0 0 0 2px #0f4c81 inset;border-radius:3px}
 .cin[readonly]{cursor:default}
+.cin-pick{min-width:7.5rem;font-size:11px}
+.sign-lbl{font-size:10px;font-weight:700;color:#444;margin-bottom:2px}
+.sign .cin{border-bottom:1px solid #999;min-height:22px}
 
 /* permissible-value hint on measurement cells */
 .rc{position:relative;display:block}
@@ -211,15 +214,17 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
             class="cin"
             readonly=""
             style="width: 60px;"
+            type="text"
             value="M09"
           />
         </span>
         <span>
           Date: 
           <input
-            class="cin"
-            style="width: 90px;"
-            value="01/07/26"
+            class="cin cin-pick"
+            style="width: 130px;"
+            type="date"
+            value="2026-07-01"
           />
         </span>
         <span>
@@ -365,7 +370,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <th
                 rowspan="2"
               >
-                Vaccum
+                Vacuum
               </th>
             </tr>
             <tr>
@@ -394,12 +399,14 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td>
                 <input
                   class="cin"
+                  type="text"
                   value="SPVC008D"
                 />
               </td>
               <td>
                 <input
                   class="cin"
+                  type="text"
                   value="Blue"
                 />
               </td>
@@ -505,24 +512,32 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value="26.20"
                 />
               </td>
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value="15.0"
                 />
               </td>
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value="15.65"
                 />
               </td>
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value=""
                 />
               </td>
@@ -541,8 +556,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               </td>
               <td>
                 <input
-                  class="cin"
-                  value="9:00"
+                  class="cin cin-pick"
+                  type="time"
+                  value="09:00"
                 />
               </td>
               <td
@@ -552,8 +568,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               </td>
               <td>
                 <input
-                  class="cin"
-                  value="9:00"
+                  class="cin cin-pick"
+                  type="time"
+                  value="09:00"
                 />
               </td>
               <td
@@ -566,6 +583,8 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value="85"
                 />
               </td>
@@ -576,7 +595,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               </td>
               <td>
                 <input
-                  class="cin"
+                  class="cin oor"
+                  inputmode="decimal"
+                  type="text"
                   value="25 Kg"
                 />
               </td>
@@ -590,6 +611,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td>
                 <input
                   class="cin"
+                  type="text"
                   value="SPVC042.F"
                 />
               </td>
@@ -604,6 +626,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                 <input
                   class="cin"
                   style="width: 100%;"
+                  type="text"
                   value="090 SM SPVC042 Z 150M 7.8K M/V Black (Revised-1)"
                 />
               </td>
@@ -1756,24 +1779,29 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    inputmode="decimal"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -1876,24 +1904,29 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    inputmode="decimal"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -1996,24 +2029,29 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    inputmode="decimal"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2116,24 +2154,29 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    inputmode="decimal"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2236,24 +2279,29 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    inputmode="decimal"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
                 <td>
                   <input
                     class="cin"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2344,6 +2392,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value="010726·N·M09·B01"
                   />
                 </td>
@@ -2351,6 +2400,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value="BLK"
                   />
                 </td>
@@ -2358,6 +2408,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value="BK0137"
                   />
                 </td>
@@ -2401,6 +2452,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value="010726·N·M09·B02"
                   />
                 </td>
@@ -2408,6 +2460,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value="BLK"
                   />
                 </td>
@@ -2415,6 +2468,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value="BK0137"
                   />
                 </td>
@@ -2458,6 +2512,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value="010726·N·M09·B03"
                   />
                 </td>
@@ -2465,6 +2520,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value="BLK"
                   />
                 </td>
@@ -2472,6 +2528,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value="BK0137"
                   />
                 </td>
@@ -2515,6 +2572,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value="010726·N·M09·B04"
                   />
                 </td>
@@ -2522,6 +2580,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value="BLK"
                   />
                 </td>
@@ -2529,6 +2588,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value="BK0137"
                   />
                 </td>
@@ -2572,6 +2632,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value="010726·N·M09·B05"
                   />
                 </td>
@@ -2579,6 +2640,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value="BLK"
                   />
                 </td>
@@ -2586,6 +2648,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value="BK0137"
                   />
                 </td>
@@ -2629,6 +2692,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value="010726·N·M09·B06"
                   />
                 </td>
@@ -2636,6 +2700,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value="BLK"
                   />
                 </td>
@@ -2643,6 +2708,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value="BK0137"
                   />
                 </td>
@@ -2686,6 +2752,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value="010726·N·M09·B07"
                   />
                 </td>
@@ -2693,6 +2760,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value="BLK"
                   />
                 </td>
@@ -2700,6 +2768,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value="BK0137"
                   />
                 </td>
@@ -2743,6 +2812,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value="010726·N·M09·B08"
                   />
                 </td>
@@ -2750,6 +2820,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value="BLK"
                   />
                 </td>
@@ -2757,6 +2828,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value="BK0137"
                   />
                 </td>
@@ -2800,6 +2872,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2807,6 +2880,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2814,6 +2888,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2857,6 +2932,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2864,6 +2940,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2871,6 +2948,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2914,6 +2992,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2921,6 +3000,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2928,6 +3008,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2971,6 +3052,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2978,6 +3060,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -2985,6 +3068,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3028,6 +3112,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3035,6 +3120,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3042,6 +3128,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3085,6 +3172,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3092,6 +3180,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3099,6 +3188,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3142,6 +3232,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3149,6 +3240,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3156,6 +3248,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3221,6 +3314,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3228,6 +3322,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3235,6 +3330,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3278,6 +3374,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3285,6 +3382,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3292,6 +3390,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3335,6 +3434,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3342,6 +3442,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3349,6 +3450,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3392,6 +3494,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3399,6 +3502,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3406,6 +3510,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3449,6 +3554,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3456,6 +3562,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3463,6 +3570,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3506,6 +3614,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3513,6 +3622,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3520,6 +3630,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3563,6 +3674,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3570,6 +3682,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3577,6 +3690,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3620,6 +3734,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3627,6 +3742,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3634,6 +3750,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3677,6 +3794,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3684,6 +3802,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3691,6 +3810,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3734,6 +3854,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3741,6 +3862,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3748,6 +3870,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3791,6 +3914,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3798,6 +3922,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3805,6 +3930,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3848,6 +3974,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3855,6 +3982,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3862,6 +3990,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3905,6 +4034,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3912,6 +4042,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3919,6 +4050,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3962,6 +4094,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3969,6 +4102,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -3976,6 +4110,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -4019,6 +4154,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 150px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -4026,6 +4162,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 52px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -4033,6 +4170,7 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
                   <input
                     class="cin"
                     style="width: 60px;"
+                    type="text"
                     value=""
                   />
                 </td>
@@ -4135,36 +4273,48 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value="37"
                 />
               </td>
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value="288.6"
                 />
               </td>
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value=""
                 />
               </td>
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value=""
                 />
               </td>
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value="2"
                 />
               </td>
               <td>
                 <input
-                  class="cin"
+                  class="cin oor"
+                  inputmode="decimal"
+                  type="text"
                   value="291.6 Kg"
                 />
               </td>
@@ -4188,7 +4338,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
              
             <input
               class="cin"
+              inputmode="decimal"
               style="width: 42px;"
+              type="text"
               value="2"
             />
           </span>
@@ -4201,7 +4353,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
              
             <input
               class="cin"
+              inputmode="decimal"
               style="width: 42px;"
+              type="text"
               value=""
             />
           </span>
@@ -4214,7 +4368,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
              
             <input
               class="cin"
+              inputmode="decimal"
               style="width: 42px;"
+              type="text"
               value=""
             />
           </span>
@@ -4227,7 +4383,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
              
             <input
               class="cin"
+              inputmode="decimal"
               style="width: 42px;"
+              type="text"
               value=""
             />
           </span>
@@ -4240,7 +4398,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
              
             <input
               class="cin"
+              inputmode="decimal"
               style="width: 42px;"
+              type="text"
               value=""
             />
           </span>
@@ -4253,7 +4413,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
              
             <input
               class="cin"
+              inputmode="decimal"
               style="width: 42px;"
+              type="text"
               value=""
             />
           </span>
@@ -4266,7 +4428,9 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
              
             <input
               class="cin"
+              inputmode="decimal"
               style="width: 42px;"
+              type="text"
               value=""
             />
           </span>
@@ -4318,12 +4482,13 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td
                 class="lbl"
               >
-                Time
+                Meter check time
               </td>
               <td>
                 <input
-                  class="cin"
-                  value="3:00"
+                  class="cin cin-pick"
+                  type="time"
+                  value="03:00"
                 />
               </td>
               <td
@@ -4334,6 +4499,8 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td>
                 <input
                   class="cin"
+                  placeholder="e.g. 154/M"
+                  type="text"
                   value="154/M"
                 />
               </td>
@@ -4345,6 +4512,8 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
               <td>
                 <input
                   class="cin"
+                  inputmode="decimal"
+                  type="text"
                   value="314"
                 />
               </td>
@@ -4377,10 +4546,28 @@ exports[`MachineLogBookSheet > renders the QR/MFG/013 sheet faithfully (snapshot
           class="sign"
         >
           <div>
-            (Signature of Inspector)
+            <div
+              class="sign-lbl"
+            >
+              Inspector signature
+            </div>
+            <input
+              class="cin"
+              type="text"
+              value=""
+            />
           </div>
           <div>
-            (Signature of Shift Incharge)
+            <div
+              class="sign-lbl"
+            >
+              Shift incharge signature
+            </div>
+            <input
+              class="cin"
+              type="text"
+              value=""
+            />
           </div>
         </div>
       </div>

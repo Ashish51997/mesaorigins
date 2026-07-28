@@ -541,9 +541,9 @@ export default function App() {
     { id: 'orders_to_plan', label: 'Orders to Plan', icon: Briefcase, color: 'text-indigo-600' },
     { id: 'plan_board', label: 'Production Plan', icon: CalendarDays, color: 'text-teal-600' },
     { id: 'formulations', label: 'Formulations (BOM)', icon: Settings, color: 'text-indigo-600' },
+    { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
     { id: 'logbooks', label: 'Production (LOG BOOK)', icon: FileSpreadsheet, color: 'text-amber-600' },
-    { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'roll_queue', label: 'Roll Inspection', icon: CheckCircle2, color: 'text-rose-500' },
     { id: 'holds', label: 'Quality Holds', icon: ShieldAlert, color: 'text-amber-600' },
     { id: 'receive', label: 'Receive Material', icon: Package2, color: 'text-emerald-600' },
@@ -562,15 +562,15 @@ export default function App() {
     { id: 'rm_stock', label: 'Stock & Inventory', icon: Package2, color: 'text-cyan-600' },
     { id: 'dispatch_history', label: 'Dispatch History', icon: Truck, color: 'text-slate-500' },
   ];
-  // Production Planner — combined Planning + Production menu (planning, machine logging, templates).
+  // Production Planner — Planning (incl. logbook templates) + Production (incl. machine tasks / log books).
   const plannerNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
     { id: 'orders_to_plan', label: 'Orders to Plan', icon: Briefcase, color: 'text-indigo-600' },
     { id: 'plan_board', label: 'Production Plan', icon: CalendarDays, color: 'text-teal-600' },
     { id: 'formulations', label: 'Formulations (BOM)', icon: Settings, color: 'text-indigo-600' },
+    { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
     { id: 'logbooks', label: 'Production (LOG BOOK)', icon: FileSpreadsheet, color: 'text-amber-600' },
-    { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
   ];
   const operatorNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
@@ -940,19 +940,21 @@ export default function App() {
             <div className="text-center text-sm text-slate-400 mt-16" id="acl-redirect">Taking you home…</div>
           ) : (
             <>
-              {/* Quick links to related features — on every screen, access-filtered */}
+              {/* Quick links — suppressed on sales screens (they use an in-page pipeline tab bar). */}
               {(() => {
+                const salesScreens = new Set(['inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints']);
+                if (salesScreens.has(activeModule)) return null;
                 const rel = relatedOf(activeModule).filter((id) => id !== activeModule && getPermissionStatus(currentRole, id));
                 if (rel.length === 0) return null;
                 const labelOf = (id: string) => FEATURES.find((f) => f.key === `screen:${id}`)?.label ?? moduleLabel(id as ModuleType);
                 return (
                   <div className="flex flex-wrap items-center gap-2 mb-4" id="related-links">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Related</span>
+                    <span className="text-[11px] font-medium text-slate-400">Related</span>
                     {rel.map((id) => (
                       <button
                         key={id}
                         onClick={() => setActiveModule(id as ModuleType)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-3xs transition-all"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 dark:hover:text-slate-100 transition-all"
                       >
                         {labelOf(id)} <ArrowRight className="h-3 w-3" />
                       </button>

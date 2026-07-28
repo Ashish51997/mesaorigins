@@ -3,6 +3,7 @@ import { tenantContext } from '../../lib/tenantContext';
 import { audit } from '../../lib/audit';
 import { ApiError } from '../../middleware/error';
 import type { LogbookUpdate, TemplateInput } from './schemas';
+import { summarizeLogbookIssues, validateLogbookForSubmit } from './validate';
 
 function tctx() {
   const c = tenantContext.getStore();
@@ -225,8 +226,37 @@ export async function submitLogbook(id: string) {
   const lb = await prisma.machineLogbook.findUnique({ where: { id } });
   if (!lb) throw new ApiError(404, 'not_found', 'Logbook not found.');
   if (lb.status === 'submitted') throw new ApiError(409, 'already_submitted', 'This logbook is already submitted.');
-  if (!lb.operatorSignature.trim()) {
-    throw new ApiError(422, 'no_signoff', 'The operator must sign the sheet before submitting.');
+
+  const template = await prisma.logbookTemplate.findUnique({ where: { id: lb.templateId } });
+  const issues = validateLogbookForSubmit(
+    {
+      operatorSignature: lb.operatorSignature,
+      motorSpeed: lb.motorSpeed,
+      ampere: lb.ampere,
+      takeupSpeed: lb.takeupSpeed,
+      vacuum: lb.vacuum,
+      shoreHardness: lb.shoreHardness,
+      productionPerHour: lb.productionPerHour,
+      totalRollsProduced: lb.totalRollsProduced,
+      totalRollKgs: lb.totalRollKgs,
+      processWasteKg: lb.processWasteKg,
+      lumpsWasteKg: lb.lumpsWasteKg,
+      rejectionKg: lb.rejectionKg,
+      totalConsumedKg: lb.totalConsumedKg,
+      meter: lb.meter,
+      meterCountSet: lb.meterCountSet,
+      scrapKg: lb.scrapKg,
+      dieZoneTemps: (lb.dieZoneTemps as Record<string, string>) ?? {},
+      barrelZoneTemps: (lb.barrelZoneTemps as Record<string, string>) ?? {},
+      coilWeights: Array.isArray(lb.coilWeights) ? (lb.coilWeights as string[]) : [],
+      hourlyInspections: Array.isArray(lb.hourlyInspections) ? (lb.hourlyInspections as Array<Record<string, unknown>>) : [],
+      rejectionCounts: (lb.rejectionCounts as Record<string, string>) ?? {},
+      traceabilityRows: Array.isArray(lb.traceabilityRows) ? (lb.traceabilityRows as Array<{ pktKg?: string }>) : [],
+    },
+    (template as unknown as Parameters<typeof validateLogbookForSubmit>[1]) ?? {},
+  );
+  if (issues.length) {
+    throw new ApiError(422, 'validation_failed', summarizeLogbookIssues(issues));
   }
 
   const c = tctx();

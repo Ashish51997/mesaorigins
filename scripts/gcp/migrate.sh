@@ -67,10 +67,14 @@ trap 'kill $PROXY_PID 2>/dev/null || true' EXIT
 sleep 3
 
 echo "==> setup-roles.sql (idempotent grants)"
-if command -v psql >/dev/null 2>&1; then
-  psql "$DIRECT_DATABASE_URL" -f server/prisma/setup-roles.sql || true
+# prisma db execute works without local psql (required on Cloud SQL after first migrate).
+if npx prisma db execute --schema server/prisma/schema.prisma --file server/prisma/setup-roles.sql; then
+  echo "Applied setup-roles.sql"
+elif command -v psql >/dev/null 2>&1; then
+  psql "$DIRECT_DATABASE_URL" -f server/prisma/setup-roles.sql
 else
-  echo "psql not found — apply server/prisma/setup-roles.sql manually once."
+  echo "ERROR: could not apply setup-roles.sql (no prisma db execute / psql)."
+  exit 1
 fi
 
 echo "==> prisma migrate deploy"
