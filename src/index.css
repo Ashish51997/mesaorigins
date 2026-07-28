@@ -3,9 +3,9 @@
 
 /* =============================================================================
    MASS POLYMER — UI STYLE GUIDELINE (see UI_STYLE_GUIDE.md)
-   Clean modern SaaS. Airy, light, lots of whitespace. Radial electric-blue glow
-   at the top fading to white. Poppins SemiBold headings/metrics, Inter body.
-   Primary #4438E0. Hairline borders #E7EAF0. Soft shadows only. Round everything.
+   Clean modern SaaS. Airy, light, lots of whitespace. Soft blue glow at the top
+   fading to white. Poppins SemiBold headings/metrics, Inter body.
+   Primary #2563EB. Hairline borders #E7EAF0. Soft shadows only. Round everything.
    Tokens live here; the whole app inherits them through Tailwind class overrides.
    ========================================================================== */
 
@@ -21,11 +21,11 @@
   --text-primary: #0b0b0f;    /* ink */
   --text-secondary: #5b6472;  /* body */
   --text-muted: #8a93a3;      /* muted labels */
-  --accent-color: #4438e0;    /* primary */
-  --accent-hover: #372cc0;
-  --accent-bg: #ecebff;       /* soft violet tint */
-  --accent-bg-light: #f5f5ff;
-  --accent-bg-muted: #eef0ff;
+  --accent-color: #2563eb;    /* primary blue */
+  --accent-hover: #1d4ed8;
+  --accent-bg: #dbeafe;       /* soft blue tint */
+  --accent-bg-light: #eff6ff;
+  --accent-bg-muted: #eff6ff;
   --success-bg: #22c55e;      /* delta up / good */
   --success-text: #15803d;
   --success-bg-muted: #e7f8ef;
@@ -36,9 +36,9 @@
   --warn-text: #c2410c;
   --warn-bg-muted: #feede3;
   --shadow-custom: 0 8px 24px rgba(16, 24, 40, 0.08);  /* the one soft shadow */
-  --button-primary-bg: #4438e0;
+  --button-primary-bg: #2563eb;
   --button-primary-text: #ffffff;
-  --button-primary-hover: #372cc0;
+  --button-primary-hover: #1d4ed8;
   /* Named accents for icon tiles */
   --tile-violet: #8b5cf6;
   --tile-cyan: #38bdf8;
@@ -57,9 +57,9 @@
   --text-primary: #f6f7fb;
   --text-secondary: #b7c0d4;
   --text-muted: #7f8aa3;
-  --accent-color: #6d63ff;    /* lighter primary for dark */
-  --accent-hover: #8b83ff;
-  --accent-bg: rgba(109, 99, 255, 0.16);
+  --accent-color: #60a5fa;    /* lighter blue for dark */
+  --accent-hover: #93c5fd;
+  --accent-bg: rgba(37, 99, 235, 0.22);
   --accent-bg-light: #141a2e;
   --accent-bg-muted: #161d34;
   --success-bg: #34d399;
@@ -72,9 +72,9 @@
   --warn-text: #fdba74;
   --warn-bg-muted: rgba(251, 146, 60, 0.14);
   --shadow-custom: 0 8px 24px rgba(0, 0, 0, 0.36);
-  --button-primary-bg: #6d63ff;
+  --button-primary-bg: #3b82f6;
   --button-primary-text: #ffffff;
-  --button-primary-hover: #8b83ff;
+  --button-primary-hover: #60a5fa;
   --tile-violet: #a78bfa;
   --tile-cyan: #7dd3fc;
   --tile-coral: #fdba74;
@@ -343,7 +343,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-primary) !important; }
   box-shadow: var(--shadow-custom) !important;
 }
 
-/* Primary buttons — filled #4438E0, fully rounded pill */
+/* Primary buttons — filled blue, fully rounded pill */
 .bg-indigo-600:not(aside button),
 .bg-blue-600:not(aside button) {
   background-color: var(--button-primary-bg) !important;

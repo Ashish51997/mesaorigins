@@ -17,6 +17,7 @@ import { pushToast, pushNudge } from '../Notify';
 import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
 import { TraceLink } from '../TraceLink';
+import { DataTable } from '../DataTable';
 import { ApiError } from '../../lib/apiClient';
 import { useReadyOrders, useDispatches, useCreateDispatch, type ApiReadyOrder } from '../../lib/queries/dispatch';
 
@@ -46,19 +47,23 @@ export function ReadyToDispatch(p: DispatchData) {
   const ready = readyQ.data ?? [];
   return (
     <div className="space-y-3">
-      {readyQ.isLoading ? (
-        <div className="text-[12px] text-slate-400 py-6 text-center">Loading…</div>
-      ) : ready.length === 0 ? (
-        <EmptyState icon={<Truck className="w-8 h-8" />} title="Nothing ready to dispatch yet." hint="Orders whose production logbook is submitted appear here." />
-      ) : ready.map((o) => (
-        <div key={o.id} className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="font-bold"><TraceLink id={o.soNumber} onTrace={p.onTrace} className="font-bold" /> · {o.product}</div>
-            <div className="text-[12px] text-slate-500">{o.customer.name} · {o.quantity} units · due {o.deliveryDate}</div>
-          </div>
-          <button onClick={() => setDispatching(o)} className="h-12 px-5 rounded-lg bg-indigo-600 text-white font-bold text-sm inline-flex items-center gap-1"><Truck className="w-4 h-4" /> Dispatch</button>
-        </div>
-      ))}
+      <DataTable
+        title="Ready to dispatch"
+        loading={readyQ.isLoading}
+        rows={ready}
+        rowKey={(o) => o.id}
+        empty={<EmptyState icon={<Truck className="w-8 h-8" />} title="Nothing ready to dispatch yet." hint="Orders whose production logbook is submitted appear here." />}
+        columns={[
+          { key: 'so', header: 'SO', cell: (o) => <TraceLink id={o.soNumber} onTrace={p.onTrace} className="font-bold font-mono" /> },
+          { key: 'product', header: 'Product', cell: (o) => <span className="font-semibold">{o.product}</span> },
+          { key: 'customer', header: 'Customer', cell: (o) => o.customer.name },
+          { key: 'qty', header: 'Qty', align: 'right', className: 'font-mono', cell: (o) => o.quantity.toLocaleString('en-IN') },
+          { key: 'due', header: 'Due', className: 'whitespace-nowrap', cell: (o) => o.deliveryDate },
+          { key: 'act', header: '', align: 'right', cell: (o) => (
+            <button onClick={() => setDispatching(o)} className="h-9 px-4 rounded-lg bg-indigo-600 text-white font-bold text-xs inline-flex items-center gap-1 hover:bg-indigo-500"><Truck className="w-3.5 h-3.5" /> Dispatch</button>
+          ) },
+        ]}
+      />
       {dispatching && <DispatchModal order={dispatching} onClose={() => setDispatching(null)} />}
     </div>
   );
@@ -137,22 +142,21 @@ export function DispatchHistory(p: DispatchData) {
   const dispQ = useDispatches();
   const done = dispQ.data ?? [];
   return (
-    <Card title="Dispatch history">
-      {dispQ.isLoading ? <div className="text-[12px] text-slate-400 py-6 text-center">Loading…</div> : done.length === 0 ? (
-        <EmptyState icon={<Truck className="w-8 h-8" />} title="No dispatches yet." hint="Dispatched orders land here with their invoice." />
-      ) : (
-        <div className="space-y-2">
-          {done.map((d) => (
-            <button key={d.id} onClick={() => p.onTrace(d.invoiceNumber)} className="w-full flex flex-wrap items-center gap-3 text-left border border-slate-200 rounded-lg p-3 text-[13px]">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="font-bold">{d.salesOrder.soNumber}</span>
-              <span className="font-mono text-[11px] text-slate-500">{d.invoiceNumber}</span>
-              <span className="text-[12px] text-slate-500 truncate">{d.salesOrder.customer.name} · {d.vehicleNumber || 'no vehicle'}</span>
-              <span className="ml-auto text-[11px] font-bold text-indigo-600 shrink-0">Trace</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </Card>
+    <DataTable
+      title="Dispatch history"
+      loading={dispQ.isLoading}
+      rows={done}
+      rowKey={(d) => d.id}
+      empty={<EmptyState icon={<Truck className="w-8 h-8" />} title="No dispatches yet." hint="Dispatched orders land here with their invoice." />}
+      onRowClick={(d) => p.onTrace(d.invoiceNumber)}
+      columns={[
+        { key: 'ok', header: '', className: 'w-8', cell: () => <CheckCircle2 className="w-4 h-4 text-emerald-600" /> },
+        { key: 'so', header: 'SO', cell: (d) => <span className="font-bold font-mono">{d.salesOrder.soNumber}</span> },
+        { key: 'inv', header: 'Invoice', cell: (d) => <span className="font-mono text-[12px] text-slate-500">{d.invoiceNumber}</span> },
+        { key: 'customer', header: 'Customer', cell: (d) => d.salesOrder.customer.name },
+        { key: 'vehicle', header: 'Vehicle', cell: (d) => d.vehicleNumber || '—' },
+        { key: 'trace', header: '', align: 'right', cell: () => <span className="text-[11px] font-bold text-indigo-600">Trace</span> },
+      ]}
+    />
   );
 }

@@ -56,12 +56,13 @@ describe('Sales — inquiry (API-backed)', () => {
     get.mockImplementation((path: string) => (path === '/customers' ? Promise.resolve(customers) : Promise.resolve([])));
     post.mockResolvedValue({ inquiryNumber: 'INQ-2026-100' });
     renderUI(<Inquiries {...stub} />);
+    fireEvent.click(await screen.findByRole('button', { name: /log inquiry/i }));
     await waitFor(() => expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('c1'));
-    const btn = () => screen.getByText('Log inquiry').closest('button') as HTMLButtonElement;
-    expect(btn().disabled).toBe(true); // product empty
+    const save = () => screen.getByRole('button', { name: /save inquiry/i }) as HTMLButtonElement;
+    expect(save().disabled).toBe(true); // product empty
     fireEvent.change(screen.getByPlaceholderText('e.g. RPVC pipe 20mm'), { target: { value: 'RPVC pipe 20mm' } });
-    expect(btn().disabled).toBe(false);
-    fireEvent.click(screen.getByText('Log inquiry'));
+    expect(save().disabled).toBe(false);
+    fireEvent.click(save());
     await waitFor(() => expect(post).toHaveBeenCalledWith('/inquiries', expect.objectContaining({ product: 'RPVC pipe 20mm', quantity: 5000, customerId: 'c1' })));
   });
 });
@@ -95,8 +96,9 @@ describe('Sales — complaint + CAPA (API-backed)', () => {
     get.mockImplementation((path: string) => (path === '/complaints/batches' ? Promise.resolve(batches) : Promise.resolve([])));
     post.mockResolvedValue({ complaintNumber: 'C-2026-105', capa: openCapa });
     renderUI(<SalesComplaints {...stub} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^log complaint$/i }));
     await waitFor(() => expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('so1'));
-    fireEvent.click(screen.getByText(/Log complaint/));
+    fireEvent.click(screen.getByRole('button', { name: /save complaint/i }));
     await waitFor(() => expect(post).toHaveBeenCalledWith('/complaints', expect.objectContaining({ salesOrderId: 'so1', severity: 'high' })));
   });
 
@@ -104,7 +106,7 @@ describe('Sales — complaint + CAPA (API-backed)', () => {
     wire(complaintOpen);
     renderUI(<SalesComplaints {...stub} />);
     expect(await screen.findByText(/C-2026-105/)).toBeTruthy();
-    expect(screen.getByText('CAPA open')).toBeTruthy();
+    expect(screen.getAllByText('CAPA open').length).toBeGreaterThan(0);
     expect((screen.getByText('Resolve').closest('button') as HTMLButtonElement).disabled).toBe(true);
   });
 

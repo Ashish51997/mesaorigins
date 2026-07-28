@@ -74,9 +74,12 @@ function renderModule(initialTab: 'operator' | 'admin' = 'operator') {
 }
 
 function panelInput(label: string): HTMLInputElement {
-  const input = screen.getByText(label).closest('label')?.querySelector('input');
-  if (!input) throw new Error(`no input for panel label "${label}"`);
-  return input as HTMLInputElement;
+  const nodes = screen.getAllByText(label);
+  for (const node of nodes) {
+    const input = node.closest('label')?.querySelector('input');
+    if (input) return input as HTMLInputElement;
+  }
+  throw new Error(`no input for panel label "${label}"`);
 }
 
 beforeEach(() => { get.mockReset(); post.mockReset(); patch.mockReset(); });
@@ -110,9 +113,55 @@ describe('LogbookModule (operator)', () => {
     renderModule('operator');
     await screen.findByText(/Fill panel/i);
     await waitFor(() => expect(panelInput('Machine No').value).toBe('M08')); // wait for the logbook to load
+    fireEvent.change(panelInput('Operator (signature)'), { target: { value: 'Nandlal' } });
     fireEvent.click(screen.getByText('Submit & lock'));
     await waitFor(() => expect(post).toHaveBeenCalledWith('/logbooks/lb-1/submit'));
     expect(patch).toHaveBeenCalled();
+  });
+
+  it('blocks submit without operator signature', async () => {
+    setupApi();
+    renderModule('operator');
+    await screen.findByText(/Fill panel/i);
+    await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
+    post.mockClear();
+    fireEvent.click(screen.getByText('Submit & lock'));
+    expect(await screen.findByText(/Fix these before submitting/i)).toBeTruthy();
+    expect(screen.getAllByText(/operator must sign/i).length).toBeGreaterThan(0);
+    expect(post).not.toHaveBeenCalledWith('/logbooks/lb-1/submit');
+  });
+
+  it('blocks submit when a value is outside the permissible range', async () => {
+    setupApi();
+    renderModule('operator');
+    await screen.findByText(/Fill panel/i);
+    await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
+    fireEvent.change(panelInput('Operator (signature)'), { target: { value: 'Nandlal' } });
+    const zoneLabel = template.dieZones[0];
+    const zoneSpan = screen.getAllByText(new RegExp(`^${zoneLabel}`)).find((el) => el.closest('label'));
+    const zoneInput = zoneSpan?.closest('label')?.querySelector('input') as HTMLInputElement;
+    expect(zoneInput).toBeTruthy();
+    fireEvent.change(zoneInput, { target: { value: '1' } });
+    post.mockClear();
+    fireEvent.click(screen.getByText('Submit & lock'));
+    expect(await screen.findByText(/Fix these before submitting/i)).toBeTruthy();
+    expect(screen.getAllByText(/must be between/i).length).toBeGreaterThan(0);
+    expect(post).not.toHaveBeenCalledWith('/logbooks/lb-1/submit');
+  });
+
+  it('uses a date picker for the Date field and strips letters from numeric fields', async () => {
+    setupApi();
+    renderModule('operator');
+    await screen.findByText(/Fill panel/i);
+    await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
+    const dateInput = panelInput('Date');
+    expect(dateInput.type).toBe('date');
+    fireEvent.change(dateInput, { target: { value: '2026-07-28' } });
+    expect(dateInput.value).toBe('2026-07-28');
+    fireEvent.change(panelInput('Main Motor Speed'), { target: { value: '12ab.3x' } });
+    expect(panelInput('Main Motor Speed').value).toBe('12.3');
+    const start = panelInput('Extruder start time');
+    expect(start.type).toBe('time');
   });
 
   it('guided mode shows the one-field-at-a-time wizard covering every section', async () => {

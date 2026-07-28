@@ -3,10 +3,11 @@
  * opens that plan's logbook sheet (template-driven) to fill and submit. The
  * operator's main logging entry.
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Gauge, ArrowLeft, ArrowRight, Lock, FileSpreadsheet } from 'lucide-react';
 import { useLogbookTasks } from '../lib/queries/logbook';
 import { EmptyState } from './EmptyState';
+import { DataTable } from './DataTable';
 import LogbookModule from './LogbookModule';
 
 // LogbookModule keeps legacy props for back-compat; the operator path uses the API.
@@ -21,10 +22,34 @@ const statusPill = (s?: string) => {
   return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Not started</span>;
 };
 
+type FlatTask = {
+  id: string;
+  machine: string;
+  line: string;
+  soNumber: string;
+  product: string;
+  shift: string;
+  date: string;
+  templateLabel?: string;
+  logStatus?: string;
+};
+
 export default function MachineTasks() {
   const q = useLogbookTasks();
   const groups = q.data ?? [];
   const [openPlan, setOpenPlan] = useState<string | null>(null);
+
+  const rows: FlatTask[] = useMemo(() => groups.flatMap((g) => g.tasks.map((task) => ({
+    id: task.id,
+    machine: g.machine,
+    line: g.line,
+    soNumber: task.salesOrder?.soNumber ?? 'No order',
+    product: task.salesOrder?.product ?? '—',
+    shift: task.shift === 'D' ? 'Day' : 'Night',
+    date: task.scheduledStartDate.split('T')[0],
+    templateLabel: task.logbookTemplate ? `${task.logbookTemplate.docNo} · ${task.logbookTemplate.layout}` : undefined,
+    logStatus: task.logbook?.status,
+  }))), [groups]);
 
   if (openPlan) {
     return (
@@ -41,37 +66,33 @@ export default function MachineTasks() {
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Machine Tasks</h2>
         <p className="text-[12px] text-slate-500">Scheduled production on each line — open a task to fill its log book.</p>
       </div>
-      {q.isLoading ? <div className="py-10 text-center text-sm text-slate-400">Loading tasks…</div> : groups.length === 0 ? (
-        <EmptyState icon={<Gauge className="w-8 h-8" />} title="No scheduled tasks." hint="Plans scheduled by Planning appear here per machine." />
-      ) : groups.map((g) => (
-        <div key={g.machine} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center"><Gauge className="w-4 h-4" /></div>
-            <div><div className="font-bold text-[14px] text-slate-900 dark:text-white">Machine {g.machine}</div><div className="text-[11px] text-slate-500">{g.line}</div></div>
-            <span className="ml-auto text-[11px] text-slate-400">{g.tasks.length} task{g.tasks.length === 1 ? '' : 's'}</span>
-          </div>
-          <div className="space-y-2">
-            {g.tasks.map((task) => {
-              const locked = task.logbook?.status === 'submitted';
-              return (
-                <div key={task.id} className="flex items-center gap-3 border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-[13px] text-slate-800 dark:text-slate-100 truncate">{task.salesOrder?.soNumber ?? 'No order'} · {task.salesOrder?.product ?? '—'}</div>
-                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
-                      {task.shift === 'D' ? 'Day' : 'Night'} shift · {task.scheduledStartDate.split('T')[0]}
-                      {task.logbookTemplate && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold"><FileSpreadsheet className="w-3 h-3" /> {task.logbookTemplate.docNo} · {task.logbookTemplate.layout}</span>}
-                      {statusPill(task.logbook?.status)}
-                    </div>
-                  </div>
-                  <button onClick={() => setOpenPlan(task.id)} className="shrink-0 inline-flex items-center gap-1 h-9 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold">
-                    {locked ? 'View log' : 'Log'} <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+      <DataTable
+        loading={q.isLoading}
+        rows={rows}
+        rowKey={(t) => t.id}
+        empty={<EmptyState icon={<Gauge className="w-8 h-8" />} title="No scheduled tasks." hint="Plans scheduled by Planning appear here per machine." />}
+        columns={[
+          { key: 'machine', header: 'Machine', cell: (t) => (
+            <div>
+              <div className="font-bold">{t.machine}</div>
+              <div className="text-[11px] text-slate-500">{t.line}</div>
+            </div>
+          ) },
+          { key: 'so', header: 'SO', cell: (t) => <span className="font-mono font-bold">{t.soNumber}</span> },
+          { key: 'product', header: 'Product', cell: (t) => t.product },
+          { key: 'shift', header: 'Shift', cell: (t) => t.shift },
+          { key: 'date', header: 'Date', className: 'whitespace-nowrap font-mono', cell: (t) => t.date },
+          { key: 'tpl', header: 'Template', cell: (t) => t.templateLabel ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold"><FileSpreadsheet className="w-3 h-3" /> {t.templateLabel}</span>
+          ) : '—' },
+          { key: 'status', header: 'Logbook', cell: (t) => statusPill(t.logStatus) },
+          { key: 'act', header: '', align: 'right', cell: (t) => (
+            <button onClick={() => setOpenPlan(t.id)} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold">
+              {t.logStatus === 'submitted' ? 'View' : 'Log'} <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          ) },
+        ]}
+      />
     </div>
   );
 }

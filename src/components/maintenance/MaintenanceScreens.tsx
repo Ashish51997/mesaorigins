@@ -15,6 +15,7 @@ import { initialMachines } from '../../mockData';
 import { useLiveMachines } from '../../lib/simulation';
 import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
+import { DataTable } from '../DataTable';
 import { pushToast } from '../Notify';
 import { ApiError } from '../../lib/apiClient';
 import { useMachines, useMaintenanceTasks, useAddMaintenance, useCompleteMaintenance, type ApiMachine } from '../../lib/queries/maintenance';
@@ -64,25 +65,26 @@ export function PreventiveSchedule(_p: MaintData) {
           <Plus className="w-4 h-4" /> Add task
         </button>
       </div>
-      <Card title={`${pending.length} open task(s)`}>
-        {tasksQ.isLoading ? <div className="text-[12px] text-slate-400 py-6 text-center">Loading…</div> : pending.length === 0 ? <EmptyState icon={<CalendarClock className="w-8 h-8" />} title="No open maintenance tasks." hint="Add a machine maintenance task to schedule it." /> : (
-          <div className="space-y-2">
-            {pending.map((t) => {
-              const overdue = t.status === 'overdue' || (t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10));
-              return (
-                <div key={t.id} className="flex flex-wrap items-center gap-3 border border-slate-200 rounded-lg p-3">
-                  <span className="font-bold text-[13px] inline-flex items-center gap-1"><Cpu className="w-3.5 h-3.5 text-slate-400" /> {t.machine.code}</span>
-                  <span className="text-[13px] text-slate-600">{t.taskName}</span>
-                  {typeChip(t.type)}
-                  <span className="text-[11px] text-slate-400">{t.frequency}</span>
-                  <span className={`text-[11px] font-bold ${overdue ? 'text-rose-700' : 'text-slate-500'}`}>{overdue ? 'overdue' : 'due'} {t.dueDate}</span>
-                  <button disabled={complete.isPending} onClick={() => complete.mutate(t.id, { onSuccess: () => pushToast(`${t.machine.code} · ${t.taskName} marked done.`), onError: (e) => pushToast(errMsg(e)) })} className="ml-auto h-11 px-4 rounded-lg bg-indigo-600 text-white text-sm font-bold disabled:opacity-50"><CheckCircle2 className="w-4 h-4 inline -mt-0.5 mr-1" />Mark done</button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
+      <DataTable
+        title={`${pending.length} open task(s)`}
+        loading={tasksQ.isLoading}
+        rows={pending}
+        rowKey={(t) => t.id}
+        empty={<EmptyState icon={<CalendarClock className="w-8 h-8" />} title="No open maintenance tasks." hint="Add a machine maintenance task to schedule it." />}
+        columns={[
+          { key: 'machine', header: 'Machine', cell: (t) => <span className="font-bold inline-flex items-center gap-1"><Cpu className="w-3.5 h-3.5 text-slate-400" /> {t.machine.code}</span> },
+          { key: 'task', header: 'Task', cell: (t) => t.taskName },
+          { key: 'type', header: 'Type', cell: (t) => typeChip(t.type) },
+          { key: 'freq', header: 'Frequency', cell: (t) => <span className="text-[12px] text-slate-500">{t.frequency}</span> },
+          { key: 'due', header: 'Due', cell: (t) => {
+            const overdue = t.status === 'overdue' || (t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10));
+            return <span className={`text-[12px] font-bold ${overdue ? 'text-rose-700' : 'text-slate-500'}`}>{overdue ? 'overdue' : 'due'} {t.dueDate}</span>;
+          } },
+          { key: 'act', header: '', align: 'right', cell: (t) => (
+            <button disabled={complete.isPending} onClick={() => complete.mutate(t.id, { onSuccess: () => pushToast(`${t.machine.code} · ${t.taskName} marked done.`), onError: (e) => pushToast(errMsg(e)) })} className="h-9 px-3 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-50 inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Done</button>
+          ) },
+        ]}
+      />
       {showAdd && <AddMaintenanceModal machines={machines} onClose={() => setShowAdd(false)} />}
     </div>
   );

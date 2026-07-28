@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/apiClient';
 import { pushToast } from './Notify';
 import { EmptyState } from './EmptyState';
+import { DataTable } from './DataTable';
 import type { LogbookTemplate } from '../types';
 
 interface ApiTemplate extends LogbookTemplate { _count?: { productionPlans: number; logbooks: number } }
@@ -45,30 +46,29 @@ export default function TemplateBuilder() {
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Logbook Templates</h2>
         <button onClick={() => setEdit('new')} className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold"><Plus className="w-4 h-4" /> New template</button>
       </div>
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-        {q.isLoading ? <div className="py-6 text-center text-sm text-slate-400">Loading…</div> : templates.length === 0 ? (
-          <EmptyState icon={<FileSpreadsheet className="w-8 h-8" />} title="No templates yet." />
-        ) : (
-          <div className="space-y-2">
-            {templates.map((t) => (
-              <div key={t.id} className="flex items-center gap-3 border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[13px] truncate">{t.productName}</div>
-                  <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                    <span className="font-mono">{t.docNo} Rev {t.revNo}</span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(t.layout ?? 'coil') === 'pipe' ? 'bg-amber-100 text-amber-800' : 'bg-cyan-100 text-cyan-800'}`}>{(t.layout ?? 'coil') === 'pipe' ? 'Pipe/Nos' : 'Coil/Roll'}</span>
-                    <span>Shore {t.hardnessType ?? 'A'}</span>
-                    {t._count && <span className="text-slate-400">· {t._count.productionPlans} plan(s)</span>}
-                  </div>
-                </div>
-                <button onClick={() => setClone(t)} className="text-slate-400 hover:text-indigo-600" title="Clone"><Copy className="w-4 h-4" /></button>
-                <button onClick={() => setEdit(t)} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 text-xs font-bold">Edit</button>
-                <button onClick={() => remove(t)} className="text-slate-400 hover:text-rose-600" title="Delete"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <DataTable
+        title="Templates"
+        loading={q.isLoading}
+        rows={templates}
+        rowKey={(t) => t.id}
+        empty={<EmptyState icon={<FileSpreadsheet className="w-8 h-8" />} title="No templates yet." />}
+        columns={[
+          { key: 'name', header: 'Product', cell: (t) => <span className="font-bold">{t.productName}</span> },
+          { key: 'doc', header: 'Doc / Rev', className: 'font-mono whitespace-nowrap', cell: (t) => `${t.docNo} Rev ${t.revNo}` },
+          { key: 'layout', header: 'Layout', cell: (t) => (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(t.layout ?? 'coil') === 'pipe' ? 'bg-amber-100 text-amber-800' : 'bg-cyan-100 text-cyan-800'}`}>{(t.layout ?? 'coil') === 'pipe' ? 'Pipe/Nos' : 'Coil/Roll'}</span>
+          ) },
+          { key: 'shore', header: 'Shore', cell: (t) => t.hardnessType ?? 'A' },
+          { key: 'plans', header: 'Plans', align: 'right', cell: (t) => t._count?.productionPlans ?? 0 },
+          { key: 'act', header: '', align: 'right', className: 'whitespace-nowrap', cell: (t) => (
+            <div className="inline-flex items-center gap-1.5">
+              <button onClick={() => setClone(t)} className="text-slate-400 hover:text-indigo-600 p-1" title="Clone"><Copy className="w-4 h-4" /></button>
+              <button onClick={() => setEdit(t)} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 text-xs font-bold">Edit</button>
+              <button onClick={() => remove(t)} className="text-slate-400 hover:text-rose-600 p-1" title="Delete"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          ) },
+        ]}
+      />
       {edit && <TemplateModal template={edit === 'new' ? null : edit} onClose={() => setEdit(null)} />}
       {clone && <TemplateModal template={{ ...clone, id: '', productName: `${clone.productName} (copy)` }} cloneOf onClose={() => setClone(null)} />}
     </div>

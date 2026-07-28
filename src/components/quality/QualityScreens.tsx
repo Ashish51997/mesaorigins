@@ -15,6 +15,7 @@ import { pushToast } from '../Notify';
 import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
 import { TraceLink } from '../TraceLink';
+import { DataTable } from '../DataTable';
 import { ApiError } from '../../lib/apiClient';
 import { useQualityQueue, useQualityInspections, useCreateInspection, type ApiQueueItem } from '../../lib/queries/quality';
 
@@ -45,19 +46,22 @@ export function RollInspectionQueue(p: QualityData) {
   const queue = queueQ.data ?? [];
   return (
     <div className="space-y-3">
-      {queueQ.isLoading ? (
-        <div className="text-[12px] text-slate-400 py-6 text-center">Loading…</div>
-      ) : queue.length === 0 ? (
-        <EmptyState icon={<ClipboardCheck className="w-8 h-8" />} title="No rolls waiting — packed rolls from submitted logbooks appear here." />
-      ) : queue.map((r) => (
-        <button key={r.lotNumber} onClick={() => setSel(r)} className="w-full bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 text-left hover:border-indigo-400">
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-slate-800"><TraceLink id={r.lotNumber} onTrace={p.onTrace} className="font-mono text-[13px]" /></div>
-            <div className="text-[12px] text-slate-500">Machine {r.machineId} · {r.product || '—'}{r.colour ? ` · ${r.colour}` : ''} · {r.date}</div>
-          </div>
-          <span className="h-11 px-4 rounded-lg bg-indigo-600 text-white text-xs font-bold inline-flex items-center">Inspect</span>
-        </button>
-      ))}
+      <DataTable
+        title="Roll inspection queue"
+        loading={queueQ.isLoading}
+        rows={queue}
+        rowKey={(r) => r.lotNumber}
+        empty={<EmptyState icon={<ClipboardCheck className="w-8 h-8" />} title="No rolls waiting — packed rolls from submitted logbooks appear here." />}
+        onRowClick={(r) => setSel(r)}
+        columns={[
+          { key: 'lot', header: 'Lot', cell: (r) => <TraceLink id={r.lotNumber} onTrace={p.onTrace} className="font-mono text-[13px] font-bold" /> },
+          { key: 'machine', header: 'Machine', cell: (r) => r.machineId },
+          { key: 'product', header: 'Product', cell: (r) => r.product || '—' },
+          { key: 'colour', header: 'Colour', cell: (r) => r.colour || '—' },
+          { key: 'date', header: 'Date', className: 'whitespace-nowrap', cell: (r) => r.date },
+          { key: 'act', header: '', align: 'right', cell: () => <span className="h-8 px-3 rounded-lg bg-indigo-600 text-white text-xs font-bold inline-flex items-center">Inspect</span> },
+        ]}
+      />
       {sel && <RollInspectionModal item={sel} onClose={() => setSel(null)} />}
     </div>
   );
@@ -121,18 +125,22 @@ function RollInspectionModal({ item, onClose }: { item: ApiQueueItem; onClose: (
 export function Holds(p: QualityData) {
   const inspQ = useQualityInspections();
   const held = (inspQ.data ?? []).filter((i) => i.decision === 'hold');
-  if (inspQ.isLoading) return <div className="text-[12px] text-slate-400 py-6 text-center">Loading…</div>;
-  if (held.length === 0) return <EmptyState icon={<PauseCircle className="w-8 h-8" />} title="Nothing on hold. Good." hint="Rolls you place on hold appear here with their reason." />;
   return (
-    <div className="space-y-2">
-      {held.map((i) => (
-        <div key={i.id} className="bg-white border border-amber-200 rounded-xl p-4 flex items-center gap-3">
-          <PauseCircle className="w-5 h-5 text-amber-600" />
-          <div className="flex-1"><div className="font-bold font-mono text-[13px]">{i.lotNumber}</div><div className="text-[12px] text-amber-700">On hold{i.remarks ? ` — ${i.remarks}` : ''} · by {i.inspectedBy}</div></div>
+    <DataTable
+      title="Quality holds"
+      loading={inspQ.isLoading}
+      rows={held}
+      rowKey={(i) => i.id}
+      empty={<EmptyState icon={<PauseCircle className="w-8 h-8" />} title="Nothing on hold. Good." hint="Rolls you place on hold appear here with their reason." />}
+      columns={[
+        { key: 'lot', header: 'Lot', cell: (i) => <span className="font-bold font-mono text-[13px]">{i.lotNumber}</span> },
+        { key: 'remarks', header: 'Reason', cell: (i) => <span className="text-amber-700">{i.remarks || 'On hold'}</span> },
+        { key: 'by', header: 'Inspected by', cell: (i) => i.inspectedBy },
+        { key: 'act', header: '', align: 'right', cell: (i) => (
           <button onClick={() => p.onTrace(i.lotNumber)} className="text-[12px] font-bold text-indigo-600">Trace</button>
-        </div>
-      ))}
-    </div>
+        ) },
+      ]}
+    />
   );
 }
 

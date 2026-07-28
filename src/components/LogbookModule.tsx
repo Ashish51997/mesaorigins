@@ -14,13 +14,14 @@
  */
 
 import React, { useState, useEffect, useRef, useContext, createContext, useCallback } from 'react';
-import { FileSpreadsheet, Settings, Save, RotateCcw, CheckCircle2, Eye, ChevronDown, Lock, Plus, Trash2, AlertTriangle, CalendarClock, X, Wand2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { FileSpreadsheet, Settings, Save, RotateCcw, CheckCircle2, Eye, ChevronDown, Lock, Plus, Trash2, AlertTriangle, CalendarClock, X, Wand2, ArrowLeft, ArrowRight, Printer } from 'lucide-react';
 import { LogbookTemplate, MachineLogbook, ProductionPlan, SalesOrder, RollRecord } from '../types';
 import MachineLogBookSheet, { LogbookHandlers } from './MachineLogBookSheet';
 import GuidedPreviewSheet from './GuidedPreviewSheet';
 import { pushToast } from './Notify';
 import { ApiError } from '../lib/apiClient';
 import { useLogbookTemplates, useLogbookPlans, useLogbookFormulas, useOpenLogbook, useSaveLogbook, useSubmitLogbook } from '../lib/queries/logbook';
+import { isInvalidNumber, isOutOfRange, sanitizeDecimal, sanitizeMeter, summarizeLogbookIssues, validateLogbookForSubmit, normalizeLogbookFormats, normalizeDate, normalizeTime, isInvalidDate, isInvalidTime, isInvalidMeter, type LogbookFieldIssue } from '../lib/logbookValidation';
 
 interface LogbookModuleProps {
   templates: LogbookTemplate[];
@@ -97,13 +98,13 @@ function blankLogbook(t: LogbookTemplate, plan?: ProductionPlan): MachineLogbook
 // Fill in fields that older persisted logbooks may lack, so the new register/sign-off
 // code never hits undefined.
 function hydrate(lb: MachineLogbook): MachineLogbook {
-  return {
+  return normalizeLogbookFormats({
     ...lb,
     rolls: lb.rolls ?? [],
     scrapKg: lb.scrapKg ?? '',
     operatorSignature: lb.operatorSignature ?? '',
-    supervisorSignature: lb.supervisorSignature ?? ''
-  };
+    supervisorSignature: lb.supervisorSignature ?? '',
+  });
 }
 
 // Which numbered section a field key belongs to (drives the band/group highlight).
@@ -123,7 +124,7 @@ function firstFieldOfSection(n: number): string {
   return 'machineId';
 }
 
-const inputCls = 'w-full border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white';
+const inputCls = 'w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white';
 
 /* Selection context so panel fields can highlight/scroll the active input and
  * report focus without threading props through every field. */
@@ -135,23 +136,42 @@ interface PanelFieldCtxValue {
 }
 const PanelFieldCtx = createContext<PanelFieldCtxValue>({});
 
-function PText({ label, value, onChange, ph, field, lo, hi, readOnly }: { label: string; value: string; onChange: (v: string) => void; ph?: string; field?: string; lo?: number; hi?: number; readOnly?: boolean }) {
+function PText({ label, value, onChange, ph, field, lo, hi, readOnly, numeric, kind = 'text' }: { label: string; value: string; onChange: (v: string) => void; ph?: string; field?: string; lo?: number; hi?: number; readOnly?: boolean; numeric?: boolean; kind?: 'text' | 'number' | 'date' | 'time' | 'meter' }) {
   const { active, select, setActiveEl, locked } = useContext(PanelFieldCtx);
   const isActive = field != null && field === active;
-  const n = Number.parseFloat(value);
+  const mode = kind === 'number' || numeric || (lo != null && hi != null) ? (kind === 'date' || kind === 'time' || kind === 'meter' ? kind : 'number') : kind;
+  const display =
+    mode === 'date' ? normalizeDate(value)
+      : mode === 'time' ? normalizeTime(value)
+        : (value ?? '');
+  const badType =
+    (mode === 'number' && isInvalidNumber(value))
+    || (mode === 'date' && isInvalidDate(value))
+    || (mode === 'time' && isInvalidTime(value))
+    || (mode === 'meter' && isInvalidMeter(value));
   const ranged = lo != null && hi != null && hi > lo;
-  const oor = ranged && (value ?? '').trim() !== '' && !Number.isNaN(n) && (n < lo! || n > hi!);
+  const oor = !badType && mode === 'number' && ranged && isOutOfRange(value, lo, hi);
+  const inputType = mode === 'date' ? 'date' : mode === 'time' ? 'time' : 'text';
   return (
     <label className={`flex flex-col gap-0.5 rounded ${isActive ? 'ring-2 ring-indigo-500 bg-indigo-50/70 p-1 -m-0.5' : ''}`}>
       <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">{label}{ranged ? <span className="text-slate-400 font-normal normal-case"> ({lo}–{hi})</span> : null}</span>
       <input
         ref={isActive && setActiveEl ? setActiveEl : undefined}
-        className={`${inputCls}${oor ? ' border-amber-400 bg-amber-50 text-amber-700 font-bold' : ''}${readOnly ? ' bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
-        value={value ?? ''}
-        placeholder={ph}
+        type={inputType}
+        className={`${inputCls}${oor || badType ? ' border-amber-400 bg-amber-50 text-amber-700 font-bold' : ''}${readOnly ? ' bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
+        value={display}
+        placeholder={ph ?? (mode === 'meter' ? 'e.g. 154/M' : undefined)}
+        inputMode={mode === 'number' ? 'decimal' : undefined}
         readOnly={locked || readOnly}
         onFocus={() => { if (field) select?.(field); }}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (mode === 'number') onChange(sanitizeDecimal(raw));
+          else if (mode === 'date') onChange(normalizeDate(raw));
+          else if (mode === 'time') onChange(normalizeTime(raw));
+          else if (mode === 'meter') onChange(sanitizeMeter(raw));
+          else onChange(raw);
+        }}
       />
     </label>
   );
@@ -223,6 +243,7 @@ export default function LogbookModule({
   const [activeField, setActiveField] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState<boolean>(false);
   const [err, setErr] = useState<string>('');
+  const [submitIssues, setSubmitIssues] = useState<LogbookFieldIssue[]>([]);
   const [mode, setMode] = useState<'sheet' | 'guided'>('sheet');
   const activeSection = sectionOfField(activeField);
 
@@ -303,6 +324,15 @@ export default function LogbookModule({
 
   const handleSubmit = () => {
     if (locked || submitLb.isPending) return;
+    const issues = validateLogbookForSubmit(activeLogbook, t);
+    if (issues.length) {
+      setSubmitIssues(issues);
+      setErr(summarizeLogbookIssues(issues));
+      const first = issues[0]?.field;
+      if (first) setActiveField(first);
+      return;
+    }
+    setSubmitIssues([]);
     setErr('');
     const id = activeLogbook.id;
     // Persist the latest edits, then submit + lock (the server requires the
@@ -344,31 +374,48 @@ export default function LogbookModule({
           </div>
         ) : (
         <>
-          {/* Toolbar — read-only current-plan (no extruder picker; Machine Tasks selects the plan) + submit / lock */}
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-200 rounded-2xl p-2.5 shadow-md">
-            <div className="flex items-center gap-2 min-w-0">
+          {/* Toolbar — plan context + sheet/guided + print / submit / close */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200/80 rounded-2xl px-3 py-3 shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
               {(() => {
                 const cur = scheduledPlans.find((p) => p.id === selectedPlanId);
                 return (
-                  <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-slate-700 truncate">
+                  <span className="inline-flex items-center gap-2 text-[13px] font-medium text-slate-700 truncate">
                     <FileSpreadsheet className="w-4 h-4 text-indigo-500 shrink-0" />
                     {cur ? <>Machine {cur.machine.code} · {cur.shift === 'D' ? 'Day' : 'Night'} shift · {cur.salesOrder?.soNumber ?? 'no order'} · {cur.scheduledStartDate.split('T')[0]}</> : 'Production log book'}
                   </span>
                 );
               })()}
-              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${locked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                {locked ? <><Lock className="w-3 h-3" /> Submitted &amp; locked</> : 'Draft'}
+              <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${locked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                {locked ? <><Lock className="w-3 h-3" /> Closed</> : 'Draft'}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              {err && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600"><AlertTriangle className="w-3.5 h-3.5" /> {err}</span>}
-              {savedFlash && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700"><CheckCircle2 className="w-3.5 h-3.5" /> Saved</span>}
-              <div className="flex items-center gap-0.5 p-0.5 rounded-full border border-slate-200 bg-slate-50">
-                <button onClick={() => setMode('sheet')} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${mode === 'sheet' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400'}`}><FileSpreadsheet className="w-3.5 h-3.5" /> Sheet</button>
-                <button onClick={() => setMode('guided')} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${mode === 'guided' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400'}`}><Wand2 className="w-3.5 h-3.5" /> Guided</button>
+            <div className="flex flex-wrap items-center gap-2">
+              {err && <span className="inline-flex items-center gap-1 text-[12px] font-medium text-rose-600 max-w-[200px] truncate" title={err}><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {err}</span>}
+              {savedFlash && <span className="inline-flex items-center gap-1 text-[12px] font-medium text-emerald-700"><CheckCircle2 className="w-3.5 h-3.5" /> Saved</span>}
+              <div className="flex items-center gap-0.5 p-0.5 rounded-lg border border-slate-200 bg-slate-50">
+                <button type="button" onClick={() => setMode('sheet')} className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-[12px] font-medium ${mode === 'sheet' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500'}`}><FileSpreadsheet className="w-3.5 h-3.5" /> Sheet</button>
+                <button type="button" onClick={() => setMode('guided')} className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-[12px] font-medium ${mode === 'guided' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}><Wand2 className="w-3.5 h-3.5" /> Guided</button>
               </div>
-              <button onClick={handleNew} disabled={locked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"><RotateCcw className="w-3.5 h-3.5" /> Clear draft</button>
-              <button onClick={handleSubmit} disabled={locked} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"><Save className="w-3.5 h-3.5" /> Submit &amp; lock</button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-slate-600 border border-slate-200 bg-white hover:bg-slate-50"
+                title="Print the sheet"
+              >
+                <Printer className="w-3.5 h-3.5" /> Print
+              </button>
+              <button type="button" onClick={handleNew} disabled={locked} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"><RotateCcw className="w-3.5 h-3.5" /> Clear draft</button>
+              {/* Layout preview: Submit = save progress; Close = finalize (state wiring next) */}
+              <button type="button" onClick={handleSubmit} disabled={locked} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"><Save className="w-3.5 h-3.5" /> Submit</button>
+              <button
+                type="button"
+                disabled
+                title="Finalizes and locks the log — confirm layout, then we will wire this"
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-slate-500 border border-slate-200 bg-white opacity-60 cursor-not-allowed"
+              >
+                <Lock className="w-3.5 h-3.5" /> Close
+              </button>
             </div>
           </div>
 
@@ -399,7 +446,7 @@ export default function LogbookModule({
                 <GuidedWizard logbook={activeLogbook} template={t} on={on} addRoll={addRoll} removeRoll={removeRoll} setScrap={setScrap} onSelectField={selectField} locked={locked} activeField={activeField} formulaOptions={formulaOptions} />
               ) : (
               <>
-              <div className="flex items-center gap-1.5 mb-2 text-[10px] font-bold uppercase tracking-wide text-indigo-700">
+              <div className="flex items-center gap-1.5 mb-3 text-[11px] font-medium tracking-wide text-slate-500">
                 <Eye className="w-3.5 h-3.5" /> Fill panel — edits sync with the sheet
               </div>
 
@@ -408,7 +455,7 @@ export default function LogbookModule({
                 <PanelSection n={1} title="Header & Process Parameters" activeSection={activeSection} onSelect={(n) => selectField(firstFieldOfSection(n))}>
                   <div className="grid grid-cols-2 gap-2">
                     <PText label="Machine No" field="machineId" value={activeLogbook.machineId} onChange={(v) => on.scalar('machineId', v)} readOnly />
-                    <PText label="Date" field="date" value={activeLogbook.date} onChange={(v) => on.scalar('date', v)} />
+                    <PText kind="date" label="Date" field="date" value={activeLogbook.date} onChange={(v) => on.scalar('date', v)} />
                     <PSelect label="Shift" field="shift" value={activeLogbook.shift} onChange={(v) => on.scalar('shift', v)} options={t.shifts} />
                     <PSelect label="Shift Supervisor" field="supervisor" value={activeLogbook.supervisor} onChange={(v) => on.scalar('supervisor', v)} options={t.supervisors} />
                     <PText label="Drawing No" field="drawingNo" value={activeLogbook.drawingNo} onChange={(v) => on.scalar('drawingNo', v)} />
@@ -417,18 +464,18 @@ export default function LogbookModule({
                     <PText label="Mold No" field="moldNo" value={activeLogbook.moldNo} onChange={(v) => on.scalar('moldNo', v)} />
                   </div>
                   <div className="mt-2 grid grid-cols-3 gap-2">
-                    {t.dieZones.map((z) => <div key={z} className="contents"><PText label={z} field={`die:${z}`} value={activeLogbook.dieZoneTemps[z] ?? ''} onChange={(v) => on.dieZone(z, v)} lo={t.zoneSpecs?.[z]?.min} hi={t.zoneSpecs?.[z]?.max} /></div>)}
-                    {t.barrelZones.map((z) => <div key={z} className="contents"><PText label={z} field={`barrel:${z}`} value={activeLogbook.barrelZoneTemps[z] ?? ''} onChange={(v) => on.barrelZone(z, v)} lo={t.zoneSpecs?.[z]?.min} hi={t.zoneSpecs?.[z]?.max} /></div>)}
+                    {t.dieZones.map((z) => <div key={z} className="contents"><PText numeric label={`${z} (°C)`} field={`die:${z}`} value={activeLogbook.dieZoneTemps[z] ?? ''} onChange={(v) => on.dieZone(z, v)} lo={t.zoneSpecs?.[z]?.min} hi={t.zoneSpecs?.[z]?.max} /></div>)}
+                    {t.barrelZones.map((z) => <div key={z} className="contents"><PText numeric label={`${z} (°C)`} field={`barrel:${z}`} value={activeLogbook.barrelZoneTemps[z] ?? ''} onChange={(v) => on.barrelZone(z, v)} lo={t.zoneSpecs?.[z]?.min} hi={t.zoneSpecs?.[z]?.max} /></div>)}
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2">
-                    <PText label="Main Motor Speed" field="motorSpeed" value={activeLogbook.motorSpeed} onChange={(v) => on.scalar('motorSpeed', v)} />
-                    <PText label="Ampere" field="ampere" value={activeLogbook.ampere} onChange={(v) => on.scalar('ampere', v)} />
-                    <PText label="Takeup Speed" field="takeupSpeed" value={activeLogbook.takeupSpeed} onChange={(v) => on.scalar('takeupSpeed', v)} />
-                    <PText label="Vaccum" field="vacuum" value={activeLogbook.vacuum} onChange={(v) => on.scalar('vacuum', v)} />
-                    <PText label="Extruder start time" field="extruderStartTime" value={activeLogbook.extruderStartTime} onChange={(v) => on.scalar('extruderStartTime', v)} />
-                    <PText label="Product / Item set time" field="productSetTime" value={activeLogbook.productSetTime} onChange={(v) => on.scalar('productSetTime', v)} />
-                    <PText label="Shore A Hardness" field="shoreHardness" value={activeLogbook.shoreHardness} onChange={(v) => on.scalar('shoreHardness', v)} />
-                    <PText label="Production Per Hour" field="productionPerHour" value={activeLogbook.productionPerHour} onChange={(v) => on.scalar('productionPerHour', v)} />
+                    <PText numeric label="Main Motor Speed" field="motorSpeed" value={activeLogbook.motorSpeed} onChange={(v) => on.scalar('motorSpeed', v)} />
+                    <PText numeric label="Ampere" field="ampere" value={activeLogbook.ampere} onChange={(v) => on.scalar('ampere', v)} />
+                    <PText numeric label="Takeup Speed" field="takeupSpeed" value={activeLogbook.takeupSpeed} onChange={(v) => on.scalar('takeupSpeed', v)} />
+                    <PText numeric label="Vacuum" field="vacuum" value={activeLogbook.vacuum} onChange={(v) => on.scalar('vacuum', v)} />
+                    <PText kind="time" label="Extruder start time" field="extruderStartTime" value={activeLogbook.extruderStartTime} onChange={(v) => on.scalar('extruderStartTime', v)} />
+                    <PText kind="time" label="Product / Item set time" field="productSetTime" value={activeLogbook.productSetTime} onChange={(v) => on.scalar('productSetTime', v)} />
+                    <PText numeric label={`Shore ${t.hardnessType ?? 'A'} Hardness`} field="shoreHardness" value={activeLogbook.shoreHardness} onChange={(v) => on.scalar('shoreHardness', v)} />
+                    <PText numeric label="Production Per Hour (kg)" field="productionPerHour" value={activeLogbook.productionPerHour} onChange={(v) => on.scalar('productionPerHour', v)} />
                   </div>
                   <div className="mt-2">
                     <PText label="Product Name" field="productName" value={activeLogbook.productName} onChange={(v) => on.scalar('productName', v)} />
@@ -441,8 +488,8 @@ export default function LogbookModule({
                   <span className="block text-[9px] font-semibold uppercase text-slate-500 mb-1">Coil weight ({t.coil.rangeLo}–{t.coil.rangeHi} kg)</span>
                   <div className="grid grid-cols-4 gap-1 mb-3">
                     {activeLogbook.coilWeights.map((c, i) => {
-                      const num = Number.parseFloat(c);
-                      const oor = c.trim() !== '' && !Number.isNaN(num) && (num < t.coil.rangeLo || num > t.coil.rangeHi);
+                      const badType = isInvalidNumber(c);
+                      const oor = !badType && isOutOfRange(c, t.coil.rangeLo, t.coil.rangeHi);
                       const fld = `coil:${i}`;
                       const isA = activeField === fld;
                       return (
@@ -450,11 +497,11 @@ export default function LogbookModule({
                           <span className="text-[8px] text-slate-400 w-4 text-right">{i + 1}</span>
                           <input
                             ref={isA ? setActiveEl : undefined}
-                            className={`w-full border rounded px-1 py-0.5 text-[10px] text-center ${isA ? 'ring-2 ring-indigo-500 ' : ''}${oor ? 'border-amber-400 bg-amber-50 text-amber-700 font-bold' : 'border-slate-200'}`}
+                            className={`w-full border rounded px-1.5 py-1 text-xs text-center ${isA ? 'ring-2 ring-indigo-500 ' : ''}${oor || badType ? 'border-amber-400 bg-amber-50 text-amber-700 font-bold' : 'border-slate-200'}`}
                             inputMode="decimal"
                             value={c}
                             onFocus={() => selectField(fld)}
-                            onChange={(e) => on.coil(i, e.target.value)}
+                            onChange={(e) => on.coil(i, sanitizeDecimal(e.target.value))}
                           />
                         </div>
                       );
@@ -468,17 +515,17 @@ export default function LogbookModule({
                         <div className="text-[10px] font-bold text-slate-600 mb-1">{row.timeSlot}</div>
                         <div className="grid grid-cols-3 gap-1.5">
                           {isPipe ? <>
-                            <PText label="OD" field={`hourly:${i}:od`} value={row.od ?? ''} onChange={(v) => on.hourly(i, 'od', v)} lo={t.pipeSpecs?.od?.lo} hi={t.pipeSpecs?.od?.hi} />
-                            <PText label="Weight" field={`hourly:${i}:weight`} value={row.weight ?? ''} onChange={(v) => on.hourly(i, 'weight', v)} lo={t.pipeSpecs?.weight?.lo} hi={t.pipeSpecs?.weight?.hi} />
+                            <PText numeric label="OD" field={`hourly:${i}:od`} value={row.od ?? ''} onChange={(v) => on.hourly(i, 'od', v)} lo={t.pipeSpecs?.od?.lo} hi={t.pipeSpecs?.od?.hi} />
+                            <PText numeric label="Weight" field={`hourly:${i}:weight`} value={row.weight ?? ''} onChange={(v) => on.hourly(i, 'weight', v)} lo={t.pipeSpecs?.weight?.lo} hi={t.pipeSpecs?.weight?.hi} />
                             <PText label="Colour" field={`hourly:${i}:colour`} value={row.colour} onChange={(v) => on.hourly(i, 'colour', v)} />
-                            <PText label="Ok / Not ok" field={`hourly:${i}:okNotOk`} value={row.okNotOk ?? ''} onChange={(v) => on.hourly(i, 'okNotOk', v)} />
+                            <PSelect label="Ok / Not ok" field={`hourly:${i}:okNotOk`} value={row.okNotOk ?? ''} onChange={(v) => on.hourly(i, 'okNotOk', v)} options={['Ok', 'Not ok']} />
                             <PSelect label="Inspection By" field={`hourly:${i}:inspectionBy`} value={row.inspectionBy} onChange={(v) => on.hourly(i, 'inspectionBy', v)} options={t.supervisors} />
                           </> : <>
-                          <PText label={t.dimensionSpecs.top.label} field={`hourly:${i}:topDim`} value={row.topDim ?? ''} onChange={(v) => on.hourly(i, 'topDim', v)} />
-                          <PText label={t.dimensionSpecs.bottom.label} field={`hourly:${i}:bottomDim`} value={row.bottomDim ?? ''} onChange={(v) => on.hourly(i, 'bottomDim', v)} />
-                          {(row.thickness ?? []).map((th, j) => <div key={j} className="contents"><PText label={`Thk ${j + 1}`} field={`hourly:${i}:thickness:${j}`} value={th} onChange={(v) => on.hourlyThickness(i, j, v)} /></div>)}
+                          <PText numeric label={t.dimensionSpecs.top.label} field={`hourly:${i}:topDim`} value={row.topDim ?? ''} onChange={(v) => on.hourly(i, 'topDim', v)} lo={t.dimensionSpecs.top.lo} hi={t.dimensionSpecs.top.hi} />
+                          <PText numeric label={t.dimensionSpecs.bottom.label} field={`hourly:${i}:bottomDim`} value={row.bottomDim ?? ''} onChange={(v) => on.hourly(i, 'bottomDim', v)} lo={t.dimensionSpecs.bottom.lo} hi={t.dimensionSpecs.bottom.hi} />
+                          {(row.thickness ?? []).map((th, j) => <div key={j} className="contents"><PText numeric label={`Thk ${j + 1}`} field={`hourly:${i}:thickness:${j}`} value={th} onChange={(v) => on.hourlyThickness(i, j, v)} lo={t.dimensionSpecs.thickness.lo} hi={t.dimensionSpecs.thickness.hi} /></div>)}
                           <PText label="Finish" field={`hourly:${i}:finish`} value={row.finish ?? ''} onChange={(v) => on.hourly(i, 'finish', v)} />
-                          <PText label="Per meter" field={`hourly:${i}:perMeter`} value={row.perMeter ?? ''} onChange={(v) => on.hourly(i, 'perMeter', v)} />
+                          <PText numeric label="Per meter" field={`hourly:${i}:perMeter`} value={row.perMeter ?? ''} onChange={(v) => on.hourly(i, 'perMeter', v)} />
                           <PText label="Colour" field={`hourly:${i}:colour`} value={row.colour} onChange={(v) => on.hourly(i, 'colour', v)} />
                           <PText label="Tearing" field={`hourly:${i}:tearing`} value={row.tearing ?? ''} onChange={(v) => on.hourly(i, 'tearing', v)} />
                           <PSelect label="Inspection By" field={`hourly:${i}:inspectionBy`} value={row.inspectionBy} onChange={(v) => on.hourly(i, 'inspectionBy', v)} options={t.supervisors} />
@@ -495,9 +542,9 @@ export default function LogbookModule({
                     {activeLogbook.traceabilityRows.map((row, i) => (
                       <div key={i} className="grid grid-cols-[16px_1fr_54px_64px] gap-1 items-center">
                         <span className="text-[8px] text-slate-400 text-right">{i + 1}</span>
-                        <input ref={activeField === `trace:${i}:lotNumber` ? setActiveEl : undefined} className={`border rounded px-1 py-0.5 text-[10px] ${activeField === `trace:${i}:lotNumber` ? 'border-indigo-500 ring-1 ring-indigo-400' : 'border-slate-200'}`} placeholder="Lot Number" value={row.lotNumber} onFocus={() => selectField(`trace:${i}:lotNumber`)} onChange={(e) => on.trace(i, 'lotNumber', e.target.value)} />
-                        <input ref={activeField === `trace:${i}:colour` ? setActiveEl : undefined} className={`border rounded px-1 py-0.5 text-[10px] ${activeField === `trace:${i}:colour` ? 'border-indigo-500 ring-1 ring-indigo-400' : 'border-slate-200'}`} placeholder="Col" value={row.colour} onFocus={() => selectField(`trace:${i}:colour`)} onChange={(e) => on.trace(i, 'colour', e.target.value)} />
-                        <input ref={activeField === `trace:${i}:code` ? setActiveEl : undefined} className={`border rounded px-1 py-0.5 text-[10px] ${activeField === `trace:${i}:code` ? 'border-indigo-500 ring-1 ring-indigo-400' : 'border-slate-200'}`} placeholder="Code" value={row.code} onFocus={() => selectField(`trace:${i}:code`)} onChange={(e) => on.trace(i, 'code', e.target.value)} />
+                        <input ref={activeField === `trace:${i}:lotNumber` ? setActiveEl : undefined} className={`border rounded px-1.5 py-1 text-xs ${activeField === `trace:${i}:lotNumber` ? 'border-indigo-500 ring-1 ring-indigo-400' : 'border-slate-200'}`} placeholder="Lot Number" value={row.lotNumber} onFocus={() => selectField(`trace:${i}:lotNumber`)} onChange={(e) => on.trace(i, 'lotNumber', e.target.value)} />
+                        <input ref={activeField === `trace:${i}:colour` ? setActiveEl : undefined} className={`border rounded px-1.5 py-1 text-xs ${activeField === `trace:${i}:colour` ? 'border-indigo-500 ring-1 ring-indigo-400' : 'border-slate-200'}`} placeholder="Col" value={row.colour} onFocus={() => selectField(`trace:${i}:colour`)} onChange={(e) => on.trace(i, 'colour', e.target.value)} />
+                        <input ref={activeField === `trace:${i}:code` ? setActiveEl : undefined} className={`border rounded px-1.5 py-1 text-xs ${activeField === `trace:${i}:code` ? 'border-indigo-500 ring-1 ring-indigo-400' : 'border-slate-200'}`} placeholder="Code" value={row.code} onFocus={() => selectField(`trace:${i}:code`)} onChange={(e) => on.trace(i, 'code', e.target.value)} />
                       </div>
                     ))}
                   </div>
@@ -507,22 +554,22 @@ export default function LogbookModule({
                 {/* §4 Production report */}
                 <PanelSection n={4} title="Production Report" activeSection={activeSection} onSelect={(n) => selectField(firstFieldOfSection(n))}>
                   <div className="grid grid-cols-2 gap-2">
-                    <PText label="Total Roll Produced" field="totalRollsProduced" value={activeLogbook.totalRollsProduced} onChange={(v) => on.scalar('totalRollsProduced', v)} />
-                    <PText label="Total Roll Kgs" field="totalRollKgs" value={activeLogbook.totalRollKgs} onChange={(v) => on.scalar('totalRollKgs', v)} />
-                    <PText label="Process waste (kgs)" field="processWasteKg" value={activeLogbook.processWasteKg} onChange={(v) => on.scalar('processWasteKg', v)} />
-                    <PText label="Lumps waste (kgs)" field="lumpsWasteKg" value={activeLogbook.lumpsWasteKg} onChange={(v) => on.scalar('lumpsWasteKg', v)} />
-                    <PText label="Rejections (kgs)" field="rejectionKg" value={activeLogbook.rejectionKg} onChange={(v) => on.scalar('rejectionKg', v)} />
-                    <PText label="Total material consumed" field="totalConsumedKg" value={activeLogbook.totalConsumedKg} onChange={(v) => on.scalar('totalConsumedKg', v)} />
+                    <PText numeric label="Total Roll Produced" field="totalRollsProduced" value={activeLogbook.totalRollsProduced} onChange={(v) => on.scalar('totalRollsProduced', v)} />
+                    <PText numeric label="Total Roll Kgs" field="totalRollKgs" value={activeLogbook.totalRollKgs} onChange={(v) => on.scalar('totalRollKgs', v)} />
+                    <PText numeric label="Process waste (kgs)" field="processWasteKg" value={activeLogbook.processWasteKg} onChange={(v) => on.scalar('processWasteKg', v)} />
+                    <PText numeric label="Lumps waste (kgs)" field="lumpsWasteKg" value={activeLogbook.lumpsWasteKg} onChange={(v) => on.scalar('lumpsWasteKg', v)} />
+                    <PText numeric label="Rejections (kgs)" field="rejectionKg" value={activeLogbook.rejectionKg} onChange={(v) => on.scalar('rejectionKg', v)} />
+                    <PText numeric label="Total material consumed" field="totalConsumedKg" value={activeLogbook.totalConsumedKg} onChange={(v) => on.scalar('totalConsumedKg', v)} />
                   </div>
                   <span className="block mt-2 text-[9px] font-semibold uppercase text-slate-500 mb-1">Reason for Rejections</span>
                   <div className="grid grid-cols-2 gap-2">
-                    {t.rejectionReasons.map((r) => <div key={r} className="contents"><PText label={r} field={`rej:${r}`} value={activeLogbook.rejectionCounts[r] ?? ''} onChange={(v) => on.rejection(r, v)} /></div>)}
+                    {t.rejectionReasons.map((r) => <div key={r} className="contents"><PText numeric label={r} field={`rej:${r}`} value={activeLogbook.rejectionCounts[r] ?? ''} onChange={(v) => on.rejection(r, v)} /></div>)}
                   </div>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <PSelect label="Meter checked by" field="meterCheckedBy" value={activeLogbook.meterCheckedBy} onChange={(v) => on.scalar('meterCheckedBy', v)} options={t.supervisors} />
-                    <PText label="Time" field="meterCheckTime" value={activeLogbook.meterCheckTime} onChange={(v) => on.scalar('meterCheckTime', v)} />
-                    <PText label="Meter" field="meter" value={activeLogbook.meter} onChange={(v) => on.scalar('meter', v)} />
-                    <PText label="Meter Count Set" field="meterCountSet" value={activeLogbook.meterCountSet} onChange={(v) => on.scalar('meterCountSet', v)} />
+                    <PText kind="time" label="Meter check time" field="meterCheckTime" value={activeLogbook.meterCheckTime} onChange={(v) => on.scalar('meterCheckTime', v)} />
+                    <PText kind="meter" label="Meter" field="meter" value={activeLogbook.meter} onChange={(v) => on.scalar('meter', v)} ph="e.g. 154/M" />
+                    <PText numeric label="Meter Count Set" field="meterCountSet" value={activeLogbook.meterCountSet} onChange={(v) => on.scalar('meterCountSet', v)} />
                   </div>
                 </PanelSection>
 
@@ -534,7 +581,7 @@ export default function LogbookModule({
                     <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                       <div className="rounded-lg bg-emerald-50 border border-emerald-100 py-1.5"><div className="text-[9px] font-bold uppercase text-emerald-600">Good</div><div className="text-sm font-extrabold text-emerald-700">{passedKg.toFixed(1)}kg</div></div>
                       <div className="rounded-lg bg-rose-50 border border-rose-100 py-1.5"><div className="text-[9px] font-bold uppercase text-rose-600">Rejected</div><div className="text-sm font-extrabold text-rose-700">{failedKg.toFixed(1)}kg</div></div>
-                      <label className="rounded-lg bg-slate-50 border border-slate-200 py-1 px-1 flex flex-col"><span className="text-[9px] font-bold uppercase text-slate-500">Scrap kg</span><input value={activeLogbook.scrapKg} onChange={(e) => setScrap(e.target.value)} readOnly={locked} inputMode="decimal" className="w-full text-center text-sm font-bold bg-transparent focus:outline-none" placeholder="0" /></label>
+                      <label className="rounded-lg bg-slate-50 border border-slate-200 py-1 px-1 flex flex-col"><span className="text-[9px] font-bold uppercase text-slate-500">Scrap kg</span><input value={activeLogbook.scrapKg} onChange={(e) => setScrap(sanitizeDecimal(e.target.value))} readOnly={locked} inputMode="decimal" className="w-full text-center text-sm font-bold bg-transparent focus:outline-none" placeholder="0" /></label>
                     </div>
                     <div className="mt-2 text-[10px] text-slate-500">Total consumed (good + rejected + scrap) = <b className="text-slate-700">{activeLogbook.totalConsumedKg || '0'} kg</b> · auto-filled into the Production Report.</div>
                   </div>
@@ -595,8 +642,8 @@ function RollRegister({ rolls, locked, onAdd, onRemove }: { rolls: RollRecord[];
         <div className="grid grid-cols-2 gap-1.5">
           <input value={num} onChange={(e) => setNum(e.target.value)} placeholder={nextNum} className={inputCls} />
           <select value={status} onChange={(e) => setStatus(e.target.value as RollRecord['status'])} className={inputCls}><option value="passed">Passed</option><option value="pending">Pending QA</option><option value="failed">Rejected</option></select>
-          <input value={wt} onChange={(e) => setWt(e.target.value)} inputMode="decimal" placeholder="Weight kg" className={inputCls} />
-          <input value={len} onChange={(e) => setLen(e.target.value)} inputMode="decimal" placeholder="Length m" className={inputCls} />
+          <input value={wt} onChange={(e) => setWt(sanitizeDecimal(e.target.value))} inputMode="decimal" placeholder="Weight kg" className={inputCls} />
+          <input value={len} onChange={(e) => setLen(sanitizeDecimal(e.target.value))} inputMode="decimal" placeholder="Length m" className={inputCls} />
           <input value={winder} onChange={(e) => setWinder(e.target.value)} placeholder="Winder" className={inputCls} />
           <input value={packed} onChange={(e) => setPacked(e.target.value)} placeholder="Packed by" className={inputCls} />
           <button onClick={add} className="col-span-2 inline-flex items-center justify-center gap-1 py-1.5 rounded-full bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700"><Plus className="w-3.5 h-3.5" /> Register roll</button>
@@ -609,7 +656,7 @@ function RollRegister({ rolls, locked, onAdd, onRemove }: { rolls: RollRecord[];
 /* ---------------------------------------------------------------- guided wizard */
 
 type WizItem =
-  | { kind: 'field'; step: string; key: string; label: string; type: 'text' | 'select'; value: string; set: (v: string) => void; options?: readonly string[]; lo?: number; hi?: number }
+  | { kind: 'field'; step: string; key: string; label: string; type: 'text' | 'select' | 'date' | 'time'; value: string; set: (v: string) => void; options?: readonly string[]; lo?: number; hi?: number; numeric?: boolean }
   | { kind: 'coil'; step: string }
   | { kind: 'hourly'; step: string }
   | { kind: 'traceability'; step: string }
@@ -617,18 +664,16 @@ type WizItem =
   | { kind: 'rolls'; step: string }
   | { kind: 'signoff'; step: string };
 
-const oorOf = (value: string, lo?: number, hi?: number): boolean => {
-  if (lo == null || hi == null || hi <= lo) return false;
-  const n = Number.parseFloat(value);
-  return value.trim() !== '' && !Number.isNaN(n) && (n < lo || n > hi);
-};
+const oorOf = (value: string, lo?: number, hi?: number): boolean => isOutOfRange(value, lo, hi);
 
 function buildWizItems(lb: MachineLogbook, t: LogbookTemplate, on: LogbookHandlers, formulaOptions: readonly string[]): WizItem[] {
   const items: WizItem[] = [];
-  const f = (step: string, key: string, label: string, value: string, set: (v: string) => void, type: 'text' | 'select' = 'text', options?: readonly string[], lo?: number, hi?: number): WizItem =>
-    ({ kind: 'field', step, key, label, value, set, type, options, lo, hi });
+  const f = (
+    step: string, key: string, label: string, value: string, set: (v: string) => void,
+    type: 'text' | 'select' | 'date' | 'time' = 'text', options?: readonly string[], lo?: number, hi?: number, numeric?: boolean,
+  ): WizItem => ({ kind: 'field', step, key, label, value, set, type, options, lo, hi, numeric });
   items.push(f('Shift setup', 'machineId', 'Machine No', lb.machineId, (v) => on.scalar('machineId', v)));
-  items.push(f('Shift setup', 'date', 'Date', lb.date, (v) => on.scalar('date', v)));
+  items.push(f('Shift setup', 'date', 'Date', lb.date, (v) => on.scalar('date', v), 'date'));
   items.push(f('Shift setup', 'shift', 'Shift', lb.shift, (v) => on.scalar('shift', v), 'select', t.shifts));
   items.push(f('Shift setup', 'supervisor', 'Shift Supervisor', lb.supervisor, (v) => on.scalar('supervisor', v), 'select', t.supervisors));
   items.push(f('Shift setup', 'productName', 'Product Name', lb.productName, (v) => on.scalar('productName', v)));
@@ -636,17 +681,17 @@ function buildWizItems(lb: MachineLogbook, t: LogbookTemplate, on: LogbookHandle
   items.push(f('Process', 'tag', 'Tag', lb.tag, (v) => on.scalar('tag', v)));
   items.push(f('Process', 'formulaNo', 'Formula No', lb.formulaNo, (v) => on.scalar('formulaNo', v), 'select', formulaOptions));
   items.push(f('Process', 'moldNo', 'Mold No', lb.moldNo, (v) => on.scalar('moldNo', v)));
-  t.dieZones.forEach((z) => items.push(f('Process — zones', `die:${z}`, `${z} (°C)`, lb.dieZoneTemps[z] ?? '', (v) => on.dieZone(z, v), 'text', undefined, t.zoneSpecs?.[z]?.min, t.zoneSpecs?.[z]?.max)));
-  t.barrelZones.forEach((z) => items.push(f('Process — zones', `barrel:${z}`, `${z} (°C)`, lb.barrelZoneTemps[z] ?? '', (v) => on.barrelZone(z, v), 'text', undefined, t.zoneSpecs?.[z]?.min, t.zoneSpecs?.[z]?.max)));
-  items.push(f('Process', 'motorSpeed', 'Main Motor Speed', lb.motorSpeed, (v) => on.scalar('motorSpeed', v)));
-  items.push(f('Process', 'ampere', 'Ampere', lb.ampere, (v) => on.scalar('ampere', v)));
-  items.push(f('Process', 'takeupSpeed', 'Takeup Speed', lb.takeupSpeed, (v) => on.scalar('takeupSpeed', v)));
-  items.push(f('Process', 'vacuum', 'Vaccum', lb.vacuum, (v) => on.scalar('vacuum', v)));
-  items.push(f('Process', 'extruderStartTime', 'Extruder start time', lb.extruderStartTime, (v) => on.scalar('extruderStartTime', v)));
-  items.push(f('Process', 'productSetTime', 'Product set time', lb.productSetTime, (v) => on.scalar('productSetTime', v)));
-  items.push(f('Process', 'shoreHardness', 'Shore A Hardness', lb.shoreHardness, (v) => on.scalar('shoreHardness', v)));
-  items.push(f('Process', 'productionPerHour', 'Production Per Hour', lb.productionPerHour, (v) => on.scalar('productionPerHour', v)));
-  items.push({ kind: 'coil', step: 'Coil weights' });
+  t.dieZones.forEach((z) => items.push(f('Process — zones', `die:${z}`, `${z} (°C)`, lb.dieZoneTemps[z] ?? '', (v) => on.dieZone(z, v), 'text', undefined, t.zoneSpecs?.[z]?.min, t.zoneSpecs?.[z]?.max, true)));
+  t.barrelZones.forEach((z) => items.push(f('Process — zones', `barrel:${z}`, `${z} (°C)`, lb.barrelZoneTemps[z] ?? '', (v) => on.barrelZone(z, v), 'text', undefined, t.zoneSpecs?.[z]?.min, t.zoneSpecs?.[z]?.max, true)));
+  items.push(f('Process', 'motorSpeed', 'Main Motor Speed', lb.motorSpeed, (v) => on.scalar('motorSpeed', v), 'text', undefined, undefined, undefined, true));
+  items.push(f('Process', 'ampere', 'Ampere', lb.ampere, (v) => on.scalar('ampere', v), 'text', undefined, undefined, undefined, true));
+  items.push(f('Process', 'takeupSpeed', 'Takeup Speed', lb.takeupSpeed, (v) => on.scalar('takeupSpeed', v), 'text', undefined, undefined, undefined, true));
+  items.push(f('Process', 'vacuum', 'Vacuum', lb.vacuum, (v) => on.scalar('vacuum', v), 'text', undefined, undefined, undefined, true));
+  items.push(f('Process', 'extruderStartTime', 'Extruder start time', lb.extruderStartTime, (v) => on.scalar('extruderStartTime', v), 'time'));
+  items.push(f('Process', 'productSetTime', 'Product set time', lb.productSetTime, (v) => on.scalar('productSetTime', v), 'time'));
+  items.push(f('Process', 'shoreHardness', `Shore ${t.hardnessType ?? 'A'} Hardness`, lb.shoreHardness, (v) => on.scalar('shoreHardness', v), 'text', undefined, undefined, undefined, true));
+  items.push(f('Process', 'productionPerHour', 'Production Per Hour (kg)', lb.productionPerHour, (v) => on.scalar('productionPerHour', v), 'text', undefined, undefined, undefined, true));
+  if ((t.layout ?? 'coil') !== 'pipe') items.push({ kind: 'coil', step: 'Coil weights' });
   items.push({ kind: 'hourly', step: 'Hourly inspection' });
   items.push({ kind: 'rolls', step: 'Finished rolls' });
   items.push({ kind: 'traceability', step: 'Traceability' });
@@ -692,9 +737,27 @@ function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, on
                 {(cur.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             ) : (
-              <input key={cur.key} autoFocus readOnly={locked} value={cur.value} onChange={(e) => cur.set(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); go(idx + 1); } }} className={`${inputCls} !py-2${oorOf(cur.value, cur.lo, cur.hi) ? ' border-amber-400 bg-amber-50 text-amber-700 font-bold' : ''}`} placeholder="Type, then press ↵" />
+              <input
+                key={cur.key}
+                autoFocus
+                readOnly={locked}
+                type={cur.type === 'date' ? 'date' : cur.type === 'time' ? 'time' : 'text'}
+                inputMode={cur.numeric || (cur.lo != null && cur.hi != null) ? 'decimal' : undefined}
+                value={cur.type === 'date' ? normalizeDate(cur.value) : cur.type === 'time' ? normalizeTime(cur.value) : cur.value}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (cur.type === 'date') cur.set(normalizeDate(raw));
+                  else if (cur.type === 'time') cur.set(normalizeTime(raw));
+                  else if (cur.numeric || (cur.lo != null && cur.hi != null)) cur.set(sanitizeDecimal(raw));
+                  else cur.set(raw);
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); go(idx + 1); } }}
+                className={`${inputCls} !py-2${oorOf(cur.value, cur.lo, cur.hi) || (cur.numeric && isInvalidNumber(cur.value)) ? ' border-amber-400 bg-amber-50 text-amber-700 font-bold' : ''}`}
+                placeholder={cur.type === 'date' || cur.type === 'time' ? undefined : 'Type, then press ↵'}
+              />
             )}
             {oorOf(cur.value, cur.lo, cur.hi) && <span className="block mt-1 text-[10px] font-bold text-amber-700">Outside the permissible range — check the setting.</span>}
+            {cur.numeric && isInvalidNumber(cur.value) && <span className="block mt-1 text-[10px] font-bold text-amber-700">Enter a number only.</span>}
             <span className="block mt-1 text-[9px] text-slate-400">Press ↵ to save &amp; go to the next field.</span>
           </label>
         ) : cur.kind === 'coil' ? (
@@ -703,28 +766,41 @@ function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, on
             <div className="grid grid-cols-4 gap-1">
               {logbook.coilWeights.map((c, i) => {
                 const oor = oorOf(c, template.coil.rangeLo, template.coil.rangeHi);
-                return <input key={i} readOnly={locked} inputMode="decimal" value={c} onChange={(e) => on.coil(i, e.target.value)} placeholder={String(i + 1)} className={`border rounded px-1 py-1 text-[10px] text-center ${oor ? 'border-amber-400 bg-amber-50 text-amber-700 font-bold' : 'border-slate-200'}`} />;
+                return <input key={i} readOnly={locked} inputMode="decimal" value={c} onChange={(e) => on.coil(i, sanitizeDecimal(e.target.value))} placeholder={String(i + 1)} className={`border rounded px-1 py-1 text-[10px] text-center ${oor ? 'border-amber-400 bg-amber-50 text-amber-700 font-bold' : 'border-slate-200'}`} />;
               })}
             </div>
           </div>
         ) : cur.kind === 'hourly' ? (
           <div className="space-y-2">
             <span className="block text-[11px] font-bold text-slate-600 mb-1">Hourly inspection — {logbook.hourlyInspections.length} time slots</span>
-            {logbook.hourlyInspections.map((row, i) => (
+            {logbook.hourlyInspections.map((row, i) => {
+              const isPipe = (template.layout ?? 'coil') === 'pipe';
+              const od = template.pipeSpecs?.od;
+              const wt = template.pipeSpecs?.weight;
+              return (
               <div key={i} className="border border-slate-200 rounded-lg p-1.5">
                 <div className="text-[10px] font-bold text-slate-600 mb-1">{row.timeSlot}</div>
                 <div className="grid grid-cols-3 gap-1">
-                  <input readOnly={locked} placeholder={template.dimensionSpecs.top.label} value={row.topDim} onChange={(e) => on.hourly(i, 'topDim', e.target.value)} className={inputCls} />
-                  <input readOnly={locked} placeholder={template.dimensionSpecs.bottom.label} value={row.bottomDim} onChange={(e) => on.hourly(i, 'bottomDim', e.target.value)} className={inputCls} />
-                  {row.thickness.map((th, j) => <input key={j} readOnly={locked} placeholder={`Thk ${j + 1}`} value={th} onChange={(e) => on.hourlyThickness(i, j, e.target.value)} className={inputCls} />)}
-                  <input readOnly={locked} placeholder="Finish" value={row.finish} onChange={(e) => on.hourly(i, 'finish', e.target.value)} className={inputCls} />
-                  <input readOnly={locked} placeholder="Per m" value={row.perMeter} onChange={(e) => on.hourly(i, 'perMeter', e.target.value)} className={inputCls} />
-                  <input readOnly={locked} placeholder="Colour" value={row.colour} onChange={(e) => on.hourly(i, 'colour', e.target.value)} className={inputCls} />
-                  <input readOnly={locked} placeholder="Tearing" value={row.tearing} onChange={(e) => on.hourly(i, 'tearing', e.target.value)} className={inputCls} />
-                  <select disabled={locked} value={row.inspectionBy} onChange={(e) => on.hourly(i, 'inspectionBy', e.target.value)} className={inputCls}><option value="">Inspector</option>{template.supervisors.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+                  {isPipe ? <>
+                    <input readOnly={locked} inputMode="decimal" placeholder={`OD ${od ? `(${od.lo}–${od.hi})` : ''}`} value={row.od ?? ''} onChange={(e) => on.hourly(i, 'od', sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(row.od ?? '', od?.lo, od?.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />
+                    <input readOnly={locked} inputMode="decimal" placeholder={`Wt ${wt ? `(${wt.lo}–${wt.hi})` : ''}`} value={row.weight ?? ''} onChange={(e) => on.hourly(i, 'weight', sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(row.weight ?? '', wt?.lo, wt?.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />
+                    <input readOnly={locked} placeholder="Colour" value={row.colour} onChange={(e) => on.hourly(i, 'colour', e.target.value)} className={inputCls} />
+                    <select disabled={locked} value={row.okNotOk ?? ''} onChange={(e) => on.hourly(i, 'okNotOk', e.target.value)} className={inputCls}><option value="">Ok / Not ok</option><option value="Ok">Ok</option><option value="Not ok">Not ok</option></select>
+                    <select disabled={locked} value={row.inspectionBy} onChange={(e) => on.hourly(i, 'inspectionBy', e.target.value)} className={inputCls}><option value="">Inspector</option>{template.supervisors.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+                  </> : <>
+                    <input readOnly={locked} inputMode="decimal" placeholder={`${template.dimensionSpecs.top.label} (${template.dimensionSpecs.top.lo}–${template.dimensionSpecs.top.hi})`} value={row.topDim} onChange={(e) => on.hourly(i, 'topDim', sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(row.topDim, template.dimensionSpecs.top.lo, template.dimensionSpecs.top.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />
+                    <input readOnly={locked} inputMode="decimal" placeholder={`${template.dimensionSpecs.bottom.label} (${template.dimensionSpecs.bottom.lo}–${template.dimensionSpecs.bottom.hi})`} value={row.bottomDim} onChange={(e) => on.hourly(i, 'bottomDim', sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(row.bottomDim, template.dimensionSpecs.bottom.lo, template.dimensionSpecs.bottom.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />
+                    {row.thickness.map((th, j) => <input key={j} readOnly={locked} inputMode="decimal" placeholder={`Thk ${j + 1}`} value={th} onChange={(e) => on.hourlyThickness(i, j, sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(th, template.dimensionSpecs.thickness.lo, template.dimensionSpecs.thickness.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />)}
+                    <input readOnly={locked} placeholder="Finish" value={row.finish} onChange={(e) => on.hourly(i, 'finish', e.target.value)} className={inputCls} />
+                    <input readOnly={locked} inputMode="decimal" placeholder="Per m" value={row.perMeter} onChange={(e) => on.hourly(i, 'perMeter', sanitizeDecimal(e.target.value))} className={inputCls} />
+                    <input readOnly={locked} placeholder="Colour" value={row.colour} onChange={(e) => on.hourly(i, 'colour', e.target.value)} className={inputCls} />
+                    <input readOnly={locked} placeholder="Tearing" value={row.tearing} onChange={(e) => on.hourly(i, 'tearing', e.target.value)} className={inputCls} />
+                    <select disabled={locked} value={row.inspectionBy} onChange={(e) => on.hourly(i, 'inspectionBy', e.target.value)} className={inputCls}><option value="">Inspector</option>{template.supervisors.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+                  </>}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : cur.kind === 'rolls' ? (
           <div>
@@ -754,28 +830,28 @@ function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, on
               <div>Consumed kg<div className="font-bold text-slate-800 text-[12px]">{logbook.totalConsumedKg || '0'}</div></div>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              <label className="block"><span className="block text-[9px] font-semibold uppercase text-slate-500">Process waste (kg)</span><input readOnly={locked} value={logbook.processWasteKg} onChange={(e) => on.scalar('processWasteKg', e.target.value)} className={inputCls} /></label>
-              <label className="block"><span className="block text-[9px] font-semibold uppercase text-slate-500">Lumps waste (kg)</span><input readOnly={locked} value={logbook.lumpsWasteKg} onChange={(e) => on.scalar('lumpsWasteKg', e.target.value)} className={inputCls} /></label>
+              <label className="block"><span className="block text-[9px] font-semibold uppercase text-slate-500">Process waste (kg)</span><input readOnly={locked} inputMode="decimal" value={logbook.processWasteKg} onChange={(e) => on.scalar('processWasteKg', sanitizeDecimal(e.target.value))} className={inputCls} /></label>
+              <label className="block"><span className="block text-[9px] font-semibold uppercase text-slate-500">Lumps waste (kg)</span><input readOnly={locked} inputMode="decimal" value={logbook.lumpsWasteKg} onChange={(e) => on.scalar('lumpsWasteKg', sanitizeDecimal(e.target.value))} className={inputCls} /></label>
             </div>
             {template.rejectionReasons.length > 0 && <>
               <span className="block text-[9px] font-semibold uppercase text-slate-500">Reason for rejections (counts)</span>
               <div className="grid grid-cols-2 gap-1.5">
                 {template.rejectionReasons.map((r) => (
-                  <label key={r} className="block"><span className="block text-[9px] text-slate-500 truncate">{r}</span><input readOnly={locked} value={logbook.rejectionCounts[r] ?? ''} onChange={(e) => on.rejection(r, e.target.value)} className={inputCls} /></label>
+                  <label key={r} className="block"><span className="block text-[9px] text-slate-500 truncate">{r}</span><input readOnly={locked} inputMode="decimal" value={logbook.rejectionCounts[r] ?? ''} onChange={(e) => on.rejection(r, sanitizeDecimal(e.target.value))} className={inputCls} /></label>
                 ))}
               </div>
             </>}
             <span className="block text-[9px] font-semibold uppercase text-slate-500">Meter check</span>
             <div className="grid grid-cols-2 gap-1.5">
               <label className="block"><span className="block text-[9px] text-slate-500">Checked by</span><select disabled={locked} value={logbook.meterCheckedBy} onChange={(e) => on.scalar('meterCheckedBy', e.target.value)} className={inputCls}><option value="">—</option>{template.supervisors.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
-              <label className="block"><span className="block text-[9px] text-slate-500">Time</span><input readOnly={locked} value={logbook.meterCheckTime} onChange={(e) => on.scalar('meterCheckTime', e.target.value)} className={inputCls} /></label>
-              <label className="block"><span className="block text-[9px] text-slate-500">Meter</span><input readOnly={locked} value={logbook.meter} onChange={(e) => on.scalar('meter', e.target.value)} className={inputCls} /></label>
-              <label className="block"><span className="block text-[9px] text-slate-500">Meter Count Set</span><input readOnly={locked} value={logbook.meterCountSet} onChange={(e) => on.scalar('meterCountSet', e.target.value)} className={inputCls} /></label>
+              <label className="block"><span className="block text-[9px] text-slate-500">Time</span><input readOnly={locked} type="time" value={normalizeTime(logbook.meterCheckTime)} onChange={(e) => on.scalar('meterCheckTime', normalizeTime(e.target.value))} className={inputCls} /></label>
+              <label className="block"><span className="block text-[9px] text-slate-500">Meter</span><input readOnly={locked} placeholder="154/M" value={logbook.meter} onChange={(e) => on.scalar('meter', sanitizeMeter(e.target.value))} className={inputCls} /></label>
+              <label className="block"><span className="block text-[9px] text-slate-500">Meter Count Set</span><input readOnly={locked} inputMode="decimal" value={logbook.meterCountSet} onChange={(e) => on.scalar('meterCountSet', sanitizeDecimal(e.target.value))} className={inputCls} /></label>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-2">
-            <label className="block"><span className="block text-[11px] font-bold text-slate-600 mb-1">Start-up scrap (kg)</span><input readOnly={locked} value={logbook.scrapKg} onChange={(e) => setScrap(e.target.value)} inputMode="decimal" className={inputCls + ' !py-2'} /></label>
+            <label className="block"><span className="block text-[11px] font-bold text-slate-600 mb-1">Start-up scrap (kg)</span><input readOnly={locked} value={logbook.scrapKg} onChange={(e) => setScrap(sanitizeDecimal(e.target.value))} inputMode="decimal" className={inputCls + ' !py-2'} /></label>
             <label className="block"><span className="block text-[11px] font-bold text-slate-600 mb-1">Operator signature</span><input readOnly={locked} value={logbook.operatorSignature} onChange={(e) => on.scalar('operatorSignature', e.target.value)} className={inputCls + ' !py-2'} /></label>
             <label className="block"><span className="block text-[11px] font-bold text-slate-600 mb-1">Shift supervisor signature</span><input readOnly={locked} value={logbook.supervisorSignature} onChange={(e) => on.scalar('supervisorSignature', e.target.value)} className={inputCls + ' !py-2'} /></label>
           </div>
