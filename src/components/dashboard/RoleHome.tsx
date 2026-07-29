@@ -13,7 +13,7 @@
 import type { ReactElement } from 'react';
 import { useState } from 'react';
 import { AlertTriangle, ListChecks, Activity, BarChart3, CheckCircle2, ChevronDown } from 'lucide-react';
-import type { RoleHomeContent } from './model';
+import type { RoleHomeContent, DashboardTask } from './model';
 import type { LineStatusView } from './LineStatusCard';
 import { LineStatusCard } from './LineStatusCard';
 import {
@@ -39,6 +39,17 @@ export function RoleHome({ content, lines, currentUser, loading = false }: {
 
   const visibleAlerts = showAllAlerts ? content.alerts : content.alerts.slice(0, VISIBLE_ALERTS);
   const hiddenCount = Math.max(0, content.alerts.length - VISIBLE_ALERTS);
+
+  // A queue that has emptied is good news, not another row of work: it drops to
+  // a quiet line at the foot of the band instead of holding a slot in the rail.
+  const isSettled = (t: DashboardTask): boolean =>
+    t.count === 0 && Boolean(t.zeroLabel) && !t.disabledReason;
+  const activeTasks = content.tasks.filter((t) => !isSettled(t));
+  const settledTasks = content.tasks.filter(isSettled);
+  // The numeral column is reserved for the whole queue or none of it, so every
+  // sentence in the rail starts at the same x.
+  const reserveCount = activeTasks.some((t) => typeof t.count === 'number');
+  const openCount = activeTasks.length;
 
   const nothingToDo =
     content.alerts.length === 0 && content.tasks.length === 0 && lines.length === 0;
@@ -103,10 +114,30 @@ export function RoleHome({ content, lines, currentUser, loading = false }: {
             itself wide enough for two columns. */}
         {content.tasks.length > 0 && (
           <section aria-label="Your work" className="min-[1200px]:order-none">
-            <SectionHeading icon={ListChecks}>Your work now</SectionHeading>
+            <SectionHeading icon={ListChecks} right={
+              openCount > 0
+                ? <span className="text-[13px] font-semibold text-slate-600">{openCount} to clear</span>
+                : undefined
+            }>
+              Your work now
+            </SectionHeading>
+
             <div className="grid grid-cols-1 min-[1800px]:grid-cols-2 gap-2">
-              {content.tasks.map((t) => <TaskQueueItem key={t.id} task={t} />)}
+              {activeTasks.map((t) => (
+                <TaskQueueItem key={t.id} task={t} reserveCount={reserveCount} />
+              ))}
             </div>
+
+            {/* Settled queues collect at the foot of the band. Interleaved with
+                live work they broke the rhythm of the rail and made a finished
+                queue look like another thing to do. */}
+            {settledTasks.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-slate-200 flex flex-wrap gap-x-4 gap-y-0.5">
+                {settledTasks.map((t) => (
+                  <TaskQueueItem key={t.id} task={t} reserveCount={false} />
+                ))}
+              </div>
+            )}
           </section>
         )}
       </div>

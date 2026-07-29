@@ -335,6 +335,58 @@ describe('Work queue', () => {
     // The full-prominence sentence is not rendered for a settled queue.
     expect(screen.queryByText('open complaints on the response clock')).toBeNull();
   });
+
+  it('collects settled queues at the foot instead of interleaving them', () => {
+    const content = {
+      ...buildRoleHome(ctxFor('Operator')),
+      alerts: [], kpis: [], shiftFigures: [],
+      tasks: [
+        task({ id: 'settled-first', count: 0, zeroLabel: 'No open CAPAs' }),
+        task({ id: 'live', count: 4, label: 'rolls waiting for QA check' }),
+      ],
+    };
+    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
+
+    const queue = screen.getByRole('region', { name: /your work/i });
+    const buttons = within(queue).getAllByRole('button');
+    const order = buttons.map((b) => b.textContent ?? '');
+    // The live row comes first even though the settled one was passed first.
+    const live = order.findIndex((t) => t.includes('rolls waiting for QA check'));
+    const done = order.findIndex((t) => t.includes('No open CAPAs'));
+    expect(live).toBeGreaterThanOrEqual(0);
+    expect(done).toBeGreaterThan(live);
+  });
+
+  it('counts only the live rows in the "to clear" summary', () => {
+    const content = {
+      ...buildRoleHome(ctxFor('Operator')),
+      alerts: [], kpis: [], shiftFigures: [],
+      tasks: [
+        task({ id: 'a', count: 4 }),
+        task({ id: 'b', count: 1 }),
+        task({ id: 'c', count: 0, zeroLabel: 'No open CAPAs' }),
+      ],
+    };
+    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
+    expect(screen.getByText('2 to clear')).toBeTruthy();
+  });
+
+  it('reserves the numeral rail for the whole queue, not per row', () => {
+    const content = {
+      ...buildRoleHome(ctxFor('Operator')),
+      alerts: [], kpis: [], shiftFigures: [],
+      tasks: [
+        task({ id: 'withCount', count: 4, label: 'rolls waiting for QA check' }),
+        // No count of its own — it still gets the rail so both labels align.
+        task({ id: 'noCount', label: 'Raise a breakdown', count: undefined }),
+      ],
+    };
+    render(<RoleHome content={content} lines={[]} currentUser="Ganesh Pai" />);
+
+    const queue = screen.getByRole('region', { name: /your work/i });
+    const rails = queue.querySelectorAll('span.w-9');
+    expect(rails.length).toBe(2);
+  });
 });
 
 describe('Disabled controls', () => {

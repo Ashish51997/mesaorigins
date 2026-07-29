@@ -268,13 +268,16 @@ export function AlertCard({ alert, acknowledgedBy, acknowledgedAt, opened, onOpe
 /**
  * A settled queue. Good news earns one quiet green line, not a full row
  * competing for attention with the work that still needs doing.
+ *
+ * Auto-width rather than full-width so several settled queues sit together on
+ * one line at the foot of the band instead of each claiming a row.
  */
 function SettledRow({ label, onOpen }: { label: string; onOpen: () => void }): ReactElement {
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`w-full flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-left text-[14px] font-medium
+      className={`inline-flex items-center gap-1.5 min-h-[32px] px-1.5 rounded-lg text-left text-[14px] font-medium
         ${toneInk('green')} hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600`}
     >
       <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -284,11 +287,25 @@ function SettledRow({ label, onOpen }: { label: string; onOpen: () => void }): R
 }
 
 /**
- * One line of work: the count once and large, the sentence that names it, and
- * a few of the actual items so the row earns the width it occupies. The whole
- * row is the target and it is >= 56 px tall — gloved hands, tablet, arm's length.
+ * One line of work, laid out on a fixed rail so a column of rows reads as a
+ * column rather than a stack of differently-shaped cards:
+ *
+ *   [icon] [count] [ sentence …………… preview items ] [›]
+ *
+ * The count column is reserved for the whole queue (`reserveCount`) rather than
+ * per row, so every sentence starts at the same x even when some rows have no
+ * number. The preview sits right-aligned on the same line as the sentence and
+ * only drops beneath it when the row is genuinely too narrow — which is what
+ * happens inside the 40 % zone on a laptop.
+ *
+ * The whole row is the target and it is >= 64 px tall — gloved hands, tablet,
+ * arm's length.
  */
-export function TaskQueueItem({ task }: { task: DashboardTask }): ReactElement {
+export function TaskQueueItem({ task, reserveCount = false }: {
+  task: DashboardTask;
+  /** True when any row in this queue has a count, so all rows share the rail. */
+  reserveCount?: boolean | undefined;
+}): ReactElement {
   const Icon = task.icon;
   const blocked = Boolean(task.disabledReason);
   const settled = task.count === 0 && Boolean(task.zeroLabel);
@@ -303,7 +320,7 @@ export function TaskQueueItem({ task }: { task: DashboardTask }): ReactElement {
       onClick={task.onOpen}
       disabled={blocked}
       title={task.disabledReason ?? task.label}
-      className={`w-full flex items-start gap-3 min-h-[56px] px-3 py-2.5 rounded-xl border bg-white text-left transition
+      className={`w-full flex items-center gap-3 min-h-[64px] px-3 py-2.5 rounded-xl border bg-white text-left transition
         ${blocked
           ? 'border-slate-200 cursor-not-allowed'
           : 'border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-600'}`}
@@ -313,18 +330,28 @@ export function TaskQueueItem({ task }: { task: DashboardTask }): ReactElement {
       </span>
 
       {/* The numeral stands alone; the sentence beside it never repeats it. */}
-      {typeof task.count === 'number' && (
-        <span className="font-display text-[26px] leading-none font-bold data-value tabular-nums min-w-[2ch] text-right shrink-0 pt-0.5">
-          {task.count}
+      {reserveCount && (
+        <span className="w-9 shrink-0 text-right font-display text-[26px] leading-none font-bold data-value tabular-nums">
+          {typeof task.count === 'number' ? task.count : ''}
         </span>
       )}
 
-      <span className="min-w-0 flex-1">
-        <span className="block text-[16px] font-medium text-slate-900 leading-snug">{task.label}</span>
+      {/* Sentence and preview share one line and separate onto two only when
+          the row runs out of width. `ml-auto` keeps the preview right-aligned
+          in both cases. */}
+      <span className="min-w-0 flex-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <span className="min-w-0 text-[16px] font-medium text-slate-900 leading-snug">
+          {task.label}
+          {blocked && (
+            <span className="mt-0.5 flex items-center gap-1 text-[13px] text-slate-600">
+              <Lock className="w-3 h-3 shrink-0" aria-hidden="true" />
+              {task.disabledReason}
+            </span>
+          )}
+        </span>
 
-        {/* The items behind the count, so it is concrete rather than abstract. */}
         {task.preview && task.preview.length > 0 && (
-          <span className="mt-1 flex flex-wrap gap-1">
+          <span className="flex flex-wrap justify-end gap-1 ml-auto shrink-0">
             {task.preview.map((p) => (
               <span
                 key={p}
@@ -335,16 +362,9 @@ export function TaskQueueItem({ task }: { task: DashboardTask }): ReactElement {
             ))}
           </span>
         )}
-
-        {blocked && (
-          <span className="mt-0.5 flex items-center gap-1 text-[13px] text-slate-600">
-            <Lock className="w-3 h-3 shrink-0" aria-hidden="true" />
-            {task.disabledReason}
-          </span>
-        )}
       </span>
 
-      {!blocked && <ChevronRight className="w-5 h-5 shrink-0 text-slate-600 mt-2.5" aria-hidden="true" />}
+      {!blocked && <ChevronRight className="w-5 h-5 shrink-0 self-center text-slate-600" aria-hidden="true" />}
     </button>
   );
 }
