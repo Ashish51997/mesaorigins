@@ -175,3 +175,4 @@ gcloud sql instances delete "$INSTANCE" --quiet
 | 401 after Google login | User email missing in DB; or wrong Firebase project / Admin JSON |
 | Prisma engine error | Image must include `debian-openssl-3.0.x` binary (see `schema.prisma`) |
 | Cloud Build can't deploy | Grant Cloud Build SA `roles/run.admin` + `roles/iam.serviceAccountUser` (provision script does this) |
+| `uploadArtifacts` / Artifact Registry denied | Grant Cloud Build SA (and often the Compute default SA) `roles/artifactregistry.writer`; confirm repo `mesadesk` exists in `asia-south1` |

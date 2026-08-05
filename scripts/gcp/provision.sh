@@ -103,6 +103,7 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 # Cloud Build default SA can deploy Run + push images
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
 CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:${CB_SA}" \
   --role="roles/run.admin" \
@@ -114,6 +115,16 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:${CB_SA}" \
   --role="roles/secretmanager.secretAccessor" \
+  --condition=None --quiet
+# Required to docker push → asia-south1-docker.pkg.dev/.../mesadesk
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${CB_SA}" \
+  --role="roles/artifactregistry.writer" \
+  --condition=None --quiet
+# Newer Cloud Build worker pools often act as the Compute default SA
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${COMPUTE_SA}" \
+  --role="roles/artifactregistry.writer" \
   --condition=None --quiet
 
 echo "==> Firebase secret placeholder"
