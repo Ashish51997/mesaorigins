@@ -10,7 +10,7 @@
 import { useState, useEffect } from 'react';
 import type { Dispatch, SetStateAction, ReactNode } from 'react';
 import {
-  ClipboardList, Lock, AlertTriangle, CheckCircle2, ArrowRight, Boxes, Gauge, List, BarChart3, Beaker, CalendarClock, Plus, Trash2
+  ClipboardList, Lock, AlertTriangle, CheckCircle2, ArrowRight, Boxes, Gauge, List, BarChart3, Beaker, CalendarClock, Plus, Trash2, Pencil
 } from 'lucide-react';
 import { SalesOrder, ProductionPlan, Customer } from '../../types';
 import { useFormulations, useCreateFormulation, useUpdateFormulation, type ApiFormula, type ApiFormulaComponent } from '../../lib/queries/formulation';
@@ -22,8 +22,9 @@ import { DataTable } from '../DataTable';
 import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { ApiError } from '../../lib/apiClient';
 import { useMachines } from '../../lib/queries/maintenance';
-import { useOrdersToPlan, usePlans, useOperators, useSchedulePlan, useReleasePlan, type ApiPlanOrder } from '../../lib/queries/planning';
-import { useLogbookTemplates } from '../../lib/queries/logbook';
+import { useOrdersToPlan, usePlans, useOperators, useSchedulePlan, useUpdatePlan, useReleasePlan, planIsEditable, type ApiPlanOrder, type ApiPlan } from '../../lib/queries/planning';
+import { useLogbookTemplates, useLogbookFormulas } from '../../lib/queries/logbook';
+import { useDirectory } from '../../lib/queries/admin';
 
 export interface PlannerData {
   salesOrders: SalesOrder[];
@@ -126,38 +127,84 @@ export function OrdersToPlan(p: PlannerData) {
   );
 }
 
-function SchedulePlanModal({ order, onClose }: { order: ApiPlanOrder; onClose: () => void }) {
+type SchedulePlanModalProps =
+  | { order: ApiPlanOrder; plan?: undefined; onClose: () => void }
+  | { order?: undefined; plan: ApiPlan; onClose: () => void };
+
+function SchedulePlanModal({ order, plan, onClose }: SchedulePlanModalProps) {
+  const isEdit = !!plan;
   const machines = useMachines().data ?? [];
   const operators = useOperators().data ?? [];
+  const directory = useDirectory().data ?? [];
+  const formulas = useLogbookFormulas().data ?? [];
   const schedule = useSchedulePlan();
+  const update = useUpdatePlan();
   const canPlan = useCan('action:order.plan');
-  const [machineId, setMachineId] = useState('');
-  const [shift, setShift] = useState<'D' | 'N'>('D');
-  const [operatorName, setOperatorName] = useState('');
-  const [date, setDate] = useState(order.deliveryDate);
+  const productDefault = plan?.productName || plan?.salesOrder.product || order?.product || '';
+
+  const [machineId, setMachineId] = useState(plan?.machineId || '');
+  const [shift, setShift] = useState<'D' | 'N'>((plan?.shift as 'D' | 'N') || 'D');
+  const [operatorName, setOperatorName] = useState(plan?.operatorName || '');
+  const [date, setDate] = useState((plan?.scheduledStartDate || order?.deliveryDate || '').slice(0, 10));
+  const [supervisor, setSupervisor] = useState(plan?.supervisor || '');
+  const [drawingNo, setDrawingNo] = useState(plan?.drawingNo || '');
+  const [formulaNo, setFormulaNo] = useState(plan?.formulaNo || '');
+  const [moldNo, setMoldNo] = useState(plan?.moldNo || '');
+  const [productName, setProductName] = useState(productDefault);
   const templates = useLogbookTemplates().data ?? [];
-  const [templateId, setTemplateId] = useState('');
-  // Pre-fill the logbook template by a rough product guess (planner can change it).
+  const [templateId, setTemplateId] = useState(plan?.logbookTemplateId || '');
+
   useEffect(() => {
-    if (!templateId && templates.length) {
-      const guess = /rpvc|pipe|profile|nos/i.test(order.product) ? 'pipe' : 'coil';
+    if (!templateId && templates.length && !isEdit) {
+      const guess = /rpvc|pipe|profile|nos/i.test(productDefault) ? 'pipe' : 'coil';
       setTemplateId((templates.find((t) => (t.layout ?? 'coil') === guess) ?? templates[0]).id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templates.length]);
-  const mId = machineId || machines[0]?.id || '';
-  const valid = !!mId && !!date;
 
-  const confirm = () => {
-    if (!valid || !canPlan || schedule.isPending) return;
+  const formulaOptions = formulas.map((f) => `${f.code} · Rev ${f.rev}`);
+  const supervisors = Array.from(new Set(directory.map((d) => d.name.trim()).filter(Boolean))).sort();
+  const mId = machineId || machines[0]?.id || '';
+  const pending = schedule.isPending || update.isPending;
+  const valid = !!mId && !!date && !!supervisor.trim() && !!drawingNo.trim() && !!formulaNo.trim() && !!moldNo.trim() && !!productName.trim();
+
+  const body = () => {
     const startT = shift === 'D' ? '08:00:00' : '20:00:00';
     const endT = shift === 'D' ? '20:00:00' : '08:00:00';
+    return {
+      machineId: mId,
+      shift,
+      operatorName,
+      scheduledStartDate: `${date}T${startT}`,
+      scheduledEndDate: `${date}T${endT}`,
+      logbookTemplateId: templateId || undefined,
+      supervisor: supervisor.trim(),
+      drawingNo: drawingNo.trim(),
+      formulaNo: formulaNo.trim(),
+      moldNo: moldNo.trim(),
+      productName: productName.trim(),
+    };
+  };
+
+  const confirm = () => {
+    if (!valid || !canPlan || pending) return;
+    if (isEdit && plan) {
+      update.mutate({ id: plan.id, body: body() }, {
+        onSuccess: (p) => {
+          pushToast(`${p.salesOrder.soNumber} schedule updated on ${p.machine.code}.`);
+          onClose();
+        },
+        onError: (e) => pushToast(errMsg(e)),
+      });
+      return;
+    }
+    if (!order) return;
     schedule.mutate(
-      { salesOrderId: order.id, machineId: mId, shift, operatorName, scheduledStartDate: `${date}T${startT}`, scheduledEndDate: `${date}T${endT}`, logbookTemplateId: templateId || undefined },
+      { salesOrderId: order.id, ...body() },
       {
-        onSuccess: (plan) => {
-          pushToast(`${order.soNumber} planned on ${plan.machine.code}, Shift ${shift}.`);
-          pushNudge('good', `${order.soNumber} planned on ${plan.machine.code} — the operator will see it at shift start.`);
+        onSuccess: (p) => {
+          pushToast(`${order.soNumber} planned on ${p.machine.code}, Shift ${shift}.`);
+          pushNudge('good', `${order.soNumber} planned on ${p.machine.code} — operators will see it on Machine Tasks.`);
           onClose();
         },
         onError: (e) => pushToast(errMsg(e)),
@@ -165,15 +212,25 @@ function SchedulePlanModal({ order, onClose }: { order: ApiPlanOrder; onClose: (
     );
   };
 
+  const title = isEdit ? `Edit ${plan!.salesOrder.soNumber}` : `Plan ${order!.soNumber}`;
+  const dueDate = plan?.salesOrder.deliveryDate || order?.deliveryDate || '';
+
   return (
-    <ResponsiveOverlay open onClose={onClose} title={`Plan ${order.soNumber}`}>
+    <ResponsiveOverlay open onClose={onClose} title={title}>
       <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-slate-600 dark:text-slate-300">
-            <span className="font-semibold text-slate-800 dark:text-slate-100">{order.product}</span>
-            <span className="text-slate-300">·</span> {order.quantity} units
-            <span className="text-slate-300">·</span> {order.customer.name}
-            {priorityChip(order.priority)} <DueBadge date={order.deliveryDate} />
+            <span className="font-semibold text-slate-800 dark:text-slate-100">{productDefault}</span>
+            {(order || plan) && <>
+              <span className="text-slate-300">·</span> {(order?.quantity ?? '—')} units
+              <span className="text-slate-300">·</span> {(order?.customer.name || plan?.salesOrder.customer.name)}
+              {order && priorityChip(order.priority)} {dueDate && <DueBadge date={dueDate} />}
+            </>}
           </div>
+
+          <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 dark:bg-indigo-950/30 dark:border-indigo-900 px-3 py-2 text-[11px] text-indigo-800 dark:text-indigo-200">
+            Machine Identification &amp; Shift Header is locked in at planning. Operators fill process readings from Machine Tasks.
+          </div>
+
           <label className="block"><span className={planLbl}>Machine</span>
             <select value={mId} onChange={(e) => setMachineId(e.target.value)} className={planInp}>{machines.map((m) => <option key={m.id} value={m.id}>{m.code} — {m.line}</option>)}</select>
           </label>
@@ -185,20 +242,45 @@ function SchedulePlanModal({ order, onClose }: { order: ApiPlanOrder; onClose: (
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={planInp} />
             </label>
           </div>
+          <label className="block"><span className={planLbl}>Shift supervisor *</span>
+            <select value={supervisor} onChange={(e) => setSupervisor(e.target.value)} className={planInp}>
+              <option value="">— select supervisor —</option>
+              {supervisors.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </label>
           <label className="block"><span className={planLbl}>Operator</span>
             <select value={operatorName} onChange={(e) => setOperatorName(e.target.value)} className={planInp}>
               <option value="">— assign at shift start —</option>
               {operators.map((op) => <option key={op.id} value={op.user.name}>{op.user.name} ({op.employeeCode})</option>)}
             </select>
           </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block"><span className={planLbl}>Drawing No *</span>
+              <input value={drawingNo} onChange={(e) => setDrawingNo(e.target.value)} className={planInp} placeholder="e.g. DRW-042" />
+            </label>
+            <label className="block"><span className={planLbl}>Mold No *</span>
+              <input value={moldNo} onChange={(e) => setMoldNo(e.target.value)} className={planInp} placeholder="e.g. MLD-12" />
+            </label>
+          </div>
+          <label className="block"><span className={planLbl}>Formula No *</span>
+            <select value={formulaNo} onChange={(e) => setFormulaNo(e.target.value)} className={planInp}>
+              <option value="">— select formulation —</option>
+              {formulaOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </label>
+          <label className="block"><span className={planLbl}>Product name *</span>
+            <input value={productName} onChange={(e) => setProductName(e.target.value)} className={planInp} />
+          </label>
           <label className="block"><span className={planLbl}>Logbook template</span>
             <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className={planInp}>
               {templates.map((tp) => <option key={tp.id} value={tp.id}>{tp.docNo} · {(tp.layout ?? 'coil') === 'pipe' ? 'Pipe/Nos' : 'Coil/Roll'} — {tp.productName}</option>)}
             </select>
           </label>
-          {date > order.deliveryDate && <div className="text-[11px] font-bold text-rose-600 dark:text-rose-400 inline-flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Run date {date} is after the required date {order.deliveryDate} — this will miss the due date.</div>}
-          <button onClick={confirm} disabled={!valid || !canPlan || schedule.isPending} title={canPlan ? undefined : 'No access — ask your administrator'} className="w-full h-14 rounded-lg bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
-            {!canPlan ? 'No access to plan orders' : `Schedule on ${machines.find((m) => m.id === mId)?.code ?? 'machine'}, Shift ${shift}`}
+          {dueDate && date > dueDate && <div className="text-[11px] font-bold text-rose-600 dark:text-rose-400 inline-flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Run date {date} is after the required date {dueDate} — this will miss the due date.</div>}
+          <button onClick={confirm} disabled={!valid || !canPlan || pending} title={canPlan ? undefined : 'No access — ask your administrator'} className="w-full h-14 rounded-lg bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+            {!canPlan ? 'No access to plan orders' : isEdit
+              ? `Save changes · ${machines.find((m) => m.id === mId)?.code ?? 'machine'}, Shift ${shift}`
+              : `Schedule on ${machines.find((m) => m.id === mId)?.code ?? 'machine'}, Shift ${shift}`}
           </button>
       </div>
     </ResponsiveOverlay>
@@ -210,8 +292,11 @@ function SchedulePlanModal({ order, onClose }: { order: ApiPlanOrder; onClose: (
 export function PlanBoardScreen(p: PlannerData) {
   const plansQ = usePlans();
   const release = useReleasePlan();
+  const canPlan = useCan('action:order.plan');
+  const [editing, setEditing] = useState<ApiPlan | null>(null);
   const plans = plansQ.data ?? [];
   return (
+    <>
     <DataTable
       title={`Production plan — ${plans.length} scheduled`}
       loading={plansQ.isLoading}
@@ -225,13 +310,32 @@ export function PlanBoardScreen(p: PlannerData) {
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pl.shift === 'D' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>{pl.shift === 'D' ? 'Day' : 'Night'}</span>
         ) },
         { key: 'so', header: 'SO', cell: (pl) => <TraceLink id={pl.salesOrder.soNumber} onTrace={p.onTrace} className="text-indigo-600 dark:text-indigo-400 font-semibold font-mono" /> },
-        { key: 'product', header: 'Product / Customer', cell: (pl) => <span className="truncate block max-w-[280px]">{pl.salesOrder.product} · {pl.salesOrder.customer.name}</span> },
-        { key: 'date', header: 'Start', className: 'font-mono whitespace-nowrap text-slate-400', cell: (pl) => pl.scheduledStartDate.split('T')[0] },
-        { key: 'act', header: '', align: 'right', cell: (pl) => (
-          <button onClick={() => release.mutate(pl.id, { onSuccess: () => pushToast(`${pl.salesOrder.soNumber} released — back to the planning queue.`), onError: (e) => pushToast(errMsg(e)) })} disabled={release.isPending} className="text-[11px] font-bold text-slate-400 hover:text-rose-600 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 disabled:opacity-50" title="Release this plan back to the queue">Release</button>
+        { key: 'product', header: 'Product / Customer', cell: (pl) => <span className="truncate block max-w-[280px]">{pl.productName || pl.salesOrder.product} · {pl.salesOrder.customer.name}</span> },
+        { key: 'header', header: 'Header', cell: (pl) => (
+          <span className="text-[11px] text-slate-500 truncate block max-w-[160px]">{pl.supervisor || '—'} · {pl.formulaNo || '—'}</span>
         ) },
+        { key: 'date', header: 'Start', className: 'font-mono whitespace-nowrap text-slate-400', cell: (pl) => pl.scheduledStartDate.split('T')[0] },
+        { key: 'act', header: '', align: 'right', cell: (pl) => {
+          const editable = planIsEditable(pl);
+          return (
+            <div className="inline-flex items-center gap-1.5">
+              {editable && canPlan ? (
+                <button type="button" onClick={() => setEditing(pl)} className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-500 border border-indigo-200 rounded-lg px-2 py-1">
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400" title={pl.logbook?.status === 'submitted' ? 'Logbook submitted' : 'Start time reached'}>
+                  <Lock className="w-3 h-3" /> Locked
+                </span>
+              )}
+              <button onClick={() => release.mutate(pl.id, { onSuccess: () => pushToast(`${pl.salesOrder.soNumber} released — back to the planning queue.`), onError: (e) => pushToast(errMsg(e)) })} disabled={release.isPending || pl.logbook?.status === 'submitted'} className="text-[11px] font-bold text-slate-400 hover:text-rose-600 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 disabled:opacity-50" title="Release this plan back to the queue">Release</button>
+            </div>
+          );
+        } },
       ]}
     />
+    {editing && <SchedulePlanModal plan={editing} onClose={() => setEditing(null)} />}
+    </>
   );
 }
 

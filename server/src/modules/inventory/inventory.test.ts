@@ -40,7 +40,7 @@ describe('inventory slice', () => {
     const ord = await request(app).post('/api/orders').send({ inquiryId: inq.body.id });
     const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
     const machineId = machines.find((m) => m.code === 'M06')!.id;
-    const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId, shift: 'D', scheduledStartDate: '2026-10-11T08:00:00' });
+    const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId, shift: 'D', scheduledStartDate: '2026-10-11T08:00:00', supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC'});
     const lb = await request(app).post('/api/logbooks').send({ productionPlanId: plan.body.id });
     await request(app).patch(`/api/logbooks/${lb.body.id}`).send({ operatorSignature: 'N', traceabilityRows: [{ lotNumber: lot, colour: 'B', code: 'C', winderPackedBy: 'x' }] });
     await request(app).post(`/api/logbooks/${lb.body.id}/submit`);

@@ -27,6 +27,7 @@ export const FEATURES: Feature[] = [
   S('logbook_templates', 'Logbook Templates', 'Planning & Production'),
   S('machine_tasks', 'Machine Tasks', 'Planning & Production'),
   S('logbooks', 'Production Log Book (via Machine Tasks)', 'Planning & Production'),
+  S('logbook_ledger', 'Logbook Ledger', 'Planning & Production'),
   A('order.plan', 'Plan an order onto a machine', 'Planning & Production'),
   A('formula.edit', 'Edit a formulation', 'Planning & Production'),
   A('reading.save', 'Save an hourly reading', 'Planning & Production'),
@@ -74,15 +75,15 @@ export const WIRED_ACTIONS: string[] = [
 // Role preset: the screens each role sees by default (bare ids). Administrator = all.
 // Mirrors server/src/lib/permissions.ts ROLE_DEFAULT_SCREENS.
 export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
-  'Managing Director': ['dashboard', 'rm_stock', 'dispatch_history'],
-  'Production Planner': ['dashboard', 'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates'],
-  'Operator': ['dashboard', 'machine_tasks', 'logbooks'],
+  'Managing Director': ['dashboard', 'rm_stock', 'dispatch_history', 'logbook_ledger'],
+  'Production Planner': ['dashboard', 'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates', 'logbook_ledger'],
+  'Operator': ['dashboard', 'machine_tasks', 'logbooks', 'logbook_ledger'],
   'Quality Inspector': ['dashboard', 'roll_queue', 'holds'],
   'Store Manager': ['dashboard', 'receive', 'issue_lot', 'rm_stock'],
   'Sales Executive': ['dashboard', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints'],
   'Dispatch Executive': ['dashboard', 'ready', 'dispatch_history'],
   'Maintenance Head': ['dashboard', 'machines', 'preventive'],
-  'Administrator': ['dashboard', 'users', 'acl', 'logbooks', 'logbook_templates', 'machine_tasks'],
+  'Administrator': ['dashboard', 'users', 'acl', 'logbooks', 'logbook_templates', 'machine_tasks', 'logbook_ledger'],
 };
 
 export function roleSeesScreenByDefault(role: string, screenId: string): boolean {

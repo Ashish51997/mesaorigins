@@ -40,6 +40,8 @@ interface MachineLogBookSheetProps {
   template: LogbookTemplate;
   on: LogbookHandlers;
   readOnly?: boolean;
+  /** Lock Machine Identification & Shift Header (set at planning). */
+  headerLocked?: boolean;
   activeSection?: number;
   onSelectSection?: (section: number) => void;
   activeField?: string | null;
@@ -206,6 +208,7 @@ export default function MachineLogBookSheet({
   template,
   on,
   readOnly = false,
+  headerLocked = false,
   activeSection,
   onSelectSection,
   activeField,
@@ -217,6 +220,7 @@ export default function MachineLogBookSheet({
   const l = logbook;
   const peopleOptions = employeeOptions.length > 0 ? employeeOptions : t.supervisors;
   const isPipe = (t.layout ?? 'coil') === 'pipe';
+  const hdr = readOnly || headerLocked;
   const pod = t.pipeSpecs?.od;
   const pw = t.pipeSpecs?.weight;
   const thickTol = ((t.dimensionSpecs.thickness.hi - t.dimensionSpecs.thickness.lo) / 2).toFixed(1);
@@ -253,9 +257,9 @@ export default function MachineLogBookSheet({
 
         <div className="idrow">
           <span>Machine No: <Cell w="60px" field="machineId" value={l.machineId} onChange={(v) => on.scalar('machineId', v)} readOnly /></span>
-          <span>Date: <Cell kind="date" w="130px" field="date" value={l.date} onChange={(v) => on.scalar('date', v)} readOnly={readOnly} /></span>
-          <span>Shift: <DropCell w="72px" field="shift" options={t.shifts} value={l.shift} onChange={(v) => on.scalar('shift', v)} readOnly={readOnly} /></span>
-          <span>Shift Supervisor: <DropCell w="150px" field="supervisor" options={peopleOptions} value={l.supervisor} onChange={(v) => on.scalar('supervisor', v)} readOnly={readOnly} /></span>
+          <span>Date: <Cell kind="date" w="130px" field="date" value={l.date} onChange={(v) => on.scalar('date', v)} readOnly={hdr} /></span>
+          <span>Shift: <DropCell w="72px" field="shift" options={t.shifts} value={l.shift} onChange={(v) => on.scalar('shift', v)} readOnly={hdr} /></span>
+          <span>Shift Supervisor: <DropCell w="150px" field="supervisor" options={peopleOptions} value={l.supervisor} onChange={(v) => on.scalar('supervisor', v)} readOnly={hdr} /></span>
         </div>
 
         {/* ===================== 1) PROCESS PARAMETERS ===================== */}
@@ -286,9 +290,9 @@ export default function MachineLogBookSheet({
             </thead>
             <tbody>
               <tr>
-                <td><Cell field="drawingNo" value={l.drawingNo} onChange={(v) => on.scalar('drawingNo', v)} readOnly={readOnly} /></td>
+                <td><Cell field="drawingNo" value={l.drawingNo} onChange={(v) => on.scalar('drawingNo', v)} readOnly={hdr} /></td>
                 <td><Cell field="tag" value={l.tag} onChange={(v) => on.scalar('tag', v)} readOnly={readOnly} /></td>
-                <td><DropCell field="formulaNo" options={formulaOptions} value={l.formulaNo} onChange={(v) => on.scalar('formulaNo', v)} placeholder="Formula" readOnly={readOnly} /></td>
+                <td><DropCell field="formulaNo" options={formulaOptions} value={l.formulaNo} onChange={(v) => on.scalar('formulaNo', v)} placeholder="Formula" readOnly={hdr} /></td>
                 {t.dieZones.map((z) => {
                   const zs = t.zoneSpecs?.[z];
                   const ranged = zs && zs.max > zs.min;
@@ -324,9 +328,9 @@ export default function MachineLogBookSheet({
                 <td className="lbl">Production Per Hour</td><td><Cell numeric field="productionPerHour" value={l.productionPerHour} onChange={(v) => on.scalar('productionPerHour', v)} readOnly={readOnly} /></td>
               </tr>
               <tr>
-                <td className="lbl">Mold No</td><td><Cell field="moldNo" value={l.moldNo} onChange={(v) => on.scalar('moldNo', v)} readOnly={readOnly} /></td>
+                <td className="lbl">Mold No</td><td><Cell field="moldNo" value={l.moldNo} onChange={(v) => on.scalar('moldNo', v)} readOnly={hdr} /></td>
                 <td className="lbl">Product Name</td>
-                <td colSpan={5}><Cell w="100%" field="productName" value={l.productName} onChange={(v) => on.scalar('productName', v)} readOnly={readOnly} /></td>
+                <td colSpan={5}><Cell w="100%" field="productName" value={l.productName} onChange={(v) => on.scalar('productName', v)} readOnly={hdr} /></td>
               </tr>
             </tbody>
           </table>
