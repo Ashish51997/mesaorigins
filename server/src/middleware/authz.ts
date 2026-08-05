@@ -29,3 +29,23 @@ export const requirePermission = (featureKey: string): RequestHandler => {
   };
   return Object.assign(handler, { [REQUIRED_PERMISSION]: featureKey });
 };
+
+/** Allow if the actor holds any one of the listed feature keys. */
+export const requireAnyPermission = (...featureKeys: string[]): RequestHandler => {
+  const primary = featureKeys[0] ?? 'screen:dashboard';
+  const handler: RequestHandler = (req, res, next) => {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: { code: 'unauthenticated', message: 'Sign-in required.' } });
+      return;
+    }
+    const screens = user.screens ?? [];
+    const ok = featureKeys.some((k) => accessAllows(screens, user.isAdmin ?? false, k));
+    if (!ok) {
+      res.status(403).json({ error: { code: 'forbidden', message: `Your role (${user.role}) is not permitted.` } });
+      return;
+    }
+    next();
+  };
+  return Object.assign(handler, { [REQUIRED_PERMISSION]: primary });
+};

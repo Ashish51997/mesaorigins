@@ -1,27 +1,29 @@
 /**
  * LogbookModule.tsx — "Production (LOG BOOK)" feature.
  *
- * Operator tab: a two-column workspace — the QR/MFG/013 sheet (editable in
- * place) on the left, and a grouped fill panel with an input for every field on
- * the right. Both bind to one `activeLogbook` via shared handlers, so editing
- * either side updates the other live. The right panel is sticky (stays in view
- * while the tall sheet scrolls). Selecting any section or input highlights it on
- * both sides and scrolls the matching panel input into view. Submitting upserts
- * into the shared machineLogbooks list (App.tsx state → debounced POST /api/data).
+ * Operator tab (desktop md+): two-column workspace — QR/MFG/013 sheet (or Guided
+ * preview) on the left, fill panel / GuidedWizard on the right. Both bind to one
+ * `activeLogbook` via shared handlers.
  *
- * Admin tab: a pragmatic editor for the seeded template's per-product specs.
+ * Operator tab (narrow): thumb-first MobileLogEntry section cards only — no paper
+ * sheet or GuidedWizard in the main column. Optional sheet preview via BottomSheet.
+ *
+ * Admin tab: pragmatic editor for the seeded template's per-product specs.
  * Full generalization of the template builder is deferred — see SPEC_LOGBOOK.md.
  */
 
 import React, { useState, useEffect, useRef, useContext, createContext, useCallback } from 'react';
-import { FileSpreadsheet, Settings, Save, RotateCcw, CheckCircle2, Eye, ChevronDown, Lock, Plus, Trash2, AlertTriangle, CalendarClock, X, Wand2, ArrowLeft, ArrowRight, Printer } from 'lucide-react';
+import { FileSpreadsheet, Save, RotateCcw, CheckCircle2, Eye, ChevronDown, Lock, Plus, Trash2, AlertTriangle, CalendarClock, X, Wand2, ArrowLeft, ArrowRight, Printer, MoreHorizontal } from 'lucide-react';
 import { LogbookTemplate, MachineLogbook, ProductionPlan, SalesOrder, RollRecord } from '../types';
 import MachineLogBookSheet, { LogbookHandlers } from './MachineLogBookSheet';
 import GuidedPreviewSheet from './GuidedPreviewSheet';
+import MobileLogEntry from './MobileLogEntry';
+import BottomSheet from './ui/BottomSheet';
 import { pushToast } from './Notify';
 import { ApiError } from '../lib/apiClient';
 import { useLogbookTemplates, useLogbookPlans, useLogbookFormulas, useOpenLogbook, useSaveLogbook, useSubmitLogbook } from '../lib/queries/logbook';
 import { useDirectory } from '../lib/queries/admin';
+import { useIsNarrow } from '../hooks/useIsNarrow';
 import { isInvalidNumber, isOutOfRange, sanitizeDecimal, sanitizeMeter, summarizeLogbookIssues, validateLogbookForSubmit, normalizeLogbookFormats, normalizeDate, normalizeTime, isInvalidDate, isInvalidTime, isInvalidMeter, type LogbookFieldIssue } from '../lib/logbookValidation';
 
 interface LogbookModuleProps {
@@ -179,9 +181,10 @@ function PText({ label, value, onChange, ph, field, lo, hi, readOnly, numeric, k
   );
 }
 
-function PSelect({ label, value, onChange, options, field }: { label: string; value: string; onChange: (v: string) => void; options: readonly string[]; field?: string }) {
+function PSelect({ label, value, onChange, options, field, readOnly }: { label: string; value: string; onChange: (v: string) => void; options: readonly string[]; field?: string; readOnly?: boolean }) {
   const { active, select, setActiveEl, locked } = useContext(PanelFieldCtx);
   const isActive = field != null && field === active;
+  const disabled = locked || !!readOnly;
   return (
     <label className={`flex flex-col gap-0.5 rounded ${isActive ? 'ring-2 ring-indigo-500 bg-indigo-50/70 p-1 -m-0.5' : ''}`}>
       <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
@@ -189,7 +192,7 @@ function PSelect({ label, value, onChange, options, field }: { label: string; va
         ref={isActive && setActiveEl ? setActiveEl : undefined}
         className={inputCls}
         value={value ?? ''}
-        disabled={locked}
+        disabled={disabled}
         onFocus={() => { if (field) select?.(field); }}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -248,6 +251,9 @@ export default function LogbookModule({
   const [err, setErr] = useState<string>('');
   const [submitIssues, setSubmitIssues] = useState<LogbookFieldIssue[]>([]);
   const [mode, setMode] = useState<'sheet' | 'guided'>('sheet');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const isNarrow = useIsNarrow();
   const activeSection = sectionOfField(activeField);
 
   // The active panel input registers itself here so we can scroll it into view.
@@ -402,6 +408,180 @@ export default function LogbookModule({
           </div>
         ) : (
         <>
+          {isNarrow ? (
+            /* —— Mobile: section-card entry only (no paper sheet, no guided wizard) —— */
+            <div className="logbook-print-hide space-y-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-[14px] font-semibold text-slate-900">
+                      {currentPlan ? `Machine ${currentPlan.machine.code}` : activeLogbook.machineId || 'Log book'}
+                    </span>
+                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${locked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                      {locked ? <><Lock className="h-3 w-3" /> Closed</> : 'Draft'}
+                    </span>
+                  </div>
+                  <p className="truncate text-[12px] text-slate-500">
+                    {currentPlan
+                      ? `${currentPlan.shift === 'D' ? 'Day' : 'Night'} · ${currentPlan.salesOrder?.soNumber ?? 'no order'} · ${currentPlan.scheduledStartDate.split('T')[0]}`
+                      : `${activeLogbook.date || '—'} · shift ${activeLogbook.shift || '—'}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMoreOpen(true)}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600"
+                  aria-label="More actions"
+                >
+                  <MoreHorizontal className="h-5 w-5" />
+                </button>
+              </div>
+
+              {(err || savedFlash) && (
+                <div className="flex flex-wrap items-center gap-2 px-0.5">
+                  {err && <span className="inline-flex items-center gap-1 text-[13px] font-medium text-rose-600"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {err}</span>}
+                  {savedFlash && <span className="inline-flex items-center gap-1 text-[13px] font-medium text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> Saved</span>}
+                </div>
+              )}
+
+              {submitIssues.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-sm" role="alert">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-semibold text-amber-900">Fix these before closing</p>
+                      <ul className="mt-1.5 max-h-28 space-y-1 overflow-y-auto">
+                        {submitIssues.slice(0, 8).map((issue) => (
+                          <li key={`${issue.field}:${issue.message}`}>
+                            <button type="button" onClick={() => setActiveField(issue.field)} className="text-left text-[12px] text-amber-800 hover:underline">
+                              <span className="font-medium">{issue.label}</span>
+                              {' — '}
+                              {issue.message}
+                            </button>
+                          </li>
+                        ))}
+                        {submitIssues.length > 8 && <li className="text-[12px] text-amber-700">+{submitIssues.length - 8} more</li>}
+                      </ul>
+                    </div>
+                    <button type="button" onClick={() => setSubmitIssues([])} className="shrink-0 text-amber-500 hover:text-amber-700" aria-label="Dismiss">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {locked && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Machine</div>
+                    <div className="mt-1 text-sm font-bold text-slate-900">{activeLogbook.machineId || currentPlan?.machine.code || '—'}</div>
+                    <div className="text-[12px] text-slate-500">{currentPlan?.salesOrder?.product ?? activeLogbook.productName ?? '—'}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Production</div>
+                    <div className="mt-1 text-sm font-bold text-slate-900">{activeLogbook.totalRollKgs || '0'} kg</div>
+                    <div className="text-[12px] text-slate-500">{activeLogbook.totalRollsProduced || '0'} rolls</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Shift</div>
+                    <div className="mt-1 text-sm font-bold text-slate-900">{activeLogbook.date || '—'} · {activeLogbook.shift || '—'}</div>
+                    <div className="text-[12px] text-slate-500">{activeLogbook.supervisor || currentPlan?.operatorName || 'No supervisor'}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Completion</div>
+                    <div className="mt-1 text-sm font-bold text-slate-900">{filledHourly}/{activeLogbook.hourlyInspections.length} checks</div>
+                    <div className="text-[12px] text-slate-500">{filledCoils} coils · {filledTrace} trace</div>
+                  </div>
+                </div>
+              )}
+
+              {!locked && (
+                <MobileLogEntry
+                  logbook={activeLogbook}
+                  template={t}
+                  on={on}
+                  locked={locked}
+                  headerLocked={!!activeLogbook.productionPlanId}
+                  formulaOptions={formulaOptions}
+                  employeeOptions={peopleOptions}
+                  addRoll={addRoll}
+                  removeRoll={removeRoll}
+                  setScrap={setScrap}
+                  onSelectField={selectField}
+                  focusField={activeField}
+                />
+              )}
+
+              {locked && (
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(true)}
+                  className="inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-[14px] font-semibold text-slate-700"
+                >
+                  <Eye className="h-4 w-4" /> Preview paper sheet
+                </button>
+              )}
+
+              {!locked && (
+                <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 border-t border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur-sm md:hidden">
+                  <div className="mx-auto flex max-w-lg gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={locked || saveLb.isPending}
+                      className="inline-flex flex-1 min-h-11 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 text-[15px] font-semibold text-white disabled:opacity-40"
+                    >
+                      <Save className="h-4 w-4" /> Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClose}
+                      disabled={locked || submitLb.isPending}
+                      className="inline-flex flex-1 min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white text-[15px] font-semibold text-slate-800 disabled:opacity-40"
+                    >
+                      <Lock className="h-4 w-4" /> Close
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <BottomSheet open={mobileMoreOpen} onClose={() => setMobileMoreOpen(false)} title="Actions">
+                <div className="space-y-2 pb-2">
+                  <button type="button" onClick={() => { setMobileMoreOpen(false); setPreviewOpen(true); }} className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 text-left text-[15px] font-medium text-slate-800 hover:bg-slate-50">
+                    <Eye className="h-5 w-5 text-slate-500" /> Preview sheet
+                  </button>
+                  <button type="button" onClick={() => { setMobileMoreOpen(false); setPreviewOpen(true); window.setTimeout(() => window.print(), 300); }} className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 text-left text-[15px] font-medium text-slate-800 hover:bg-slate-50">
+                    <Printer className="h-5 w-5 text-slate-500" /> Print
+                  </button>
+                  {!locked && (
+                    <button type="button" onClick={() => { setMobileMoreOpen(false); handleNew(); }} className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 text-left text-[15px] font-medium text-slate-800 hover:bg-slate-50">
+                      <RotateCcw className="h-5 w-5 text-slate-500" /> Clear draft
+                    </button>
+                  )}
+                </div>
+              </BottomSheet>
+
+              <BottomSheet open={previewOpen} onClose={() => setPreviewOpen(false)} title="Sheet preview" wide className="max-h-[92vh]">
+                <div className="logbook-print-scope -mx-1 overflow-x-auto pb-4">
+                  <MachineLogBookSheet
+                    logbook={activeLogbook}
+                    template={t}
+                    on={on}
+                    readOnly
+                    headerLocked={!!activeLogbook.productionPlanId}
+                    activeSection={0}
+                    onSelectSection={() => {}}
+                    activeField={null}
+                    onSelectField={() => {}}
+                    formulaOptions={formulaOptions}
+                    employeeOptions={peopleOptions}
+                  />
+                </div>
+              </BottomSheet>
+            </div>
+          ) : (
+            /* —— Desktop: sheet | guided two-column workspace —— */
+            <>
           {/* Toolbar — plan context + sheet/guided + print / submit / close */}
           <div className="logbook-print-hide flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200/80 rounded-2xl px-3 py-3 shadow-sm">
             <div className="flex items-center gap-3 min-w-0">
@@ -517,6 +697,7 @@ export default function LogbookModule({
                   template={t}
                   on={on}
                   readOnly={locked}
+                  headerLocked={!!activeLogbook.productionPlanId}
                   activeSection={activeSection}
                   onSelectSection={(n) => selectField(firstFieldOfSection(n))}
                   activeField={activeField}
@@ -530,7 +711,7 @@ export default function LogbookModule({
             {/* Fill panel — hidden once the logbook is closed. */}
             {!locked && <div className="w-full xl:w-[380px] xl:flex-none overflow-y-auto xl:sticky xl:top-2 xl:self-start xl:max-h-[calc(100vh-10rem)] pr-0.5">
               {mode === 'guided' ? (
-                <GuidedWizard logbook={activeLogbook} template={t} on={on} addRoll={addRoll} removeRoll={removeRoll} setScrap={setScrap} onSelectField={selectField} locked={locked} activeField={activeField} formulaOptions={formulaOptions} employeeOptions={peopleOptions} />
+                <GuidedWizard logbook={activeLogbook} template={t} on={on} addRoll={addRoll} removeRoll={removeRoll} setScrap={setScrap} onSelectField={selectField} locked={locked} headerLocked={!!activeLogbook.productionPlanId} activeField={activeField} formulaOptions={formulaOptions} employeeOptions={peopleOptions} />
               ) : (
               <>
               <div className="flex items-center gap-1.5 mb-3 text-[11px] font-medium tracking-wide text-slate-500">
@@ -542,13 +723,13 @@ export default function LogbookModule({
                 <PanelSection n={1} title="Header & Process Parameters" activeSection={activeSection} onSelect={(n) => selectField(firstFieldOfSection(n))}>
                   <div className="grid grid-cols-2 gap-2">
                     <PText label="Machine No" field="machineId" value={activeLogbook.machineId} onChange={(v) => on.scalar('machineId', v)} readOnly />
-                    <PText kind="date" label="Date" field="date" value={activeLogbook.date} onChange={(v) => on.scalar('date', v)} />
-                    <PSelect label="Shift" field="shift" value={activeLogbook.shift} onChange={(v) => on.scalar('shift', v)} options={t.shifts} />
-                    <PSelect label="Shift Supervisor" field="supervisor" value={activeLogbook.supervisor} onChange={(v) => on.scalar('supervisor', v)} options={peopleOptions} />
-                    <PText label="Drawing No" field="drawingNo" value={activeLogbook.drawingNo} onChange={(v) => on.scalar('drawingNo', v)} />
+                    <PText kind="date" label="Date" field="date" value={activeLogbook.date} onChange={(v) => on.scalar('date', v)} readOnly />
+                    <PSelect label="Shift" field="shift" value={activeLogbook.shift} onChange={(v) => on.scalar('shift', v)} options={t.shifts} readOnly />
+                    <PSelect label="Shift Supervisor" field="supervisor" value={activeLogbook.supervisor} onChange={(v) => on.scalar('supervisor', v)} options={peopleOptions} readOnly />
+                    <PText label="Drawing No" field="drawingNo" value={activeLogbook.drawingNo} onChange={(v) => on.scalar('drawingNo', v)} readOnly />
                     <PText label="Tag" field="tag" value={activeLogbook.tag} onChange={(v) => on.scalar('tag', v)} />
-                    <PSelect label="Formula No" field="formulaNo" value={activeLogbook.formulaNo} onChange={(v) => on.scalar('formulaNo', v)} options={formulaOptions} />
-                    <PText label="Mold No" field="moldNo" value={activeLogbook.moldNo} onChange={(v) => on.scalar('moldNo', v)} />
+                    <PSelect label="Formula No" field="formulaNo" value={activeLogbook.formulaNo} onChange={(v) => on.scalar('formulaNo', v)} options={formulaOptions} readOnly />
+                    <PText label="Mold No" field="moldNo" value={activeLogbook.moldNo} onChange={(v) => on.scalar('moldNo', v)} readOnly />
                   </div>
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     {t.dieZones.map((z) => <div key={z} className="contents"><PText numeric label={`${z} (°C)`} field={`die:${z}`} value={activeLogbook.dieZoneTemps[z] ?? ''} onChange={(v) => on.dieZone(z, v)} lo={t.zoneSpecs?.[z]?.min} hi={t.zoneSpecs?.[z]?.max} /></div>)}
@@ -565,7 +746,7 @@ export default function LogbookModule({
                     <PText numeric label="Production Per Hour (kg)" field="productionPerHour" value={activeLogbook.productionPerHour} onChange={(v) => on.scalar('productionPerHour', v)} />
                   </div>
                   <div className="mt-2">
-                    <PText label="Product Name" field="productName" value={activeLogbook.productName} onChange={(v) => on.scalar('productName', v)} />
+                    <PText label="Product Name" field="productName" value={activeLogbook.productName} onChange={(v) => on.scalar('productName', v)} readOnly />
                   </div>
                 </PanelSection>
 
@@ -687,6 +868,8 @@ export default function LogbookModule({
               )}
             </div>}
           </div>
+            </>
+          )}
         </>
         )
       ) : (
@@ -787,12 +970,13 @@ function buildWizItems(lb: MachineLogbook, t: LogbookTemplate, on: LogbookHandle
   return items;
 }
 
-function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, onSelectField, locked, activeField, formulaOptions, employeeOptions }: {
+function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, onSelectField, locked, headerLocked, activeField, formulaOptions, employeeOptions }: {
   logbook: MachineLogbook; template: LogbookTemplate; on: LogbookHandlers;
   addRoll: (r: RollRecord) => void; removeRoll: (i: number) => void; setScrap: (v: string) => void;
-  onSelectField: (f: string) => void; locked: boolean; activeField: string | null; formulaOptions: readonly string[]; employeeOptions: readonly string[];
+  onSelectField: (f: string) => void; locked: boolean; headerLocked?: boolean; activeField: string | null; formulaOptions: readonly string[]; employeeOptions: readonly string[];
 }) {
   const items = buildWizItems(logbook, template, on, formulaOptions, employeeOptions);
+  const HEADER_KEYS = new Set(['machineId', 'date', 'shift', 'supervisor', 'drawingNo', 'formulaNo', 'moldNo', 'productName']);
   const keyOf = (it: WizItem) => (it.kind === 'field' ? it.key : it.kind);
   const found = items.findIndex((it) => keyOf(it) === activeField);
   const idx = found >= 0 ? found : 0;
@@ -802,6 +986,7 @@ function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, on
   // On entering guided mode, land on the first field if nothing wizard-relevant is active.
   useEffect(() => { if (found < 0) onSelectField(keyOf(items[0])); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
   const pct = Math.round(((idx + 1) / items.length) * 100);
+  const fieldLocked = locked || (headerLocked && cur.kind === 'field' && HEADER_KEYS.has(cur.key));
 
   return (
     <div className="rounded-2xl border border-indigo-200 bg-white shadow-md p-3 space-y-3">
@@ -819,7 +1004,7 @@ function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, on
           <label className="block">
             <span className="block text-[11px] font-bold text-slate-600 mb-1">{cur.label}{cur.lo != null && cur.hi != null && cur.hi > cur.lo ? <span className="text-slate-400 font-normal"> · permissible {cur.lo}–{cur.hi}</span> : null}</span>
             {cur.type === 'select' ? (
-              <select key={cur.key} autoFocus disabled={locked} value={cur.value} onChange={(e) => cur.set(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go(idx + 1); }} className={inputCls + ' !py-2'}>
+              <select key={cur.key} autoFocus disabled={fieldLocked} value={cur.value} onChange={(e) => cur.set(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go(idx + 1); }} className={inputCls + ' !py-2'}>
                 <option value="">—</option>
                 {(cur.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -827,7 +1012,7 @@ function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, on
               <input
                 key={cur.key}
                 autoFocus
-                readOnly={locked}
+                readOnly={fieldLocked}
                 type={cur.type === 'date' ? 'date' : cur.type === 'time' ? 'time' : 'text'}
                 inputMode={cur.numeric || (cur.lo != null && cur.hi != null) ? 'decimal' : undefined}
                 value={cur.type === 'date' ? normalizeDate(cur.value) : cur.type === 'time' ? normalizeTime(cur.value) : cur.value}
@@ -842,6 +1027,9 @@ function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, on
                 className={`${inputCls} !py-2${oorOf(cur.value, cur.lo, cur.hi) || (cur.numeric && isInvalidNumber(cur.value)) ? ' border-amber-400 bg-amber-50 text-amber-700 font-bold' : ''}`}
                 placeholder={cur.type === 'date' || cur.type === 'time' ? undefined : 'Type, then press ↵'}
               />
+            )}
+            {fieldLocked && headerLocked && cur.kind === 'field' && HEADER_KEYS.has(cur.key) && (
+              <span className="block mt-1 text-[10px] font-bold text-slate-500">Set at planning — not editable here.</span>
             )}
             {oorOf(cur.value, cur.lo, cur.hi) && <span className="block mt-1 text-[10px] font-bold text-amber-700">Outside the permissible range — check the setting.</span>}
             {cur.numeric && isInvalidNumber(cur.value) && <span className="block mt-1 text-[10px] font-bold text-amber-700">Enter a number only.</span>}

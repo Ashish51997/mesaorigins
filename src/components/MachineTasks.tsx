@@ -1,11 +1,12 @@
 /**
  * MachineTasks — scheduled/running production plans grouped by machine. Each task
  * opens that plan's logbook sheet (template-driven) to fill and submit. The
- * operator's main logging entry.
+ * operator's main logging entry. Floor QR deep-links arrive via initialMachineCode.
  */
-import { useState, useMemo } from 'react';
-import { Gauge, ArrowLeft, ArrowRight, Lock, FileSpreadsheet } from 'lucide-react';
-import { useLogbookTasks } from '../lib/queries/logbook';
+import { useEffect, useMemo, useState } from 'react';
+import { Gauge, ArrowLeft, ArrowRight, Lock, FileSpreadsheet, QrCode, AlertTriangle } from 'lucide-react';
+import { useLogbookTasks, useResolveMachineLogbook } from '../lib/queries/logbook';
+import { ApiError } from '../lib/apiClient';
 import { EmptyState } from './EmptyState';
 import { DataTable } from './DataTable';
 import LogbookModule from './LogbookModule';
@@ -34,10 +35,41 @@ type FlatTask = {
   logStatus?: string;
 };
 
-export default function MachineTasks() {
+export default function MachineTasks({
+  initialMachineCode,
+  onMachineCodeConsumed,
+}: {
+  initialMachineCode?: string | null;
+  onMachineCodeConsumed?: () => void;
+} = {}) {
   const q = useLogbookTasks();
   const groups = q.data ?? [];
   const [openPlan, setOpenPlan] = useState<string | null>(null);
+  const [scanCode, setScanCode] = useState<string | null>(null);
+  const [dismissedScan, setDismissedScan] = useState(false);
+
+  useEffect(() => {
+    const code = (initialMachineCode ?? '').trim().toUpperCase();
+    if (!code) return;
+    setScanCode(code);
+    setDismissedScan(false);
+    setOpenPlan(null);
+  }, [initialMachineCode]);
+
+  const resolveQ = useResolveMachineLogbook(dismissedScan ? null : scanCode);
+
+  useEffect(() => {
+    if (!scanCode || dismissedScan) return;
+    if (resolveQ.isLoading || resolveQ.isFetching) return;
+    if (resolveQ.isError) return;
+    const data = resolveQ.data;
+    if (!data) return;
+    if (data.reason === 'ok' && data.planId) {
+      setOpenPlan(data.planId);
+      onMachineCodeConsumed?.();
+      setScanCode(null);
+    }
+  }, [scanCode, dismissedScan, resolveQ.isLoading, resolveQ.isFetching, resolveQ.isError, resolveQ.data, onMachineCodeConsumed]);
 
   const rows: FlatTask[] = useMemo(() => groups.flatMap((g) => g.tasks.map((task) => ({
     id: task.id,
@@ -51,6 +83,12 @@ export default function MachineTasks() {
     logStatus: task.logbook?.status,
   }))), [groups]);
 
+  const clearScan = () => {
+    setDismissedScan(true);
+    setScanCode(null);
+    onMachineCodeConsumed?.();
+  };
+
   if (openPlan) {
     return (
       <div className="space-y-3">
@@ -58,6 +96,59 @@ export default function MachineTasks() {
         <LogbookModule {...STUB} initialTab="operator" initialPlanId={openPlan} />
       </div>
     );
+  }
+
+  if (scanCode && !dismissedScan) {
+    if (resolveQ.isLoading || resolveQ.isFetching) {
+      return (
+        <div className="mx-auto mt-10 max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm" data-testid="machine-qr-resolving">
+          <QrCode className="mx-auto h-10 w-10 text-indigo-500" />
+          <h3 className="mt-3 text-lg font-bold text-slate-900">Opening machine {scanCode}…</h3>
+          <p className="mt-1 text-sm text-slate-500">Looking up the active shift log for this line.</p>
+        </div>
+      );
+    }
+
+    if (resolveQ.isError) {
+      const err = resolveQ.error;
+      const status = err instanceof ApiError ? err.status : 0;
+      const isForbidden = status === 403;
+      const isMissing = status === 404;
+      return (
+        <div className="mx-auto mt-10 max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm" data-testid="machine-qr-denied">
+          <AlertTriangle className={`mx-auto h-10 w-10 ${isForbidden ? 'text-amber-500' : 'text-rose-500'}`} />
+          <h3 className="text-lg font-bold text-slate-900">
+            {isForbidden ? 'No access to log this machine' : isMissing ? `Machine ${scanCode} not found` : 'Could not open this QR'}
+          </h3>
+          <p className="text-sm text-slate-500">
+            {isForbidden
+              ? 'Your role cannot open Machine Tasks. Ask an admin for access, or sign in as an operator.'
+              : isMissing
+                ? 'This sticker does not match a machine in your plant registry.'
+                : (err instanceof ApiError ? err.message : 'Something went wrong.')}
+          </p>
+          <button type="button" onClick={clearScan} className="inline-flex min-h-11 items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-bold text-white">
+            Back to machine tasks
+          </button>
+        </div>
+      );
+    }
+
+    if (resolveQ.data?.reason === 'no_active_plan') {
+      return (
+        <div className="mx-auto mt-10 max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm" data-testid="machine-qr-no-plan">
+          <Gauge className="mx-auto h-10 w-10 text-slate-400" />
+          <h3 className="text-lg font-bold text-slate-900">No shift scheduled for {scanCode}</h3>
+          <p className="text-sm text-slate-500">
+            {resolveQ.data.machine.line ? `${resolveQ.data.machine.line}. ` : ''}
+            Planning has not scheduled an active plan on this machine yet.
+          </p>
+          <button type="button" onClick={clearScan} className="inline-flex min-h-11 items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-bold text-white">
+            Back to machine tasks
+          </button>
+        </div>
+      );
+    }
   }
 
   return (

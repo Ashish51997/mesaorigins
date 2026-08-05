@@ -25,6 +25,28 @@ const apiPlan = {
   machine: { code: 'M08', logbookFormat: template.docNo }, salesOrder: { soNumber: 'SO-2026-150', product: 'RPVC 20mm' }, logbook: null,
 };
 
+/** Desktop by default so existing tests keep the sheet + fill panel path. */
+function mockViewport(narrow: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => {
+      const isNarrowQuery = String(query).includes('max-width');
+      const matches = narrow ? isNarrowQuery : false;
+      return {
+        matches,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      };
+    }),
+  });
+}
+
 function blankLogbook(overrides: Record<string, unknown> = {}) {
   return {
     id: 'lb-1', productionPlanId: PLAN_ID, templateId: template.id, status: 'draft',
@@ -84,7 +106,12 @@ function panelInput(label: string): HTMLInputElement {
   throw new Error(`no input for panel label "${label}"`);
 }
 
-beforeEach(() => { get.mockReset(); post.mockReset(); patch.mockReset(); });
+beforeEach(() => {
+  get.mockReset();
+  post.mockReset();
+  patch.mockReset();
+  mockViewport(false);
+});
 
 describe('LogbookModule (operator)', () => {
   it('is gated on a scheduled extruder — no schedule, no logbook', async () => {
@@ -99,6 +126,21 @@ describe('LogbookModule (operator)', () => {
     expect(await screen.findByText(/Fill panel/i)).toBeTruthy();
     expect(container.querySelector('.sheet-wrap')).toBeTruthy();
     await waitFor(() => expect(post).toHaveBeenCalledWith('/logbooks', { productionPlanId: PLAN_ID }));
+  });
+
+  it('on narrow viewports shows section-card entry and hides the paper sheet', async () => {
+    mockViewport(true);
+    setupApi();
+    const { container } = renderModule('operator');
+    expect(await screen.findByTestId('mobile-log-entry')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /Header/i })).toBeTruthy();
+    expect(screen.queryByText(/Fill panel/i)).toBeNull();
+    expect(screen.queryByText(/Guided entry/i)).toBeNull();
+    expect(screen.queryByText(/^Guided$/)).toBeNull();
+    // Paper sheet is not in the main column until Preview is opened
+    expect(container.querySelector('.sheet-wrap')).toBeNull();
+    expect(screen.getByText('Save')).toBeTruthy();
+    expect(screen.getByText('Close')).toBeTruthy();
   });
 
   it('typing in the fill panel reflects live on the sheet (two-way sync)', async () => {

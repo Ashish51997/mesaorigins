@@ -65,6 +65,210 @@ export async function listTasks() {
   return [...byMachine.values()];
 }
 
+export type ResolveMachineReason = 'ok' | 'no_active_plan';
+
+/**
+ * Floor QR deep-link: given a machine code, pick the best active plan to open
+ * (prefer draft / not-started over already-submitted).
+ */
+export async function resolveMachineLogbook(machineCode: string) {
+  const code = (machineCode || '').trim().toUpperCase();
+  if (!code) throw new ApiError(400, 'bad_request', 'Machine code is required.');
+
+  const machine = await prisma.machine.findFirst({
+    where: { organizationId: org(), code },
+    select: { id: true, code: true, line: true },
+  });
+  if (!machine) throw new ApiError(404, 'not_found', `Machine ${code} was not found.`);
+
+  const plans = await prisma.productionPlan.findMany({
+    where: {
+      machineId: machine.id,
+      status: { in: ['scheduled', 'running'] },
+    },
+    include: {
+      logbook: { select: { id: true, status: true } },
+    },
+    orderBy: [{ scheduledStartDate: 'asc' }],
+  });
+
+  if (plans.length === 0) {
+    return {
+      reason: 'no_active_plan' as ResolveMachineReason,
+      machine,
+      planId: null as string | null,
+      logStatus: null as string | null,
+    };
+  }
+
+  const draftFirst = plans.find((p) => !p.logbook || p.logbook.status !== 'submitted') ?? plans[plans.length - 1];
+  return {
+    reason: 'ok' as ResolveMachineReason,
+    machine,
+    planId: draftFirst.id,
+    logStatus: draftFirst.logbook?.status ?? null,
+  };
+}
+
+const num = (s: string | null | undefined): number => {
+  const n = Number.parseFloat(String(s ?? '').replace(/,/g, ''));
+  return Number.isFinite(n) ? n : 0;
+};
+
+/** Normalize free-form logbook dates (YYYY-MM-DD, DD/MM/YY, DD/MM/YYYY) to ISO day. */
+export function toIsoDate(raw: string, fallback?: Date): string | null {
+  const s = (raw || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+  if (m) {
+    let y = Number(m[3]);
+    if (y < 100) y += 2000;
+    const mm = String(m[2]).padStart(2, '0');
+    const dd = String(m[1]).padStart(2, '0');
+    const iso = `${y}-${mm}-${dd}`;
+    if (!Number.isNaN(Date.parse(`${iso}T00:00:00Z`))) return iso;
+  }
+  if (fallback) return fallback.toISOString().slice(0, 10);
+  return null;
+}
+
+export interface LedgerFilter { from?: string; to?: string }
+
+/** Submitted logbooks for the Logbook Ledger — summary strip + thin history rows.
+ *  Does not return fat sheet JSON (hourly / traceability / rolls). */
+export async function listLedger(filter: LedgerFilter = {}) {
+  const from = filter.from && /^\d{4}-\d{2}-\d{2}$/.test(filter.from) ? filter.from : undefined;
+  const to = filter.to && /^\d{4}-\d{2}-\d{2}$/.test(filter.to) ? filter.to : undefined;
+
+  const rows = await prisma.machineLogbook.findMany({
+    where: { status: 'submitted' },
+    select: {
+      id: true,
+      machineId: true,
+      date: true,
+      shift: true,
+      productName: true,
+      formulaNo: true,
+      totalRollsProduced: true,
+      totalRollKgs: true,
+      totalConsumedKg: true,
+      processWasteKg: true,
+      lumpsWasteKg: true,
+      rejectionKg: true,
+      scrapKg: true,
+      operatorSignature: true,
+      supervisor: true,
+      updatedAt: true,
+      productionPlan: {
+        select: {
+          id: true,
+          salesOrder: { select: { soNumber: true, product: true } },
+        },
+      },
+    },
+    orderBy: [{ updatedAt: 'desc' }],
+  });
+
+  let producedKg = 0;
+  let consumedKg = 0;
+  let wasteKg = 0;
+  let rolls = 0;
+  const machines = new Set<string>();
+  const shifts = new Set<string>();
+  const byDay = new Map<string, { producedKg: number; consumedKg: number; wasteKg: number; count: number }>();
+  const byMachine = new Map<string, { producedKg: number; count: number }>();
+
+  const list = [];
+  for (const r of rows) {
+    const isoDate = toIsoDate(r.date, r.updatedAt) ?? r.updatedAt.toISOString().slice(0, 10);
+    if (from && isoDate < from) continue;
+    if (to && isoDate > to) continue;
+
+    const kg = num(r.totalRollKgs);
+    const consumed = num(r.totalConsumedKg);
+    const waste = num(r.processWasteKg) + num(r.lumpsWasteKg) + num(r.rejectionKg) + num(r.scrapKg);
+    const rollCount = num(r.totalRollsProduced);
+    producedKg += kg;
+    consumedKg += consumed;
+    wasteKg += waste;
+    rolls += rollCount;
+    if (r.machineId) machines.add(r.machineId);
+    if (r.shift) shifts.add(r.shift);
+
+    const day = byDay.get(isoDate) ?? { producedKg: 0, consumedKg: 0, wasteKg: 0, count: 0 };
+    day.producedKg += kg; day.consumedKg += consumed; day.wasteKg += waste; day.count += 1;
+    byDay.set(isoDate, day);
+
+    const mid = r.machineId || '—';
+    const mc = byMachine.get(mid) ?? { producedKg: 0, count: 0 };
+    mc.producedKg += kg; mc.count += 1;
+    byMachine.set(mid, mc);
+
+    list.push({
+      id: r.id,
+      machineId: r.machineId,
+      date: r.date,
+      isoDate,
+      shift: r.shift,
+      productName: r.productName || r.productionPlan.salesOrder?.product || '',
+      formulaNo: r.formulaNo,
+      totalRollsProduced: r.totalRollsProduced,
+      totalRollKgs: r.totalRollKgs,
+      totalConsumedKg: r.totalConsumedKg,
+      rejectionKg: r.rejectionKg,
+      operatorSignature: r.operatorSignature,
+      supervisor: r.supervisor,
+      soNumber: r.productionPlan.salesOrder?.soNumber ?? '',
+      productionPlanId: r.productionPlan.id,
+      updatedAt: r.updatedAt,
+      producedKg: Math.round(kg * 10) / 10,
+      consumedKg: Math.round(consumed * 10) / 10,
+      wasteKg: Math.round(waste * 10) / 10,
+    });
+  }
+
+  // Newest first by isoDate then updatedAt.
+  list.sort((a, b) => (a.isoDate < b.isoDate ? 1 : a.isoDate > b.isoDate ? -1 : 0));
+
+  const yieldPct = producedKg + wasteKg > 0
+    ? Math.round((producedKg / (producedKg + wasteKg)) * 1000) / 10
+    : 0;
+
+  return {
+    summary: {
+      submitted: list.length,
+      producedKg: Math.round(producedKg * 10) / 10,
+      consumedKg: Math.round(consumedKg * 10) / 10,
+      wasteKg: Math.round(wasteKg * 10) / 10,
+      rolls: Math.round(rolls * 10) / 10,
+      machines: machines.size,
+      shifts: [...shifts].sort(),
+      yieldPct,
+      from: from ?? null,
+      to: to ?? null,
+    },
+    charts: {
+      byDay: [...byDay.entries()]
+        .sort(([a], [b]) => (a < b ? -1 : 1))
+        .map(([date, v]) => ({
+          date,
+          producedKg: Math.round(v.producedKg * 10) / 10,
+          consumedKg: Math.round(v.consumedKg * 10) / 10,
+          wasteKg: Math.round(v.wasteKg * 10) / 10,
+          count: v.count,
+        })),
+      byMachine: [...byMachine.entries()]
+        .sort((a, b) => b[1].producedKg - a[1].producedKg)
+        .map(([label, v]) => ({
+          label,
+          producedKg: Math.round(v.producedKg * 10) / 10,
+          count: v.count,
+        })),
+    },
+    rows: list,
+  };
+}
+
 /* ---------------------------------------------------------------- template builder */
 
 // Fill the required Json columns with layout-appropriate defaults when the builder omits them.
@@ -153,7 +357,18 @@ async function resolveTemplate(logbookFormat: string) {
 
 // Build a blank logbook from a plan + template, sized/shaped per the template's
 // layout family ('coil' → dim/thickness rows + coil weights; 'pipe' → OD/weight rows).
-function buildBlank(plan: { id: string; machine: { code: string }; salesOrder: { product: string } | null }, template: {
+export function buildBlank(plan: {
+  id: string;
+  machine: { code: string };
+  salesOrder: { product: string } | null;
+  shift?: string;
+  scheduledStartDate?: string;
+  supervisor?: string;
+  drawingNo?: string;
+  formulaNo?: string;
+  moldNo?: string;
+  productName?: string;
+}, template: {
   id: string; layout?: string; coil: unknown; dimensionSpecs: unknown; traceability: unknown; inspectionTimeSlots: string[]; productName: string;
 }) {
   const isPipe = (template.layout ?? 'coil') === 'pipe';
@@ -163,12 +378,19 @@ function buildBlank(plan: { id: string; machine: { code: string }; salesOrder: {
   const thicknessCount = dims?.thickness?.count ?? 3;
   const slots = template.inspectionTimeSlots ?? [];
   const traceLen = (trace?.tableCount ?? 1) * (trace?.rowsPerTable ?? 0);
+  const date = (plan.scheduledStartDate || '').slice(0, 10);
   return {
     productionPlanId: plan.id,
     templateId: template.id,
-    status: 'draft',
+    status: 'draft' as const,
     machineId: plan.machine.code,
-    productName: plan.salesOrder?.product ?? template.productName ?? '',
+    date,
+    shift: plan.shift || '',
+    supervisor: plan.supervisor || '',
+    drawingNo: plan.drawingNo || '',
+    formulaNo: plan.formulaNo || '',
+    moldNo: plan.moldNo || '',
+    productName: plan.productName || plan.salesOrder?.product || template.productName || '',
     coilWeights: isPipe ? [] : Array.from({ length: coil?.count ?? 0 }, () => ''),
     hourlyInspections: slots.map((slot) => isPipe
       ? { timeSlot: slot, od: '', weight: '', colour: '', okNotOk: '', inspectionBy: '' }
@@ -177,6 +399,99 @@ function buildBlank(plan: { id: string; machine: { code: string }; salesOrder: {
       ? { lotNumber: '', colour: '', code: '', pktKg: '', packedBy: '' }
       : { lotNumber: '', colour: '', code: '', winderPackedBy: '' }),
   };
+}
+
+/** Header fields copied from a production plan onto its draft logbook. */
+export function headerPatchFromPlan(plan: {
+  machine: { code: string };
+  shift: string;
+  scheduledStartDate: string;
+  supervisor: string;
+  drawingNo: string;
+  formulaNo: string;
+  moldNo: string;
+  productName: string;
+  salesOrder?: { product: string } | null;
+}) {
+  return {
+    machineId: plan.machine.code,
+    date: (plan.scheduledStartDate || '').slice(0, 10),
+    shift: plan.shift,
+    supervisor: plan.supervisor,
+    drawingNo: plan.drawingNo,
+    formulaNo: plan.formulaNo,
+    moldNo: plan.moldNo,
+    productName: plan.productName || plan.salesOrder?.product || '',
+  };
+}
+
+/**
+ * Create (or no-op if present) a draft MachineLogbook for a plan, with the
+ * Machine Identification & Shift Header filled from the plan. Used at plan
+ * create time so Operator tasks are ready immediately.
+ */
+export async function seedDraftLogbook(
+  tx: { machineLogbook: { findUnique: Function; create: Function }; logbookTemplate: { findUnique: Function; findFirst: Function }; machine: { findUnique: Function }; productionPlan: { findUnique: Function } },
+  planId: string,
+  organizationId: string,
+) {
+  const existing = await tx.machineLogbook.findUnique({ where: { productionPlanId: planId } });
+  if (existing) return existing;
+
+  const plan = await tx.productionPlan.findUnique({
+    where: { id: planId },
+    include: { machine: { select: { code: true, logbookFormat: true } }, salesOrder: { select: { product: true } } },
+  });
+  if (!plan) throw new ApiError(404, 'not_found', 'Production plan not found.');
+
+  let template = plan.logbookTemplateId
+    ? await tx.logbookTemplate.findUnique({ where: { id: plan.logbookTemplateId } })
+    : null;
+  if (!template) {
+    template = plan.machine.logbookFormat
+      ? await tx.logbookTemplate.findFirst({ where: { docNo: plan.machine.logbookFormat } })
+      : null;
+    template = template ?? await tx.logbookTemplate.findFirst({ orderBy: { docNo: 'asc' } });
+  }
+  if (!template) throw new ApiError(422, 'no_template', 'No logbook template configured.');
+
+  const blank = buildBlank(plan, template as never);
+  return tx.machineLogbook.create({ data: { ...blank, organizationId } });
+}
+
+/** Sync draft logbook header (+ optional template reshape) after a plan PATCH. */
+export async function syncDraftHeaderFromPlan(
+  tx: { machineLogbook: { findUnique: Function; update: Function; delete: Function; create: Function }; logbookTemplate: { findUnique: Function; findFirst: Function }; productionPlan: { findUnique: Function } },
+  planId: string,
+  organizationId: string,
+  opts?: { templateChanged?: boolean },
+) {
+  const plan = await tx.productionPlan.findUnique({
+    where: { id: planId },
+    include: { machine: { select: { code: true, logbookFormat: true } }, salesOrder: { select: { product: true } } },
+  });
+  if (!plan) return;
+
+  const lb = await tx.machineLogbook.findUnique({ where: { productionPlanId: planId } });
+  if (lb?.status === 'submitted') return;
+  const header = headerPatchFromPlan(plan);
+
+  if (!lb) {
+    await seedDraftLogbook(tx as never, planId, organizationId);
+    return;
+  }
+
+  if (opts?.templateChanged && plan.logbookTemplateId && plan.logbookTemplateId !== lb.templateId) {
+    // Template change on an empty draft: rebuild shape, keep header.
+    await tx.machineLogbook.delete({ where: { id: lb.id } });
+    await seedDraftLogbook(tx as never, planId, organizationId);
+    return;
+  }
+
+  await tx.machineLogbook.update({
+    where: { id: lb.id },
+    data: { ...header, version: { increment: 1 } },
+  });
 }
 
 /** Get-or-create the draft logbook for a scheduled plan. */

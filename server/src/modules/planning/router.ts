@@ -1,7 +1,7 @@
 import express, { type RequestHandler } from 'express';
 import { requirePermission } from '../../middleware/authz';
 import { validateBody } from '../../middleware/validate';
-import { planCreateSchema } from './schemas';
+import { planCreateSchema, planUpdateSchema } from './schemas';
 import * as svc from './service';
 
 const ah = (fn: (req: express.Request, res: express.Response) => Promise<unknown>): RequestHandler =>
@@ -21,5 +21,7 @@ planningRouter.get('/planning/operators', requirePermission('screen:orders_to_pl
 planningRouter.get('/plans', requirePermission('screen:plan_board'), ah(() => svc.listPlans()));
 planningRouter.post('/plans', requirePermission('action:order.plan'), validateBody(planCreateSchema),
   ah(async (req, res) => { res.status(201); return svc.createPlan(req.body); }));
+planningRouter.patch('/plans/:id', requirePermission('action:order.plan'), validateBody(planUpdateSchema),
+  ah((req) => svc.updatePlan(req.params.id, req.body)));
 planningRouter.post('/plans/:id/release', requirePermission('action:order.plan'),
   ah((req) => svc.releasePlan(req.params.id)));

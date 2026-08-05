@@ -27,12 +27,11 @@ import {
   Search,
   Globe,
   ChevronDown,
-  ArrowRight,
   ChevronsLeft,
   Compass,
   LockKeyhole,
-  Sparkles,
-  Cpu
+  Cpu,
+  BookOpen
 } from 'lucide-react';
 
 import {
@@ -73,8 +72,7 @@ import { setCurrentEmployee, useRoleRules, useGrants, useDelegations, checkFor, 
 import { employeeForRole, employeeForEmail } from './lib/userStore';
 import { setDevUser } from './lib/apiIdentity';
 import { api, ApiError } from './lib/apiClient';
-import { FEATURES, ROLE_DEFAULT_SCREENS, stripScreen } from './lib/accessCatalog';
-import { groupNav, relatedOf } from './lib/navGroups';
+import { groupNav } from './lib/navGroups';
 import { roleInfo, themeForRole, homeForRole, normalizeRole } from './lib/roles';
 import { ToastHost, pushToast } from './components/Notify';
 import { RoleSwitcher } from './components/RoleSwitcher';
@@ -89,6 +87,8 @@ import { ReadyToDispatch, DispatchHistory, DispatchData } from './components/dis
 import { PreventiveSchedule, MachinesBoard, MaintData } from './components/maintenance/MaintenanceScreens';
 import RoleDashboard from './components/RoleDashboard';
 import MachineTasks from './components/MachineTasks';
+import { clearMachineQueryFromUrl, readMachineCodeFromLocation } from './lib/machineQr';
+import LogbookLedger from './components/LogbookLedger';
 import TemplateBuilder from './components/TemplateBuilder';
 import { EmployeeDirectory, RolesAccess } from './components/admin/AdminScreens';
 import { useMyPermissions } from './lib/queries/admin';
@@ -108,6 +108,7 @@ type ModuleType =
   | 'formulations'
   | 'machine_tasks'
   | 'logbook_templates'
+  | 'logbook_ledger'
   | 'roll_queue'
   | 'holds'
   | 'receive'
@@ -127,6 +128,7 @@ type ModuleType =
 
 export default function App() {
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
+  const [pendingMachineCode, setPendingMachineCode] = useState<string | null>(() => readMachineCodeFromLocation());
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true,
   );
@@ -238,10 +240,31 @@ export default function App() {
     setDevUser(devEmail);
   }, [currentRole, sessionEmp?.id, user?.email, devEmail]);
 
+  // Floor QR deep-link: keep ?machine= across login, then open Machine Tasks.
+  React.useEffect(() => {
+    const sync = () => {
+      const code = readMachineCodeFromLocation();
+      if (code) setPendingMachineCode(code);
+    };
+    sync();
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
+
+  const consumeMachineCode = React.useCallback(() => {
+    setPendingMachineCode(null);
+    clearMachineQueryFromUrl();
+  }, []);
+
   // Log books open from Machine Tasks only — fold any legacy deep-link.
   React.useEffect(() => {
     if (activeModule === 'logbooks') setActiveModule('machine_tasks');
   }, [activeModule]);
+
+  React.useEffect(() => {
+    if (!user || !pendingMachineCode) return;
+    setActiveModule('machine_tasks');
+  }, [user, pendingMachineCode]);
 
   const getPermissionStatus = (role: string, moduleId: string): boolean => {
     const key = moduleId.includes(':') ? moduleId : `screen:${moduleId}`;
@@ -260,8 +283,14 @@ export default function App() {
     localStorage.setItem('erp_session', JSON.stringify(normalized));
     setIdentityEmail(isEmp ? session.email : '');
     setCurrentRole(role);
-    // Land each role on its own home (theme + menu follow via role state).
-    setActiveModule(homeForRole(role) as ModuleType);
+    // Floor QR survives login: land on Machine Tasks instead of the role home.
+    const qrMachine = readMachineCodeFromLocation() || pendingMachineCode;
+    if (qrMachine) {
+      setPendingMachineCode(qrMachine.trim().toUpperCase());
+      setActiveModule('machine_tasks');
+    } else {
+      setActiveModule(homeForRole(role) as ModuleType);
+    }
   };
 
   const handleSignOut = async () => {
@@ -298,7 +327,13 @@ export default function App() {
         setIdentityEmail(email);
         setDevUser(email);
         setCurrentRole(resolvedRole);
-        setActiveModule(homeForRole(resolvedRole) as ModuleType);
+        const qrMachine = readMachineCodeFromLocation();
+        if (qrMachine) {
+          setPendingMachineCode(qrMachine);
+          setActiveModule('machine_tasks');
+        } else {
+          setActiveModule(homeForRole(resolvedRole) as ModuleType);
+        }
 
         // Prefer the server's membership role/screens once the Bearer token works.
         try {
@@ -306,7 +341,13 @@ export default function App() {
           if (me.user?.role) {
             setCurrentRole(me.user.role);
             setUser((prev) => prev ? { ...prev, role: me.user.role, displayName: me.user.name || prev.displayName } : prev);
-            setActiveModule(homeForRole(me.user.role) as ModuleType);
+            const stillQr = readMachineCodeFromLocation();
+            if (stillQr) {
+              setPendingMachineCode(stillQr);
+              setActiveModule('machine_tasks');
+            } else {
+              setActiveModule(homeForRole(me.user.role) as ModuleType);
+            }
           }
         } catch (err) {
           const code = err instanceof ApiError ? err.code : (err as { code?: string })?.code;
@@ -540,6 +581,7 @@ export default function App() {
     { id: 'formulations', label: 'Formulations (BOM)', icon: Settings, color: 'text-indigo-600' },
     { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
+    { id: 'logbook_ledger', label: 'Logbook Ledger', icon: BookOpen, color: 'text-teal-600' },
     { id: 'roll_queue', label: 'Roll Inspection', icon: CheckCircle2, color: 'text-rose-500' },
     { id: 'holds', label: 'Quality Holds', icon: ShieldAlert, color: 'text-amber-600' },
     { id: 'receive', label: 'Receive Material', icon: Package2, color: 'text-emerald-600' },
@@ -558,6 +600,7 @@ export default function App() {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
     { id: 'rm_stock', label: 'Stock & Inventory', icon: Package2, color: 'text-cyan-600' },
     { id: 'dispatch_history', label: 'Dispatch History', icon: Truck, color: 'text-slate-500' },
+    { id: 'logbook_ledger', label: 'Logbook Ledger', icon: BookOpen, color: 'text-teal-600' },
   ];
   // Production Planner — planning + machine tasks (log books open from a task).
   const plannerNavItems = [
@@ -567,10 +610,12 @@ export default function App() {
     { id: 'formulations', label: 'Formulations (BOM)', icon: Settings, color: 'text-indigo-600' },
     { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
+    { id: 'logbook_ledger', label: 'Logbook Ledger', icon: BookOpen, color: 'text-teal-600' },
   ];
   const operatorNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
+    { id: 'logbook_ledger', label: 'Logbook Ledger', icon: BookOpen, color: 'text-teal-600' },
   ];
   const qualityNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
@@ -607,6 +652,7 @@ export default function App() {
     { id: 'acl', label: 'Roles & Access', icon: ShieldAlert, color: 'text-rose-600' },
     { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
+    { id: 'logbook_ledger', label: 'Logbook Ledger', icon: BookOpen, color: 'text-teal-600' },
   ];
 
   const moduleLabel = (id: string): string => {
@@ -651,7 +697,6 @@ export default function App() {
   const currentNavItems = [...visibleNav, ...extraNav];
   const canViewActive = activeModule === 'dashboard' || currentNavItems.some((n) => n.id === activeModule) || dbAllows(activeModule);
   const homeModule = homeForRole(currentRole) as ModuleType;
-  const accessibleRelated = relatedOf(activeModule).filter((id) => id !== activeModule && dbAllows(id));
   const bestTraceTarget = (query: string): ModuleType => {
     const q = query.trim().toLowerCase();
     if (!q) return activeModule;
@@ -936,81 +981,41 @@ export default function App() {
                 <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-100">
                   <LockKeyhole className="h-5 w-5" />
                 </div>
-                <h2 className="mt-4 text-xl font-semibold text-slate-900">This page isn&apos;t available in your current access view</h2>
+                <h2 className="mt-4 text-xl font-semibold text-slate-900">
+                  {pendingMachineCode
+                    ? `No access to log machine ${pendingMachineCode}`
+                    : 'This page isn\'t available in your current access view'}
+                </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  The old screen bounce has been removed. Choose a real destination below instead of being redirected automatically.
+                  {pendingMachineCode
+                    ? 'Your role cannot open Machine Tasks. Ask an admin for access, or sign in as an operator.'
+                    : 'The old screen bounce has been removed. Choose a real destination below instead of being redirected automatically.'}
                 </p>
               </div>
               <div className="px-6 py-5 space-y-5">
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={() => setActiveModule(homeModule)}
+                    onClick={() => {
+                      if (pendingMachineCode) consumeMachineCode();
+                      setActiveModule(homeModule);
+                    }}
                     className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
                   >
                     <Compass className="h-4 w-4" />
                     Go to {moduleLabel(homeModule)}
                   </button>
-                  {accessibleRelated.slice(0, 3).map((id) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setActiveModule(id as ModuleType)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-blue-300 hover:text-blue-700 transition-colors"
-                    >
-                      {moduleLabel(id)}
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  ))}
                 </div>
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Requested screen</p>
-                  <p className="mt-1 text-sm font-medium text-slate-700">{moduleLabel(activeModule)}</p>
+                  <p className="mt-1 text-sm font-medium text-slate-700">
+                    {pendingMachineCode ? `Machine QR · ${pendingMachineCode}` : moduleLabel(activeModule)}
+                  </p>
                 </div>
               </div>
             </section>
           ) : (
             <>
-              {/* Quick links — suppressed on sales screens (they use an in-page pipeline tab bar). */}
-              {(() => {
-                const salesScreens = new Set(['inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints']);
-                if (salesScreens.has(activeModule)) return null;
-                const rel = accessibleRelated;
-                if (rel.length === 0) return null;
-                const labelOf = (id: string) => FEATURES.find((f) => f.key === `screen:${id}`)?.label ?? moduleLabel(id as ModuleType);
-                return (
-                  <section
-                    id="related-links"
-                    className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-                  >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div className="min-w-0">
-                        <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                          <Sparkles className="h-3.5 w-3.5" />
-                          Related
-                        </div>
-                        <p className="mt-1 text-sm text-slate-500">
-                          Jump to the next connected screens in this section from <span className="font-medium text-slate-700">{moduleLabel(activeModule)}</span>. Only valid routes are shown.
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {rel.map((id) => (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => setActiveModule(id as ModuleType)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all"
-                          >
-                            {labelOf(id)}
-                            <ArrowRight className="h-3.5 w-3.5" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-                );
-              })()}
-
               {activeModule === 'dashboard' && (
                 <RoleDashboard role={currentRole} onOpen={(m) => setActiveModule(m as ModuleType)} />
               )}
@@ -1019,7 +1024,13 @@ export default function App() {
               {activeModule === 'orders_to_plan' && <OrdersToPlan {...plannerData} />}
               {activeModule === 'plan_board' && <PlanBoardScreen {...plannerData} />}
               {activeModule === 'formulations' && <Formulations {...plannerData} />}
-              {activeModule === 'machine_tasks' && <MachineTasks />}
+              {activeModule === 'machine_tasks' && (
+                <MachineTasks
+                  initialMachineCode={pendingMachineCode}
+                  onMachineCodeConsumed={consumeMachineCode}
+                />
+              )}
+              {activeModule === 'logbook_ledger' && <LogbookLedger />}
               {activeModule === 'logbook_templates' && <TemplateBuilder />}
 
               {/* Quality (API) */}

@@ -20,7 +20,7 @@ const SCREEN_LABEL: Record<string, string> = {
   dashboard: 'Dashboard', inquiries: 'Inquiries', quotations: 'Quotations', orders: 'Orders',
   sales_customers: 'Customers', sales_complaints: 'Complaints & CAPA', orders_to_plan: 'Orders to Plan',
   plan_board: 'Production Plan', formulations: 'Formulations (BOM)', logbooks: 'Log Book (via Machine Tasks)',
-  machine_tasks: 'Machine Tasks', logbook_templates: 'Logbook Templates',
+  machine_tasks: 'Machine Tasks', logbook_templates: 'Logbook Templates', logbook_ledger: 'Logbook Ledger',
   roll_queue: 'Roll Inspection', holds: 'Quality Holds', receive: 'Receive Material', issue_lot: 'Issue Lot',
   rm_stock: 'RM Stock', ready: 'Ready to Dispatch', dispatch_history: 'Dispatch History',
   machines: 'Machines', preventive: 'Preventive Maintenance', users: 'People & Roles', acl: 'Roles & Access',

@@ -15,7 +15,7 @@ async function freshPlan(machineCode: string, day: string): Promise<string> {
   const ord = await request(app).post('/api/orders').send({ inquiryId: inq.body.id });
   const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
   const machineId = machines.find((m) => m.code === machineCode)!.id;
-  const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId, shift: 'D', scheduledStartDate: `${day}T08:00:00` });
+  const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
   return plan.body.id as string;
 }
 
@@ -137,7 +137,8 @@ describe('logbook slice', () => {
     const ord = await request(app).post('/api/orders').send({ inquiryId: inq.body.id });
     const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
     const mId = machines.find((m) => m.code === 'M01')!.id;
-    const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId: mId, shift: 'D', scheduledStartDate: '2026-12-15T08:00:00', logbookTemplateId: pipe.id });
+    const day = `2027-0${1 + (Math.floor(Math.random() * 8))}-${String(10 + Math.floor(Math.random() * 18)).padStart(2, '0')}`;
+    const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId: mId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, logbookTemplateId: pipe.id, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
     expect(plan.status).toBe(201);
 
     const lb = await request(app).post('/api/logbooks').send({ productionPlanId: plan.body.id });
@@ -154,6 +155,36 @@ describe('logbook slice', () => {
     if (r.body.length) { expect(r.body[0]).toHaveProperty('machine'); expect(Array.isArray(r.body[0].tasks)).toBe(true); }
   });
 
+  it('returns the submitted logbook ledger with a summary', async () => {
+    const r = await request(app).get('/api/logbook/ledger');
+    expect(r.status).toBe(200);
+    expect(r.body.summary).toBeDefined();
+    expect(typeof r.body.summary.submitted).toBe('number');
+    expect(Array.isArray(r.body.rows)).toBe(true);
+    expect(r.body.summary.submitted).toBe(r.body.rows.length);
+    expect(r.body.charts).toBeDefined();
+    expect(Array.isArray(r.body.charts.byDay)).toBe(true);
+    expect(Array.isArray(r.body.charts.byMachine)).toBe(true);
+    if (r.body.rows.length) {
+      const row = r.body.rows[0];
+      expect(row).toHaveProperty('machineId');
+      expect(row).toHaveProperty('soNumber');
+      expect(row).toHaveProperty('isoDate');
+      expect(row).toHaveProperty('productionPlanId');
+      expect(row).not.toHaveProperty('traceabilityRows');
+      expect(row).not.toHaveProperty('hourlyInspections');
+    }
+  });
+
+  it('filters the ledger by from/to iso dates', async () => {
+    const all = await request(app).get('/api/logbook/ledger');
+    expect(all.status).toBe(200);
+    const future = await request(app).get('/api/logbook/ledger').query({ from: '2099-01-01', to: '2099-12-31' });
+    expect(future.status).toBe(200);
+    expect(future.body.summary.submitted).toBe(0);
+    expect(future.body.rows).toHaveLength(0);
+  });
+
   it('creates then deletes a custom template; denies a non-admin', async () => {
     const t = await request(app).post('/api/logbook/templates').send({ productName: `Test ${uniq()}`, layout: 'pipe', docNo: 'QR/MFG/999' });
     expect(t.status).toBe(201);
@@ -161,5 +192,48 @@ describe('logbook slice', () => {
     expect((await request(app).delete(`/api/logbook/templates/${t.body.id}`)).status).toBe(200);
     // An Operator cannot build templates.
     expect((await request(app).post('/api/logbook/templates').set('x-dev-user', 'EMP-007').send({ productName: 'x' })).status).toBe(403);
+  });
+
+  it('resolves a machine QR code to the best active plan (prefers draft)', async () => {
+    const missing = await request(app).get('/api/logbook/resolve').query({ machine: 'NOPE' });
+    expect(missing.status).toBe(404);
+
+    // Create a dedicated machine so we do not collide with other machines' plans.
+    const code = `QR${uniq().toUpperCase()}`.slice(0, 8);
+    const created = await request(app).post('/api/machines').send({
+      code, line: 'QR test line', family: 'PVC', status: 'running',
+    });
+    expect(created.status).toBe(201);
+
+    const empty = await request(app).get('/api/logbook/resolve').query({ machine: code });
+    expect(empty.status).toBe(200);
+    expect(empty.body.reason).toBe('no_active_plan');
+    expect(empty.body.planId).toBeNull();
+    expect(empty.body.machine.code).toBe(code);
+
+    const planId = await freshPlan(code, '2028-03-15');
+    const draft = await request(app).get('/api/logbook/resolve').query({ machine: code.toLowerCase() });
+    expect(draft.status).toBe(200);
+    expect(draft.body.reason).toBe('ok');
+    expect(draft.body.planId).toBe(planId);
+    // Planning may already have seeded a draft logbook on the plan.
+    expect(draft.body.logStatus === null || draft.body.logStatus === 'draft').toBe(true);
+
+    const open = await request(app).post('/api/logbooks').send({ productionPlanId: planId });
+    expect(open.status).toBe(201);
+    const stillDraft = await request(app).get('/api/logbook/resolve').query({ machine: code });
+    expect(stillDraft.body.planId).toBe(planId);
+    expect(stillDraft.body.logStatus).toBe('draft');
+
+    await request(app).patch(`/api/logbooks/${open.body.id}`).send({
+      date: '2028-03-15', shift: 'D', supervisor: 'Nandlal', formulaNo: 'RF03',
+      operatorSignature: 'Nandlal', supervisorSignature: 'Suresh',
+    });
+    await request(app).post(`/api/logbooks/${open.body.id}/submit`);
+
+    const afterSubmit = await request(app).get('/api/logbook/resolve').query({ machine: code });
+    expect(afterSubmit.body.reason).toBe('ok');
+    expect(afterSubmit.body.planId).toBe(planId);
+    expect(afterSubmit.body.logStatus).toBe('submitted');
   });
 });

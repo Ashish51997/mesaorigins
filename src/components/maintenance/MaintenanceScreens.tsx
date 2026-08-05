@@ -3,9 +3,9 @@
  * Machines · Preventive Schedule. Machine registry and schedule are API-backed.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  CalendarClock, CheckCircle2, Cpu, Plus
+  CalendarClock, CheckCircle2, Cpu, Plus, QrCode, Download, Copy, Eye
 } from 'lucide-react';
 import { EmptyState } from '../EmptyState';
 import { DataTable } from '../DataTable';
@@ -13,6 +13,7 @@ import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { pushToast } from '../Notify';
 import { ApiError } from '../../lib/apiClient';
 import { useMachines, useCreateMachine, useMaintenanceTasks, useAddMaintenance, useCompleteMaintenance, type ApiMachine } from '../../lib/queries/maintenance';
+import { downloadMachineQr, machineQrUrl, renderMachineQrPng } from '../../lib/machineQr';
 
 export interface MaintData { onOpen: (m: string) => void; onTrace: (q: string) => void; user: string; }
 
@@ -28,11 +29,92 @@ const FAMILIES = ['LDPE', 'PVC', 'SPVC', 'Other'] as const;
 const TASK_TYPES = ['Preventive', 'Calibration', 'Overhaul', 'Breakdown'] as const;
 const FREQS = ['Weekly', 'Monthly', 'Quarterly', 'Semiannually', 'Once (Breakdown)'] as const;
 
+/* ---------------------------------------------------------------- Machine QR modal */
+
+function MachineQrPanel({ machine, onDone }: { machine: Pick<ApiMachine, 'code' | 'line'>; onDone?: () => void }) {
+  const [dataUrl, setDataUrl] = useState<string>('');
+  const [busy, setBusy] = useState(false);
+  const link = machineQrUrl(machine.code);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDataUrl('');
+    renderMachineQrPng(machine.code, 320).then((url) => {
+      if (!cancelled) setDataUrl(url);
+    }).catch(() => {
+      if (!cancelled) pushToast('Could not render QR code.');
+    });
+    return () => { cancelled = true; };
+  }, [machine.code]);
+
+  const onDownload = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await downloadMachineQr(machine.code);
+      pushToast(`Downloaded Machine-${machine.code}-QR.png`);
+    } catch {
+      pushToast('Download failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      pushToast('Link copied.');
+    } catch {
+      pushToast('Could not copy link.');
+    }
+  };
+
+  return (
+    <div className="space-y-4" data-testid="machine-qr-panel">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5">
+        {dataUrl ? (
+          <img src={dataUrl} alt={`QR for machine ${machine.code}`} className="h-56 w-56 rounded-xl bg-white p-2 shadow-sm" />
+        ) : (
+          <div className="flex h-56 w-56 items-center justify-center rounded-xl bg-white text-sm text-slate-400">Generating…</div>
+        )}
+        <div className="text-center">
+          <div className="font-mono text-xl font-bold text-slate-900">{machine.code}</div>
+          {machine.line ? <p className="mt-0.5 text-[13px] text-slate-500">{machine.line}</p> : null}
+          <p className="mt-2 max-w-xs text-[12px] text-slate-400">Print and paste on the machine. Authorized users who scan open the active shift log.</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={onDownload}
+          disabled={busy}
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-indigo-600 px-4 text-sm font-bold text-white hover:bg-indigo-500 disabled:opacity-40"
+        >
+          <Download className="h-4 w-4" /> Download QR
+        </button>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+        >
+          <Copy className="h-4 w-4" /> Copy link
+        </button>
+      </div>
+      {onDone && (
+        <button type="button" onClick={onDone} className="w-full min-h-[44px] rounded-full border border-slate-200 text-sm font-bold text-slate-600">
+          Done
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------- Machines registry */
 
 export function MachinesBoard(_p: MaintData) {
   const machinesQ = useMachines();
   const [showAdd, setShowAdd] = useState(false);
+  const [viewQr, setViewQr] = useState<ApiMachine | null>(null);
   const machines = machinesQ.data ?? [];
 
   return (
@@ -58,14 +140,51 @@ export function MachinesBoard(_p: MaintData) {
             const s = STATUS[(m.status as MachineStatus)] ?? STATUS.running;
             return <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-slate-700"><span className={`w-2 h-2 rounded-full ${s.dot}`} />{s.word}</span>;
           } },
+          { key: 'qr', header: 'QR', align: 'right', cell: (m) => (
+            <div className="inline-flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setViewQr(m)}
+                className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-bold text-slate-700 hover:bg-slate-50"
+                title="View QR"
+              >
+                <Eye className="h-3.5 w-3.5" /> View
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  downloadMachineQr(m.code)
+                    .then(() => pushToast(`Downloaded Machine-${m.code}-QR.png`))
+                    .catch(() => pushToast('Download failed.'));
+                }}
+                className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-bold text-slate-700 hover:bg-slate-50"
+                title="Download QR"
+              >
+                <Download className="h-3.5 w-3.5" /> Download
+              </button>
+            </div>
+          ) },
         ]}
       />
-      {showAdd && <AddMachineModal onClose={() => setShowAdd(false)} />}
+      {showAdd && (
+        <AddMachineModal
+          onClose={() => setShowAdd(false)}
+          onCreated={(m) => {
+            setShowAdd(false);
+            setViewQr(m);
+          }}
+        />
+      )}
+      {viewQr && (
+        <ResponsiveOverlay open onClose={() => setViewQr(null)} title={`QR · ${viewQr.code}`} wide>
+          <MachineQrPanel machine={viewQr} onDone={() => setViewQr(null)} />
+        </ResponsiveOverlay>
+      )}
     </div>
   );
 }
 
-function AddMachineModal({ onClose }: { onClose: () => void }) {
+function AddMachineModal({ onClose, onCreated }: { onClose: () => void; onCreated: (m: ApiMachine) => void }) {
   const create = useCreateMachine();
   const [code, setCode] = useState('');
   const [line, setLine] = useState('');
@@ -78,7 +197,10 @@ function AddMachineModal({ onClose }: { onClose: () => void }) {
     create.mutate(
       { code: code.trim(), line: line.trim(), family, status },
       {
-        onSuccess: (m) => { pushToast(`Machine ${m.code} registered.`); onClose(); },
+        onSuccess: (m) => {
+          pushToast(`Machine ${m.code} registered — print its QR for the floor.`);
+          onCreated(m);
+        },
         onError: (e) => pushToast(errMsg(e)),
       },
     );
@@ -103,6 +225,10 @@ function AddMachineModal({ onClose }: { onClose: () => void }) {
             </select>
           </label>
         </div>
+        <p className="inline-flex items-start gap-2 rounded-xl bg-indigo-50 px-3 py-2 text-[12px] text-indigo-800">
+          <QrCode className="mt-0.5 h-4 w-4 shrink-0" />
+          After saving you can view and download a QR sticker for this machine.
+        </p>
         <div className="flex justify-end gap-2 pt-1">
           <button onClick={onClose} className="min-h-[44px] px-4 rounded-full border border-slate-200 text-sm font-bold text-slate-600">Cancel</button>
           <button onClick={submit} disabled={!valid || create.isPending} className="min-h-[44px] px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add machine</button>

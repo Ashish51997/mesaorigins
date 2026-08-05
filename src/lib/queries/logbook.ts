@@ -19,6 +19,7 @@ const keys = {
   templates: ['logbook', 'templates'] as const,
   plans: ['logbook', 'plans'] as const,
   formulas: ['logbook', 'formulas'] as const,
+  ledger: ['logbook', 'ledger'] as const,
 };
 
 export function useLogbookTemplates() {
@@ -43,6 +44,79 @@ export interface ApiMachineTaskGroup {
 export function useLogbookTasks() {
   return useQuery({ queryKey: ['logbook', 'tasks'], queryFn: () => api.get<ApiMachineTaskGroup[]>('/logbook/tasks') });
 }
+
+export interface ApiResolveMachineLogbook {
+  reason: 'ok' | 'no_active_plan';
+  machine: { id: string; code: string; line: string };
+  planId: string | null;
+  logStatus: string | null;
+}
+
+export function useResolveMachineLogbook(machineCode: string | null | undefined) {
+  const code = (machineCode ?? '').trim().toUpperCase();
+  return useQuery({
+    queryKey: ['logbook', 'resolve', code],
+    enabled: code.length > 0,
+    queryFn: () => api.get<ApiResolveMachineLogbook>(`/logbook/resolve?machine=${encodeURIComponent(code)}`),
+    retry: false,
+  });
+}
+
+export interface ApiLogbookLedgerRow {
+  id: string;
+  machineId: string;
+  date: string;
+  isoDate: string;
+  shift: string;
+  productName: string;
+  formulaNo: string;
+  totalRollsProduced: string;
+  totalRollKgs: string;
+  totalConsumedKg: string;
+  rejectionKg: string;
+  operatorSignature: string;
+  supervisor: string;
+  soNumber: string;
+  productionPlanId: string;
+  updatedAt: string;
+  producedKg: number;
+  consumedKg: number;
+  wasteKg: number;
+}
+
+export interface ApiLogbookLedger {
+  summary: {
+    submitted: number;
+    producedKg: number;
+    consumedKg: number;
+    wasteKg: number;
+    rolls: number;
+    machines: number;
+    shifts: string[];
+    yieldPct: number;
+    from: string | null;
+    to: string | null;
+  };
+  charts: {
+    byDay: Array<{ date: string; producedKg: number; consumedKg: number; wasteKg: number; count: number }>;
+    byMachine: Array<{ label: string; producedKg: number; count: number }>;
+  };
+  rows: ApiLogbookLedgerRow[];
+}
+
+export function useLogbookLedger(range?: { from?: string; to?: string }) {
+  const from = range?.from || undefined;
+  const to = range?.to || undefined;
+  const qs = new URLSearchParams();
+  if (from) qs.set('from', from);
+  if (to) qs.set('to', to);
+  const q = qs.toString();
+  return useQuery({
+    queryKey: [...keys.ledger, from ?? '', to ?? ''],
+    queryFn: () => api.get<ApiLogbookLedger>(`/logbook/ledger${q ? `?${q}` : ''}`),
+  });
+}
+
 export function useOpenLogbook() {
   return useMutation({ mutationFn: (productionPlanId: string) => api.post<MachineLogbook>('/logbooks', { productionPlanId }) });
 }
@@ -53,6 +127,10 @@ export function useSubmitLogbook() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.post<MachineLogbook>(`/logbooks/${id}/submit`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.plans }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.plans });
+      qc.invalidateQueries({ queryKey: keys.ledger });
+      qc.invalidateQueries({ queryKey: ['logbook', 'tasks'] });
+    },
   });
 }
