@@ -58,6 +58,7 @@ export const TAGS: { name: string; description: string }[] = [
   { name: 'Maintenance', description: 'Machine registry and the preventive maintenance schedule.' },
   { name: 'Dashboard', description: 'Aggregated KPIs for the per-role home screens.' },
   { name: 'Administration', description: 'Employees, roles and per-employee screen access.' },
+  { name: 'Onboarding', description: 'Create a new organization and its first owner account.' },
   { name: 'Legacy', description: 'The data.json blob store still backing domains not yet migrated to Postgres. Being retired domain by domain.' },
 ];
 
@@ -131,6 +132,73 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'Signed out.',
     public: true,
     responseSchema: ACK,
+  },
+  'GET /api/onboarding/access': {
+    tag: 'Onboarding',
+    operationId: 'getOnboardingAccess',
+    summary: 'Check onboarding access',
+    description: 'Protected route for internal admins only. Confirms the current signed-in user is allowed to onboard a new organization.',
+    responseDescription: 'The caller may use the onboarding route.',
+    responseSchema: obj({ allowed: { type: 'boolean' }, allowedEmails: arr(str) }),
+    errors: [
+      { status: 403, code: 'forbidden', when: 'The current user is not on the onboarding allowlist or is not an admin.' },
+      { status: 503, code: 'auth_not_configured', when: 'AUTH_SECRET is missing.' },
+    ],
+  },
+  'GET /api/onboarding/organizations': {
+    tag: 'Onboarding',
+    operationId: 'listOnboardingOrganizations',
+    summary: 'List all organizations',
+    description: 'Protected route for the product owner. Returns all organizations with owner and administrator contact details.',
+    responseDescription: 'All organizations and their admin contacts.',
+    responseSchema: obj({
+      organizations: arr(obj({
+        id: str,
+        name: str,
+        slug: str,
+        status: str,
+        plan: str,
+        subscriptionStatus: str,
+        createdAt: { type: 'string', format: 'date-time' },
+        updatedAt: { type: 'string', format: 'date-time' },
+        contacts: arr(obj({
+          membershipId: str,
+          userId: str,
+          name: str,
+          email: { type: 'string', format: 'email' },
+          role: str,
+          employeeCode: str,
+          status: str,
+        })),
+      })),
+    }),
+    errors: [
+      { status: 403, code: 'forbidden', when: 'The current user is not the product owner or is not an admin.' },
+      { status: 503, code: 'auth_not_configured', when: 'AUTH_SECRET is missing.' },
+    ],
+  },
+  'POST /api/onboarding/bootstrap': {
+    tag: 'Onboarding',
+    operationId: 'bootstrapOrganization',
+    summary: 'Create organization and first owner',
+    description: 'Protected route for internal admins only. Creates an Organization, seeds built-in tenant roles, and creates the first owner account with a password.',
+    responseDescription: 'The created organization and first owner details.',
+    status: 201,
+    responseSchema: obj({
+      organization: obj({ id: str, name: str, slug: str }),
+      owner: obj({
+        userId: str, email: { type: 'string', format: 'email' }, name: str,
+        membershipId: str, employeeCode: str,
+        organizationId: str, organizationName: str,
+        role: str,
+      }),
+    }),
+    errors: [
+      { status: 403, code: 'forbidden', when: 'The current user is not on the onboarding allowlist or is not an admin.' },
+      { status: 409, code: 'org_taken', when: 'The requested organization slug is already in use.' },
+      { status: 409, code: 'already_member', when: 'The admin email already belongs to that organization.' },
+      { status: 503, code: 'auth_not_configured', when: 'AUTH_SECRET is missing.' },
+    ],
   },
 
   // ── Sales ─────────────────────────────────────────────────────────────────

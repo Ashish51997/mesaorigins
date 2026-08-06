@@ -215,6 +215,7 @@ export const isDevAuthEnabled = (): boolean => isDevAuth();
 
 /** Auth mode advertised on /api/health for the login UI. */
 export const authMode = (): 'authjs' | 'dev' => {
+  if (authSecretConfigured()) return 'authjs';
   if (isDevAuth()) return 'dev';
   return 'authjs';
 };

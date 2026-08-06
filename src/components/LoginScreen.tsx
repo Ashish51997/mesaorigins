@@ -20,12 +20,12 @@ interface LoginScreenProps {
 }
 
 const ROLE_ICON: Record<string, typeof Flame> = {
-  'Owner': Crown,
-  'Administrator': KeyRound,
+  Owner: Crown,
+  Administrator: KeyRound,
   'Managing Director': LayoutDashboard,
   'Sales Executive': Briefcase,
   'Production Planner': CalendarDays,
-  'Operator': Gauge,
+  Operator: Gauge,
   'Quality Inspector': ShieldCheck,
   'Store Manager': Boxes,
   'Dispatch Executive': Truck,
@@ -98,9 +98,7 @@ export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: Lo
         body: JSON.stringify({ email: email.trim(), password }),
       });
       const data = await r.json();
-      if (!r.ok) {
-        throw new Error(data?.error?.message || 'Sign-in failed');
-      }
+      if (!r.ok) throw new Error(data?.error?.message || 'Sign-in failed');
       onLogin({
         uid: `emp-${data.user.userId}`,
         email: data.user.email,
@@ -157,9 +155,7 @@ export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: Lo
   const passwordForm = (
     <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm max-w-md mx-auto w-full">
       <p className="font-display font-bold text-slate-900 text-lg mb-1">Sign in</p>
-      <p className="text-sm text-slate-500 mb-6">
-        Use your People directory email and password.
-      </p>
+      <p className="text-sm text-slate-500 mb-6">Use your People directory email and password.</p>
       {googleOk && (
         <button
           type="button"
@@ -179,38 +175,18 @@ export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: Lo
       <form onSubmit={submitPassword} className="space-y-4">
         <label className="block">
           <span className="text-[12px] font-semibold text-slate-600">Email</span>
-          <input
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+          <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </label>
         <label className="block">
           <span className="text-[12px] font-semibold text-slate-600">Password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+          <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </label>
         {error && <p className="text-sm text-rose-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold px-6 py-3 text-sm shadow-sm"
-        >
+        <button type="submit" disabled={busy} className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold px-6 py-3 text-sm shadow-sm">
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-      <p className="mt-4 text-[11px] text-slate-400 text-center">
-        Example: deepak.bansal@masspolymer.in — seed password from SEED_USER_PASSWORD
-      </p>
+      <p className="mt-4 text-[11px] text-slate-400 text-center">Example: deepak.bansal@masspolymer.in — seed password from SEED_USER_PASSWORD</p>
     </div>
   );
 

@@ -36,9 +36,12 @@ const prisma = new PrismaClient({
 const DEMO_ORG_ID = 'org-demo';
 /** Default password for every seeded user (override with SEED_USER_PASSWORD). */
 const SEED_PASSWORD = process.env.SEED_USER_PASSWORD || 'mesadesk123';
+const PRODUCT_OWNER_EMAIL = 'aroul303@gmail.com';
+const PRODUCT_OWNER_PASSWORD = 'ashish123';
 
 const EMPLOYEES = [
   { id: 'u19', employeeCode: 'EMP-019', name: 'Vikram Malhotra', email: 'vikram.malhotra@masspolymer.in', department: 'Management', role: 'Owner', shift: 'D', line: '—', status: 'active', joinDate: '2015-01', location: 'Bengaluru', lastSeen: 'on shift now' },
+  { id: 'u20', employeeCode: 'EMP-020', name: 'Aroul', email: 'aroul303@gmail.com', department: 'Product', role: 'Administrator', shift: 'D', line: '—', status: 'active', joinDate: '2026-08', location: 'Bengaluru', lastSeen: 'product owner' },
   { id: 'u1', employeeCode: 'EMP-001', name: 'Madan Lal', email: 'madan.lal@masspolymer.in', department: 'Management', role: 'Managing Director', shift: 'D', line: '—', status: 'active', joinDate: '2016-04', location: 'Bengaluru', lastSeen: 'on shift now' },
   { id: 'u2', employeeCode: 'EMP-002', name: 'Deepak Bansal', email: 'deepak.bansal@masspolymer.in', department: 'Administration', role: 'Administrator', shift: 'D', line: '—', status: 'active', joinDate: '2018-07', location: 'Bengaluru', lastSeen: 'on shift now' },
   { id: 'u3', employeeCode: 'EMP-003', name: 'Amit Verma', email: 'amit.verma@masspolymer.in', department: 'Sales', role: 'Sales Executive', shift: 'D', line: '—', status: 'active', joinDate: '2019-02', location: 'Bengaluru', lastSeen: 'today, 10:20' },
@@ -109,10 +112,16 @@ async function main(): Promise<void> {
   });
   const O = org.id;
 
-  const passwordHash = await hashPassword(SEED_PASSWORD);
-  console.log(`[seed] hashing passwords for ${EMPLOYEES.length} users (SEED_USER_PASSWORD)…`);
+  const defaultPasswordHash = await hashPassword(SEED_PASSWORD);
+  const productOwnerHash = await hashPassword(PRODUCT_OWNER_PASSWORD);
+  console.log(`[seed] hashing passwords for ${EMPLOYEES.length} users (SEED_USER_PASSWORD + onboarding owner override)…`);
   await prisma.user.createMany({
-    data: EMPLOYEES.map((e) => ({ id: e.id, email: e.email, name: e.name, passwordHash })),
+    data: EMPLOYEES.map((e) => ({
+      id: e.id,
+      email: e.email,
+      name: e.name,
+      passwordHash: e.email === PRODUCT_OWNER_EMAIL ? productOwnerHash : defaultPasswordHash,
+    })),
   });
   await prisma.membership.createMany({
     data: EMPLOYEES.map((e) => ({
