@@ -132,7 +132,24 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --role="roles/artifactregistry.writer" \
   --condition=None --quiet
 
-echo "==> Firebase secret placeholder"
+echo "==> Auth.js AUTH_SECRET"
+if ! gcloud secrets describe mesadesk-auth-secret &>/dev/null; then
+  openssl rand -hex 32 | tr -d '\n' | gcloud secrets create mesadesk-auth-secret --data-file=-
+  echo "Created mesadesk-auth-secret."
+else
+  echo "Secret mesadesk-auth-secret already exists."
+fi
+
+echo "==> Onboarding allowlist (product owner emails)"
+if ! gcloud secrets describe mesadesk-onboarding-emails &>/dev/null; then
+  printf '%s' 'aroul303@gmail.com' | gcloud secrets create mesadesk-onboarding-emails --data-file=-
+  echo "Created mesadesk-onboarding-emails (default: aroul303@gmail.com)."
+  echo "  To change: printf 'you@example.com' | gcloud secrets versions add mesadesk-onboarding-emails --data-file=-"
+else
+  echo "Secret mesadesk-onboarding-emails already exists."
+fi
+
+echo "==> Firebase secret placeholder (legacy; optional)"
 if ! gcloud secrets describe mesadesk-firebase-sa &>/dev/null; then
   echo '{"hint":"Replace with Firebase Admin SDK JSON"}' | gcloud secrets create mesadesk-firebase-sa --data-file=-
   echo "Created mesadesk-firebase-sa placeholder — replace with real JSON:"

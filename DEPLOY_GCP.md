@@ -132,10 +132,36 @@ gcloud run services update mesadesk --region="$REGION" \
 | Item | Value |
 |------|--------|
 | `DEV_AUTH` | `0` on Cloud Run |
-| `AUTH_SECRET` | Random ≥32 chars (Auth.js sessions) |
+| `AUTH_SECRET` | Secret Manager → `mesadesk-auth-secret` (≥32 chars). Required for password login + onboarding. |
+| `ONBOARDING_ALLOWED_EMAILS` | Secret Manager → `mesadesk-onboarding-emails` (e.g. `aroul303@gmail.com`) |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Optional Google OAuth; redirect `{APP_URL}/auth/callback/google` |
 | Login UI | Google and/or email+password when `/api/health` → `auth: "authjs"` |
 | People directory | Email must exist as a `User` with membership; set passwords via `POST /api/employees/:id/password` or seed |
+
+### Fix: `AUTH_SECRET is not set` on Cloud Run
+
+Create the secret (once), then mount it on the service:
+
+```bash
+# Create / rotate Auth.js secret (≥32 chars)
+openssl rand -hex 32 | tr -d '\n' | gcloud secrets create mesadesk-auth-secret --data-file=- \
+  || openssl rand -hex 32 | tr -d '\n' | gcloud secrets versions add mesadesk-auth-secret --data-file=-
+
+# Product-owner allowlist for /onboarding
+printf '%s' 'aroul303@gmail.com' | gcloud secrets create mesadesk-onboarding-emails --data-file=- \
+  || printf '%s' 'aroul303@gmail.com' | gcloud secrets versions add mesadesk-onboarding-emails --data-file=-
+
+# Mount on the running service (immediate fix without full rebuild)
+gcloud run services update mesadesk --region="$REGION" \
+  --update-secrets=AUTH_SECRET=mesadesk-auth-secret:latest,ONBOARDING_ALLOWED_EMAILS=mesadesk-onboarding-emails:latest \
+  --update-env-vars=DEV_AUTH=0,NODE_ENV=production
+
+# Confirm
+curl -sS "$(gcloud run services describe mesadesk --region="$REGION" --format='value(status.url)')/api/health"
+# expect: "auth":"authjs"
+```
+
+Future Cloud Build deploys pick these up via `cloudbuild.yaml` `--set-secrets`.
 
 ---
 

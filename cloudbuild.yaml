@@ -8,7 +8,9 @@
 #
 # Required secrets in Secret Manager (same project):
 #   mesadesk-database-url
-#   mesadesk-firebase-sa   (service account JSON)
+#   mesadesk-auth-secret          (Auth.js AUTH_SECRET, ≥32 chars)
+#   mesadesk-onboarding-emails    (comma-separated product-owner emails)
+#   mesadesk-firebase-sa          (optional / legacy)
 
 substitutions:
   _REGION: asia-south1
@@ -60,8 +62,8 @@ steps:
       - --max-instances=5
       - --timeout=300
       - --service-account=mesadesk-run@$PROJECT_ID.iam.gserviceaccount.com
-      - --set-env-vars=NODE_ENV=production,DEV_AUTH=0,LOGIN_PASSWORD=mesadesk123
-      - --set-secrets=DATABASE_URL=mesadesk-database-url:latest,FIREBASE_SERVICE_ACCOUNT=mesadesk-firebase-sa:latest
+      - --set-env-vars=NODE_ENV=production,DEV_AUTH=0
+      - --set-secrets=DATABASE_URL=mesadesk-database-url:latest,AUTH_SECRET=mesadesk-auth-secret:latest,ONBOARDING_ALLOWED_EMAILS=mesadesk-onboarding-emails:latest
       - --add-cloudsql-instances=$PROJECT_ID:${_REGION}:${_INSTANCE}
 
 images:
