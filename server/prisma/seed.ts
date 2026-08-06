@@ -108,7 +108,7 @@ async function main(): Promise<void> {
 
   console.log('[seed] provisioning demo organization…');
   const org = await prisma.organization.create({
-    data: { id: DEMO_ORG_ID, name: 'Mass Polimer (Demo Plant)', slug: 'demo', status: 'active', plan: 'enterprise', subscriptionStatus: 'active' },
+    data: { id: DEMO_ORG_ID, name: 'Mesadesk (Demo Plant)', slug: 'demo', status: 'active', plan: 'enterprise', subscriptionStatus: 'active' },
   });
   const O = org.id;
 

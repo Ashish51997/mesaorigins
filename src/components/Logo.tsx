@@ -1,5 +1,5 @@
 /**
- * Logo.tsx — the Mass Polimer brand mark (from Downloads/logo.svg), inlined so it
+ * Logo.tsx — the Mesadesk brand mark (from Downloads/logo.svg), inlined so it
  * stays crisp at any size and needs no extra network request. A white rounded tile
  * with a blue "gateway" mark, so it reads well on both light and dark themes.
  * Size it via className (e.g. "h-9 w-9").

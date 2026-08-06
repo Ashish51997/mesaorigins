@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ROLES, RoleName } from '../lib/roles';
 import { useDirectory, type ApiDirectoryEntry } from '../lib/queries/admin';
 import Logo from './Logo';
+import InstallAppButton from './InstallAppButton';
 
 interface LoginScreenProps {
   onLogin: (user: { uid: string; email: string; displayName: string; role: string; isFirebase: boolean }) => void;
@@ -186,6 +187,9 @@ export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: Lo
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+      <div className="mt-4">
+        <InstallAppButton />
+      </div>
       <p className="mt-4 text-[11px] text-slate-400 text-center">Example: deepak.bansal@masspolymer.in — seed password from SEED_USER_PASSWORD</p>
     </div>
   );
@@ -197,16 +201,20 @@ export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: Lo
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Logo className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl shadow-sm shrink-0" />
             <div className="min-w-0">
-              <h1 className="font-display font-extrabold text-slate-900 text-lg sm:text-xl leading-none truncate">Mass Polimer ERP</h1>
+              <h1 className="font-display font-extrabold text-slate-900 text-lg sm:text-xl leading-none truncate">Mesadesk</h1>
               <p className="text-[12px] text-slate-500 mt-0.5 truncate">Bengaluru extrusion plant</p>
             </div>
           </div>
           {onSetTheme && (
-            <div className="flex items-center gap-0.5 p-0.5 rounded-full border border-slate-200 bg-slate-50 shrink-0" role="group" aria-label="Theme">
-              <button onClick={() => onSetTheme('light')} aria-pressed={theme === 'light'} title="Light theme" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[12px] font-bold transition-all cursor-pointer ${theme === 'light' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}><Sun className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Light</span></button>
-              <button onClick={() => onSetTheme('dark')} aria-pressed={theme === 'dark'} title="Dark theme" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[12px] font-bold transition-all cursor-pointer ${theme === 'dark' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><Moon className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Dark</span></button>
+            <div className="flex items-center gap-2 shrink-0">
+              <InstallAppButton compact />
+              <div className="flex items-center gap-0.5 p-0.5 rounded-full border border-slate-200 bg-slate-50" role="group" aria-label="Theme">
+                <button onClick={() => onSetTheme('light')} aria-pressed={theme === 'light'} title="Light theme" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[12px] font-bold transition-all cursor-pointer ${theme === 'light' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}><Sun className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Light</span></button>
+                <button onClick={() => onSetTheme('dark')} aria-pressed={theme === 'dark'} title="Dark theme" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[12px] font-bold transition-all cursor-pointer ${theme === 'dark' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><Moon className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Dark</span></button>
+              </div>
             </div>
           )}
+          {!onSetTheme && <InstallAppButton compact />}
         </div>
 
         {modeQ.isLoading ? (

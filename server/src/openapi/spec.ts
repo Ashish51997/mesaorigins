@@ -158,7 +158,7 @@ function operationFor(route: DiscoveredRoute, doc: RouteDoc): JsonSchema {
 }
 
 const INTRO = `
-REST API for the Mass Polimer ERP: the manufacturing value chain from customer
+REST API for the Mesadesk: the manufacturing value chain from customer
 inquiry through order, production plan, shift logbook, quality inspection,
 finished-goods stock and dispatch, plus the complaint/CAPA loop that closes
 back onto it.
@@ -238,7 +238,7 @@ export function buildOpenApiSpec(routes: DiscoveredRoute[]): JsonSchema {
   return {
     openapi: '3.1.0',
     info: {
-      title: 'Mass Polimer ERP API',
+      title: 'Mesadesk API',
       version: '1.0.0',
       description: INTRO,
       license: { name: 'UNLICENSED' },

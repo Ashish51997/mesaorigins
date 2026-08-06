@@ -35,7 +35,7 @@ export function useLogbookPlans() {
 export interface ApiMachineTaskGroup {
   machine: string; line: string;
   tasks: Array<{
-    id: string; shift: string; scheduledStartDate: string;
+    id: string; shift: string; scheduledStartDate: string; operatorName?: string;
     salesOrder: { soNumber: string; product: string } | null;
     logbook: { id: string; status: string } | null;
     logbookTemplate: { id: string; productName: string; layout: string; docNo: string } | null;
@@ -58,6 +58,45 @@ export function useResolveMachineLogbook(machineCode: string | null | undefined)
     queryKey: ['logbook', 'resolve', code],
     enabled: code.length > 0,
     queryFn: () => api.get<ApiResolveMachineLogbook>(`/logbook/resolve?machine=${encodeURIComponent(code)}`),
+    retry: false,
+  });
+}
+
+export interface ApiMachineHub {
+  machine: {
+    id: string; code: string; line: string; family: string; logbookFormat: string;
+    status: string; statusReason: string | null;
+    currentProduct: string | null; currentFormula: string | null; currentLot: string | null;
+  };
+  started: boolean;
+  activePlan: {
+    id: string; shift: string; status: string; operatorName: string; scheduledStartDate: string;
+    salesOrder: { soNumber: string; product: string } | null;
+    logbook: { id: string; status: string; updatedAt: string } | null;
+    logbookTemplate: { id: string; docNo: string; productName: string; layout: string } | null;
+  } | null;
+  activePlans: Array<{
+    id: string; shift: string; status: string; operatorName: string; scheduledStartDate: string;
+    salesOrder: { soNumber: string; product: string } | null;
+    logbook: { id: string; status: string; updatedAt: string } | null;
+    logbookTemplate: { id: string; docNo: string; productName: string; layout: string } | null;
+  }>;
+  logbooks: Array<{
+    id: string; status: string; date: string; shift: string; productName: string; formulaNo: string;
+    totalRollKgs: string; totalRollsProduced: string; operatorSignature: string; updatedAt: string;
+    productionPlanId: string; soNumber: string | null; planStatus: string | null;
+  }>;
+  maintenance: Array<{
+    id: string; taskName: string; type: string; frequency: string; dueDate: string; status: string; cost: number;
+  }>;
+}
+
+export function useMachineHub(machineCode: string | null | undefined) {
+  const code = (machineCode ?? '').trim().toUpperCase();
+  return useQuery({
+    queryKey: ['logbook', 'machine-hub', code],
+    enabled: code.length > 0,
+    queryFn: () => api.get<ApiMachineHub>(`/logbook/machine-hub?machine=${encodeURIComponent(code)}`),
     retry: false,
   });
 }
