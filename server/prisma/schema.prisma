@@ -62,17 +62,62 @@ model Organization {
   auditEvents           AuditEvent[]
 }
 
-// Global identity. The same person (Firebase account) can be a member of
-// multiple organizations, so identity is separate from employment.
+// Global identity. The same person can be a member of multiple organizations,
+// so identity is separate from employment. Auth.js Account/Session attach here.
 model User {
-  id          String   @id @default(cuid())
-  firebaseUid String?  @unique
-  email       String   @unique
-  name        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String    @id @default(cuid())
+  firebaseUid   String?   @unique // legacy; unused after Auth.js cutover
+  email         String    @unique
+  name          String
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String? // bcrypt; null = password login disabled for this user
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   memberships Membership[]
+  accounts    Account[]
+  sessions    Session[]
+}
+
+// Auth.js OAuth account link (Google, etc.).
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// Auth.js database session (cookie sessionToken → this row).
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 // A user's employment + role within one organization (the "employee" record).

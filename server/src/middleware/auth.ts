@@ -1,14 +1,12 @@
 import type { Request, Response, RequestHandler } from 'express';
 import { basePrisma } from '../db';
 import { ROLE_DEFAULT_SCREENS, ADMIN_ROLES } from '../lib/permissions';
-import { verifyIdToken, firebaseAdminReady } from '../lib/firebaseAdmin';
-import { isSessionToken, passwordAuthEnabled, verifySession } from '../lib/sessionToken';
+import { authSecretConfigured, sessionCookieName } from '../auth/config';
 
 /**
  * Identity middleware — tenant-aware.
  *
- * - Bearer `mdp1.*` → HMAC session from email/password login (LOGIN_PASSWORD).
- * - Bearer other → verify Firebase ID token, resolve User + Membership.
+ * - Auth.js database session cookie → resolve User + Membership.
  * - Else if DEV_AUTH ≠ 0 → Phase-1 stub via `x-dev-user` / Administrator fallback.
  * - Else → 401.
  */
@@ -89,84 +87,38 @@ function orgFilterFromHeader(req: Request) {
   return orgHint ? { organization: { OR: [{ id: orgHint }, { slug: orgHint }] } } : {};
 }
 
-async function authenticateSession(req: Request, res: Response, token: string): Promise<boolean> {
-  const claims = verifySession(token);
-  if (!claims) {
-    res.status(401).json({ error: { code: 'invalid_token', message: 'Session token is invalid or expired.' } });
-    return false;
+function readCookie(header: string, name: string): string {
+  for (const part of header.split(';')) {
+    const [k, ...rest] = part.trim().split('=');
+    if (k === name) return decodeURIComponent(rest.join('=') || '');
   }
-
-  const membership = await basePrisma.membership.findFirst({
-    where: {
-      id: claims.mid,
-      userId: claims.sub,
-      status: { not: 'inactive' },
-    },
-    include: { user: true, organization: true },
-  });
-
-  if (!membership) {
-    res.status(403).json({
-      error: { code: 'no_membership', message: 'Session membership is no longer valid.' },
-    });
-    return false;
-  }
-
-  const access = await resolveScreens(membership);
-  attachUser(req, membership, access);
-  return true;
+  return '';
 }
 
-async function authenticateFirebase(req: Request, res: Response, token: string): Promise<boolean> {
-  let decoded;
-  try {
-    decoded = await verifyIdToken(token);
-  } catch (err) {
-    const code = (err as { code?: string })?.code;
-    if (code === 'auth_not_configured') {
-      res.status(503).json({
-        error: {
-          code: 'auth_not_configured',
-          message: 'Firebase Admin is not configured. Set FIREBASE_SERVICE_ACCOUNT (JSON or file path) and DEV_AUTH=0.',
-        },
-      });
-      return false;
-    }
-    res.status(401).json({ error: { code: 'invalid_token', message: 'Firebase ID token is invalid or expired.' } });
-    return false;
-  }
+function hasSessionCookie(req: Request): boolean {
+  return Boolean(readCookie(req.headers.cookie || '', sessionCookieName()));
+}
 
-  const email = (decoded.email || '').toLowerCase();
-  let user = await basePrisma.user.findFirst({
-    where: {
-      OR: [
-        { firebaseUid: decoded.uid },
-        ...(email ? [{ email }] : []),
-      ],
-    },
+async function authenticateSession(req: Request, res: Response): Promise<boolean> {
+  if (!authSecretConfigured()) return false;
+
+  const sessionToken = readCookie(req.headers.cookie || '', sessionCookieName());
+  if (!sessionToken) return false;
+
+  const dbSession = await basePrisma.session.findUnique({
+    where: { sessionToken },
+    include: { user: true },
   });
 
-  if (!user) {
-    res.status(403).json({
-      error: {
-        code: 'no_membership',
-        message: 'This Google account is not on the People directory. Ask an administrator to add your email.',
-      },
-    });
+  if (!dbSession || dbSession.expires < new Date()) {
+    if (dbSession) {
+      await basePrisma.session.delete({ where: { sessionToken } }).catch(() => undefined);
+    }
+    res.status(401).json({ error: { code: 'invalid_token', message: 'Session is invalid or expired.' } });
     return false;
   }
 
-  // Link Firebase UID on first successful sign-in by email.
-  if (!user.firebaseUid) {
-    user = await basePrisma.user.update({
-      where: { id: user.id },
-      data: { firebaseUid: decoded.uid, name: decoded.name || user.name },
-    });
-  } else if (user.firebaseUid !== decoded.uid) {
-    res.status(403).json({ error: { code: 'uid_mismatch', message: 'This email is linked to a different Firebase account.' } });
-    return false;
-  }
-
+  const user = dbSession.user;
   const orgFilter = orgFilterFromHeader(req);
   const membership = await basePrisma.membership.findFirst({
     where: {
@@ -230,17 +182,13 @@ async function authenticateDev(req: Request, res: Response): Promise<boolean> {
 
 export const authenticate: RequestHandler = async (req, res, next) => {
   try {
-    const authHeader = (req.header('authorization') || '').trim();
-    const bearer = authHeader.toLowerCase().startsWith('bearer ')
-      ? authHeader.slice(7).trim()
-      : '';
-
-    if (bearer) {
-      const ok = isSessionToken(bearer)
-        ? await authenticateSession(req, res, bearer)
-        : await authenticateFirebase(req, res, bearer);
-      if (ok) next();
-      return;
+    if (hasSessionCookie(req) && authSecretConfigured()) {
+      const ok = await authenticateSession(req, res);
+      if (ok) {
+        next();
+        return;
+      }
+      if (res.headersSent) return;
     }
 
     if (isDevAuth()) {
@@ -252,11 +200,9 @@ export const authenticate: RequestHandler = async (req, res, next) => {
     res.status(401).json({
       error: {
         code: 'unauthenticated',
-        message: passwordAuthEnabled()
-          ? 'Sign-in required. POST /api/auth/login then send Authorization: Bearer <session token>.'
-          : firebaseAdminReady()
-            ? 'Sign-in required. Send Authorization: Bearer <Firebase ID token>.'
-            : 'Auth is required (DEV_AUTH=0) but credentials are missing.',
+        message: authSecretConfigured()
+          ? 'Sign-in required. Use Google or email/password, then retry with session cookie.'
+          : 'Auth is required (DEV_AUTH=0) but AUTH_SECRET is missing.',
       },
     });
   } catch (err) {
@@ -268,8 +214,10 @@ export const authenticate: RequestHandler = async (req, res, next) => {
 export const isDevAuthEnabled = (): boolean => isDevAuth();
 
 /** Auth mode advertised on /api/health for the login UI. */
-export const authMode = (): 'password' | 'dev' | 'firebase' => {
-  if (passwordAuthEnabled()) return 'password';
+export const authMode = (): 'authjs' | 'dev' => {
   if (isDevAuth()) return 'dev';
-  return 'firebase';
+  return 'authjs';
 };
+
+export const googleSignInAvailable = (): boolean =>
+  Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);

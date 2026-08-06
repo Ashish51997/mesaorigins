@@ -11,6 +11,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { ROLE_DEFAULT_SCREENS, ADMIN_ROLES } from '../src/lib/permissions';
+import { hashPassword } from '../src/lib/password';
 import {
   initialCustomers,
   initialInquiries,
@@ -33,6 +34,8 @@ const prisma = new PrismaClient({
 });
 
 const DEMO_ORG_ID = 'org-demo';
+/** Default password for every seeded user (override with SEED_USER_PASSWORD). */
+const SEED_PASSWORD = process.env.SEED_USER_PASSWORD || 'mesadesk123';
 
 const EMPLOYEES = [
   { id: 'u19', employeeCode: 'EMP-019', name: 'Vikram Malhotra', email: 'vikram.malhotra@masspolymer.in', department: 'Management', role: 'Owner', shift: 'D', line: '—', status: 'active', joinDate: '2015-01', location: 'Bengaluru', lastSeen: 'on shift now' },
@@ -93,6 +96,7 @@ const ALL_TABLES = [
   'Organization', 'User', 'Membership', 'Role', 'EmployeeGrant', 'Customer', 'Inquiry', 'SalesOrder', 'ProductionPlan', 'LogbookTemplate',
   'MachineLogbook', 'QualityInspection', 'InventoryTransaction', 'DispatchRecord', 'Complaint',
   'CAPARecord', 'Formulation', 'MaintenanceTask', 'Machine', 'AuditEvent',
+  'Account', 'Session', 'VerificationToken',
 ];
 
 async function main(): Promise<void> {
@@ -105,7 +109,11 @@ async function main(): Promise<void> {
   });
   const O = org.id;
 
-  await prisma.user.createMany({ data: EMPLOYEES.map((e) => ({ id: e.id, email: e.email, name: e.name })) });
+  const passwordHash = await hashPassword(SEED_PASSWORD);
+  console.log(`[seed] hashing passwords for ${EMPLOYEES.length} users (SEED_USER_PASSWORD)…`);
+  await prisma.user.createMany({
+    data: EMPLOYEES.map((e) => ({ id: e.id, email: e.email, name: e.name, passwordHash })),
+  });
   await prisma.membership.createMany({
     data: EMPLOYEES.map((e) => ({
       id: `mem-${e.id}`, organizationId: O, userId: e.id, employeeCode: e.employeeCode, department: e.department,

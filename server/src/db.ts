@@ -3,7 +3,7 @@ import { tenantContext } from './lib/tenantContext';
 
 // Global models are part of the identity/tenancy plane — they are queried before
 // a tenant is known (during auth), so they are NOT tenant-scoped and have no RLS.
-const GLOBAL_MODELS = new Set(['Organization', 'User', 'Membership']);
+const GLOBAL_MODELS = new Set(['Organization', 'User', 'Membership', 'Account', 'Session', 'VerificationToken']);
 
 function delegateKey(model: string): string {
   return model.charAt(0).toLowerCase() + model.slice(1);

@@ -132,9 +132,10 @@ gcloud run services update mesadesk --region="$REGION" \
 | Item | Value |
 |------|--------|
 | `DEV_AUTH` | `0` on Cloud Run |
-| `LOGIN_PASSWORD` | Shared demo password (email+password UI; Google off while set) |
-| Login UI | Directory email + `LOGIN_PASSWORD` when `/api/health` → `auth: "password"` |
-| People directory | Email must exist as a `User` (seed or admin) |
+| `AUTH_SECRET` | Random ≥32 chars (Auth.js sessions) |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Optional Google OAuth; redirect `{APP_URL}/auth/callback/google` |
+| Login UI | Google and/or email+password when `/api/health` → `auth: "authjs"` |
+| People directory | Email must exist as a `User` with membership; set passwords via `POST /api/employees/:id/password` or seed |
 
 ---
 
@@ -143,10 +144,10 @@ gcloud run services update mesadesk --region="$REGION" \
 | | Local (Phase A/B) | Cloud (Phase C) |
 |--|-------------------|-----------------|
 | Postgres | Docker `:5432` | Cloud SQL + socket |
-| Auth | `DEV_AUTH=1` picker OK | `DEV_AUTH=0` + Firebase |
+| Auth | `DEV_AUTH=1` picker OK | `DEV_AUTH=0` + Auth.js (`AUTH_SECRET`) |
 | Image | `npm run dev` | Cloud Build → Cloud Run |
 
-Do not commit `.env` or Admin JSON. Rotate DB passwords in Secret Manager and update Cloud SQL users if leaked.
+Do not commit `.env` or OAuth client secrets. Rotate DB passwords in Secret Manager and update Cloud SQL users if leaked.
 
 ---
 
