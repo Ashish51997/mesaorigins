@@ -3,7 +3,7 @@
  * One section at a time with large inputs — no paper sheet, no guided wizard.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import type { LogbookTemplate, MachineLogbook, RollRecord } from '../types';
 import type { LogbookHandlers } from './MachineLogBookSheet';
 import {
@@ -154,11 +154,13 @@ function MSelect({
 
 function Card({ title, children, sub }: { title: string; children: React.ReactNode; sub?: string }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-      <div>
-        <h3 className="text-[15px] font-bold text-slate-900">{title}</h3>
-        {sub ? <p className="mt-0.5 text-[12px] text-slate-500">{sub}</p> : null}
-      </div>
+    <section className={title ? 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3' : 'space-y-3'}>
+      {title ? (
+        <div>
+          <h3 className="text-[15px] font-bold text-slate-900">{title}</h3>
+          {sub ? <p className="mt-0.5 text-[12px] text-slate-500">{sub}</p> : null}
+        </div>
+      ) : null}
       {children}
     </section>
   );
@@ -278,6 +280,8 @@ export interface MobileLogEntryProps {
   onSelectField?: (f: string) => void;
   /** Jump to this section when activeField changes (e.g. Close validation). */
   focusField?: string | null;
+  /** pager = one section at a time (default); accordion = collapsible sections. */
+  layout?: 'pager' | 'accordion';
 }
 
 export default function MobileLogEntry({
@@ -293,17 +297,23 @@ export default function MobileLogEntry({
   setScrap,
   onSelectField,
   focusField,
+  layout = 'pager',
 }: MobileLogEntryProps) {
   const [section, setSection] = useState<MobileSectionId>('header');
+  const [openSections, setOpenSections] = useState<Set<MobileSectionId>>(() => new Set(['header']));
   const isPipe = (t.layout ?? 'coil') === 'pipe';
   const filledCoils = logbook.coilWeights.filter((c) => c.trim() !== '').length;
   const filledTrace = logbook.traceabilityRows.filter((r) => r.lotNumber.trim() !== '').length;
   const passedKg = logbook.rolls.filter((r) => r.status === 'passed').reduce((s, r) => s + (r.weight || 0), 0);
   const failedKg = logbook.rolls.filter((r) => r.status === 'failed').reduce((s, r) => s + (r.weight || 0), 0);
+  const isAccordion = layout === 'accordion';
 
   useEffect(() => {
-    if (focusField) setSection(mobileSectionForField(focusField));
-  }, [focusField]);
+    if (!focusField) return;
+    const id = mobileSectionForField(focusField);
+    setSection(id);
+    if (isAccordion) setOpenSections((prev) => new Set(prev).add(id));
+  }, [focusField, isAccordion]);
 
   const sectionIndex = useMemo(() => SECTIONS.findIndex((s) => s.id === section), [section]);
   const go = (dir: -1 | 1) => {
@@ -315,61 +325,70 @@ export default function MobileLogEntry({
   const planHint = 'Set at planning — not editable here.';
   const hl = (key: string) => headerLocked && HEADER_KEYS.has(key);
 
+  const toggle = (id: MobileSectionId) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setSection(id);
+  };
+
+  const wrap = (id: MobileSectionId, label: string, body: React.ReactNode) => {
+    if (!isAccordion) {
+      return section === id ? <React.Fragment key={id}>{body}</React.Fragment> : null;
+    }
+    const open = openSections.has(id);
+    return (
+      <div key={id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => toggle(id)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+          aria-expanded={open}
+        >
+          <span className="text-[15px] font-bold text-slate-900">{label}</span>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && <div className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">{body}</div>}
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-3" data-testid="mobile-log-entry">
-      {/* Section pills */}
-      <div className="sticky top-0 z-10 -mx-1 bg-slate-50/95 px-1 py-2 backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <p className="text-[12px] font-medium text-slate-500">
-            Section {sectionIndex + 1} of {SECTIONS.length}
-          </p>
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => go(-1)}
-              disabled={sectionIndex <= 0}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 disabled:opacity-30"
-              aria-label="Previous section"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => go(1)}
-              disabled={sectionIndex >= SECTIONS.length - 1}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 disabled:opacity-30"
-              aria-label="Next section"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+    <div className="space-y-3" data-testid="mobile-log-entry" data-layout={layout}>
+      {!isAccordion && (
+        <div className="sticky top-0 z-10 -mx-1 bg-slate-50/95 px-1 py-2 backdrop-blur-sm">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="text-[12px] font-medium text-slate-500">
+              Section {sectionIndex + 1} of {SECTIONS.length}
+            </p>
+            <div className="flex gap-1">
+              <button type="button" onClick={() => go(-1)} disabled={sectionIndex <= 0} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 disabled:opacity-30" aria-label="Previous section">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => go(1)} disabled={sectionIndex >= SECTIONS.length - 1} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 disabled:opacity-30" aria-label="Next section">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5 scrollbar-none" role="tablist" aria-label="Logbook sections">
+            {SECTIONS.map((s) => {
+              const active = s.id === section;
+              return (
+                <button key={s.id} type="button" role="tab" aria-selected={active} onClick={() => setSection(s.id)} className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors ${active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200'}`}>
+                  <span className="mr-1.5 opacity-70">{s.short}</span>
+                  {s.label}
+                </button>
+              );
+            })}
           </div>
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5 scrollbar-none" role="tablist" aria-label="Logbook sections">
-          {SECTIONS.map((s) => {
-            const active = s.id === section;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setSection(s.id)}
-                className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors ${
-                  active
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white text-slate-600 border border-slate-200'
-                }`}
-              >
-                <span className="mr-1.5 opacity-70">{s.short}</span>
-                {s.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      )}
 
-      {section === 'header' && (
-        <Card title="Shift header" sub="Identity fields locked from the production plan">
+      {wrap('header', 'Header', (
+        <Card title={isAccordion ? '' : 'Shift header'} sub={isAccordion ? undefined : 'Identity fields locked from the production plan'}>
           <div className="grid grid-cols-1 gap-4">
             <MText label="Machine No" field="machineId" value={logbook.machineId} onChange={(v) => on.scalar('machineId', v)} readOnly={hl('machineId')} locked={locked} onFocusField={focus} hint={hl('machineId') ? planHint : undefined} />
             <MText kind="date" label="Date" field="date" value={logbook.date} onChange={(v) => on.scalar('date', v)} readOnly={hl('date')} locked={locked} onFocusField={focus} hint={hl('date') ? planHint : undefined} />
@@ -382,9 +401,9 @@ export default function MobileLogEntry({
             <MText label="Product Name" field="productName" value={logbook.productName} onChange={(v) => on.scalar('productName', v)} readOnly={hl('productName')} locked={locked} onFocusField={focus} hint={hl('productName') ? planHint : undefined} />
           </div>
         </Card>
-      )}
+      ))}
 
-      {section === 'process' && (
+      {wrap('process', 'Process', (
         <>
           <Card title="Zone temperatures" sub="Die & barrel setpoints (°C)">
             <div className="grid grid-cols-2 gap-3">
@@ -409,9 +428,9 @@ export default function MobileLogEntry({
             </div>
           </Card>
         </>
-      )}
+      ))}
 
-      {section === 'inspection' && (
+      {wrap('inspection', 'Inspection', (
         <>
           {!isPipe && (
             <Card title="Coil weights" sub={`${filledCoils}/${t.coil.count} filled · range ${t.coil.rangeLo}–${t.coil.rangeHi} kg`}>
@@ -423,14 +442,7 @@ export default function MobileLogEntry({
                   return (
                     <label key={i} className="flex flex-col gap-1.5">
                       <span className="text-[13px] font-semibold text-slate-700">Coil {i + 1}</span>
-                      <input
-                        className={`${fieldCls} text-center${oor || badType ? fieldWarn : ''}${locked ? fieldLocked : ''}`}
-                        inputMode="decimal"
-                        value={c}
-                        readOnly={locked}
-                        onFocus={() => focus(fld)}
-                        onChange={(e) => on.coil(i, sanitizeDecimal(e.target.value))}
-                      />
+                      <input className={`${fieldCls} text-center${oor || badType ? fieldWarn : ''}${locked ? fieldLocked : ''}`} inputMode="decimal" value={c} readOnly={locked} onFocus={() => focus(fld)} onChange={(e) => on.coil(i, sanitizeDecimal(e.target.value))} />
                     </label>
                   );
                 })}
@@ -471,10 +483,10 @@ export default function MobileLogEntry({
             </div>
           </Card>
         </>
-      )}
+      ))}
 
-      {section === 'trace' && (
-        <Card title="Traceability" sub={`${filledTrace} of ${logbook.traceabilityRows.length} rows with a lot number`}>
+      {wrap('trace', 'Traceability', (
+        <Card title={isAccordion ? '' : 'Traceability'} sub={isAccordion ? undefined : `${filledTrace} of ${logbook.traceabilityRows.length} rows with a lot number`}>
           <div className="space-y-3">
             {logbook.traceabilityRows.map((row, i) => (
               <div key={i} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-3">
@@ -489,10 +501,10 @@ export default function MobileLogEntry({
             ))}
           </div>
         </Card>
-      )}
+      ))}
 
-      {section === 'rolls' && (
-        <Card title="Finished rolls" sub={`${logbook.rolls.length} registered`}>
+      {wrap('rolls', 'Rolls', (
+        <Card title={isAccordion ? '' : 'Finished rolls'} sub={isAccordion ? undefined : `${logbook.rolls.length} registered`}>
           <MobileRollRegister rolls={logbook.rolls} locked={locked} onAdd={addRoll} onRemove={removeRoll} employeeOptions={employeeOptions} />
           <div className="grid grid-cols-3 gap-2 pt-1">
             <div className="rounded-xl bg-emerald-50 border border-emerald-100 py-3 text-center">
@@ -505,24 +517,16 @@ export default function MobileLogEntry({
             </div>
             <label className="rounded-xl bg-slate-50 border border-slate-200 py-2 px-2 flex flex-col items-center">
               <span className="text-[10px] font-bold uppercase text-slate-500">Scrap kg</span>
-              <input
-                value={logbook.scrapKg}
-                onChange={(e) => setScrap(sanitizeDecimal(e.target.value))}
-                readOnly={locked}
-                inputMode="decimal"
-                onFocus={() => focus('scrapKg')}
-                className="w-full min-h-9 text-center text-[15px] font-bold bg-transparent focus:outline-none"
-                placeholder="0"
-              />
+              <input value={logbook.scrapKg} onChange={(e) => setScrap(sanitizeDecimal(e.target.value))} readOnly={locked} inputMode="decimal" onFocus={() => focus('scrapKg')} className="w-full min-h-9 text-center text-[15px] font-bold bg-transparent focus:outline-none" placeholder="0" />
             </label>
           </div>
           <p className="text-[12px] text-slate-500">
             Total consumed = <span className="font-semibold text-slate-700">{logbook.totalConsumedKg || '0'} kg</span> (auto-fills Production Report).
           </p>
         </Card>
-      )}
+      ))}
 
-      {section === 'report' && (
+      {wrap('report', 'Sign-off', (
         <>
           <Card title="Production report">
             <div className="grid grid-cols-1 gap-4">
@@ -557,27 +561,18 @@ export default function MobileLogEntry({
             </div>
           </Card>
         </>
-      )}
+      ))}
 
-      {/* Section nav footer */}
-      <div className="flex gap-2 pt-1">
-        <button
-          type="button"
-          onClick={() => go(-1)}
-          disabled={sectionIndex <= 0}
-          className="inline-flex flex-1 min-h-11 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white text-[14px] font-semibold text-slate-700 disabled:opacity-30"
-        >
-          <ChevronLeft className="h-4 w-4" /> Back
-        </button>
-        <button
-          type="button"
-          onClick={() => go(1)}
-          disabled={sectionIndex >= SECTIONS.length - 1}
-          className="inline-flex flex-1 min-h-11 items-center justify-center gap-1 rounded-xl bg-slate-900 text-[14px] font-semibold text-white disabled:opacity-30"
-        >
-          Next <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
+      {!isAccordion && (
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={() => go(-1)} disabled={sectionIndex <= 0} className="inline-flex flex-1 min-h-11 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white text-[14px] font-semibold text-slate-700 disabled:opacity-30">
+            <ChevronLeft className="h-4 w-4" /> Back
+          </button>
+          <button type="button" onClick={() => go(1)} disabled={sectionIndex >= SECTIONS.length - 1} className="inline-flex flex-1 min-h-11 items-center justify-center gap-1 rounded-xl bg-slate-900 text-[14px] font-semibold text-white disabled:opacity-30">
+            Next <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

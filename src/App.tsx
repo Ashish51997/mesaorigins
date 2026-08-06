@@ -92,6 +92,7 @@ import LogbookLedger from './components/LogbookLedger';
 import TemplateBuilder from './components/TemplateBuilder';
 import { EmployeeDirectory, RolesAccess } from './components/admin/AdminScreens';
 import OnboardingPage from './components/OnboardingPage';
+import InstallAppButton from './components/InstallAppButton';
 import { useMyPermissions } from './lib/queries/admin';
 import { useLang, setLang, useT } from './lib/i18n';
 
@@ -668,15 +669,15 @@ export default function App() {
           <button
             onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }}
             className={`shrink-0 rounded-lg ${showSidebarLabels ? 'cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'}`}
-            title={showSidebarLabels ? 'Mass Polimer' : 'Expand menu'}
-            aria-label={showSidebarLabels ? 'Mass Polimer' : 'Expand menu'}
+            title={showSidebarLabels ? 'Mesadesk' : 'Expand menu'}
+            aria-label={showSidebarLabels ? 'Mesadesk' : 'Expand menu'}
           >
             <Logo className="h-9 w-9 rounded-lg shadow-xs" />
           </button>
           {showSidebarLabels && (
             <>
               <div className="min-w-0">
-                <h1 className="font-display font-bold text-slate-800 dark:text-white tracking-tight text-sm leading-none">Mass Polimer</h1>
+                <h1 className="font-display font-bold text-slate-800 dark:text-white tracking-tight text-sm leading-none">Mesadesk</h1>
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold tracking-wider uppercase">ERP Suite</span>
               </div>
               <button
@@ -797,7 +798,7 @@ export default function App() {
               <Menu className="h-4.5 w-4.5" />
             </button>
             <div className="text-xs hidden lg:block truncate">
-              <span className="text-slate-400 font-medium">Mass Polimer ERP</span>
+              <span className="text-slate-400 font-medium">Mesadesk</span>
               <span className="mx-2 text-slate-300">/</span>
               <span className="font-bold text-slate-800 uppercase tracking-wider">
                 {moduleLabel(activeModule)}
@@ -834,6 +835,7 @@ export default function App() {
               </span>
             )}
 
+            <InstallAppButton compact />
 
             {/* Global light / dark switch — applies to every screen, persists */}
             <div
@@ -919,7 +921,16 @@ export default function App() {
           ) : (
             <>
               {activeModule === 'dashboard' && (
-                <RoleDashboard role={currentRole} onOpen={(m) => setActiveModule(m as ModuleType)} />
+                <RoleDashboard
+                  role={currentRole}
+                  userName={user?.displayName || roleInfo(currentRole).user}
+                  canAccess={dbAllows}
+                  onOpen={(m) => setActiveModule(m as ModuleType)}
+                  onScanMachine={(code) => {
+                    setPendingMachineCode(code.trim().toUpperCase());
+                    setActiveModule('machine_tasks');
+                  }}
+                />
               )}
 
               {/* Planning & Production (API) */}

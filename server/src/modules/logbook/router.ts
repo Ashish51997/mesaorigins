@@ -27,6 +27,12 @@ logbookRouter.get('/logbook/resolve', requirePermission('screen:machine_tasks'),
     const machine = typeof req.query.machine === 'string' ? req.query.machine : '';
     return svc.resolveMachineLogbook(machine);
   }));
+// Operator hub after QR: machine info + plans + logbooks + maintenance.
+logbookRouter.get('/logbook/machine-hub', requirePermission('screen:machine_tasks'),
+  ah((req) => {
+    const machine = typeof req.query.machine === 'string' ? req.query.machine : '';
+    return svc.machineHub(machine);
+  }));
 // Logbook Ledger: submitted history + summary (optional ?from=&to= YYYY-MM-DD).
 logbookRouter.get('/logbook/ledger', requirePermission('screen:logbook_ledger'),
   ah((req) => svc.listLedger({

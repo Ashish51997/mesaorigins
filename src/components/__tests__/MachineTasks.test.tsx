@@ -27,6 +27,27 @@ import MachineTasks from '../MachineTasks';
 
 const get = api.get as ReturnType<typeof vi.fn>;
 
+function hubPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    machine: {
+      id: 'm1', code: 'M08', line: 'PVC', family: 'PVC', logbookFormat: 'coil',
+      status: 'running', statusReason: null, currentProduct: 'SPVC', currentFormula: 'RF01', currentLot: 'L1',
+    },
+    started: true,
+    activePlan: {
+      id: 'plan-99', shift: 'D', status: 'running', operatorName: 'Nandlal',
+      scheduledStartDate: '2026-08-06T08:00:00',
+      salesOrder: { soNumber: 'SO-1', product: 'SPVC' },
+      logbook: { id: 'lb1', status: 'draft', updatedAt: '2026-08-06T09:00:00Z' },
+      logbookTemplate: { id: 't1', docNo: 'QR/1', productName: 'SPVC', layout: 'coil' },
+    },
+    activePlans: [],
+    logbooks: [],
+    maintenance: [],
+    ...overrides,
+  };
+}
+
 function renderTasks(props: { initialMachineCode?: string | null; onMachineCodeConsumed?: () => void } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const ui: ReactElement = (
@@ -45,56 +66,56 @@ beforeEach(() => {
   });
 });
 
-describe('MachineTasks QR resolve', () => {
-  it('opens the logbook when resolve returns an active plan', async () => {
+describe('MachineTasks QR → hub', () => {
+  it('opens the machine hub when a QR code is provided', async () => {
     get.mockImplementation((path: string) => {
       if (path === '/logbook/tasks') return Promise.resolve([]);
-      if (path.startsWith('/logbook/resolve')) {
-        return Promise.resolve({
-          reason: 'ok',
-          machine: { id: 'm1', code: 'M08', line: 'PVC' },
-          planId: 'plan-99',
-          logStatus: 'draft',
-        });
-      }
+      if (path.startsWith('/logbook/machine-hub')) return Promise.resolve(hubPayload());
       return Promise.resolve({});
     });
     const onConsumed = vi.fn();
     renderTasks({ initialMachineCode: 'M08', onMachineCodeConsumed: onConsumed });
-    expect((await screen.findByTestId('logbook-module')).textContent).toContain('plan:plan-99');
+    expect(await screen.findByTestId('machine-hub')).toBeTruthy();
+    expect(screen.getByText('M08')).toBeTruthy();
+    expect(screen.getByTestId('machine-hub-log-cta')).toBeTruthy();
     await waitFor(() => expect(onConsumed).toHaveBeenCalled());
   });
 
-  it('shows no-shift empty state when resolve has no active plan', async () => {
+  it('opens log entry sheet from the hub CTA', async () => {
     get.mockImplementation((path: string) => {
       if (path === '/logbook/tasks') return Promise.resolve([]);
-      if (path.startsWith('/logbook/resolve')) {
-        return Promise.resolve({
-          reason: 'no_active_plan',
-          machine: { id: 'm1', code: 'M08', line: 'PVC line' },
-          planId: null,
-          logStatus: null,
-        });
+      if (path.startsWith('/logbook/machine-hub')) return Promise.resolve(hubPayload());
+      return Promise.resolve({});
+    });
+    renderTasks({ initialMachineCode: 'M08' });
+    fireEvent.click(await screen.findByTestId('machine-hub-log-cta'));
+    expect(await screen.findByTestId('logbook-module')).toBeTruthy();
+    expect(screen.getByTestId('logbook-module').textContent).toContain('plan:plan-99');
+  });
+
+  it('shows not-found when hub returns 404', async () => {
+    get.mockImplementation((path: string) => {
+      if (path === '/logbook/tasks') return Promise.resolve([]);
+      if (path.startsWith('/logbook/machine-hub')) {
+        return Promise.reject(new ApiError(404, 'not_found', 'Machine M08 was not found.'));
       }
       return Promise.resolve({});
     });
     renderTasks({ initialMachineCode: 'M08' });
-    expect(await screen.findByTestId('machine-qr-no-plan')).toBeTruthy();
-    expect(screen.getByText(/No shift scheduled for M08/i)).toBeTruthy();
-    fireEvent.click(screen.getByText(/Back to machine tasks/i));
-    expect(await screen.findByText(/Machine Tasks/i)).toBeTruthy();
+    expect(await screen.findByTestId('machine-hub-error')).toBeTruthy();
+    expect(screen.getByText(/Machine M08 not found/i)).toBeTruthy();
   });
 
-  it('shows access denied when resolve is forbidden', async () => {
+  it('shows access denied when hub is forbidden', async () => {
     get.mockImplementation((path: string) => {
       if (path === '/logbook/tasks') return Promise.resolve([]);
-      if (path.startsWith('/logbook/resolve')) {
+      if (path.startsWith('/logbook/machine-hub')) {
         return Promise.reject(new ApiError(403, 'forbidden', 'No access'));
       }
       return Promise.resolve({});
     });
     renderTasks({ initialMachineCode: 'M08' });
-    expect(await screen.findByTestId('machine-qr-denied')).toBeTruthy();
-    expect(screen.getByText(/No access to log this machine/i)).toBeTruthy();
+    expect(await screen.findByTestId('machine-hub-error')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /No access/i })).toBeTruthy();
   });
 });

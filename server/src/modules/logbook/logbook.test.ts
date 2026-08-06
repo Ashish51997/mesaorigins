@@ -155,6 +155,25 @@ describe('logbook slice', () => {
     if (r.body.length) { expect(r.body[0]).toHaveProperty('machine'); expect(Array.isArray(r.body[0].tasks)).toBe(true); }
   });
 
+  it('returns the operator machine hub for a code', async () => {
+    const machines = await request(app).get('/api/machines');
+    expect(machines.status).toBe(200);
+    const code = machines.body[0]?.code;
+    expect(code).toBeTruthy();
+    const r = await request(app).get('/api/logbook/machine-hub').query({ machine: code });
+    expect(r.status).toBe(200);
+    expect(r.body.machine.code).toBe(code);
+    expect(r.body).toHaveProperty('started');
+    expect(Array.isArray(r.body.logbooks)).toBe(true);
+    expect(Array.isArray(r.body.maintenance)).toBe(true);
+    expect(Array.isArray(r.body.activePlans)).toBe(true);
+  });
+
+  it('returns 404 for an unknown machine hub code', async () => {
+    const r = await request(app).get('/api/logbook/machine-hub').query({ machine: 'ZZ99' });
+    expect(r.status).toBe(404);
+  });
+
   it('returns the submitted logbook ledger with a summary', async () => {
     const r = await request(app).get('/api/logbook/ledger');
     expect(r.status).toBe(200);

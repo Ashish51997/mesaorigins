@@ -110,6 +110,134 @@ export async function resolveMachineLogbook(machineCode: string) {
   };
 }
 
+/**
+ * Operator machine hub after QR scan — registry row + active plans, recent
+ * logbooks, and maintenance history for that line.
+ */
+export async function machineHub(machineCode: string) {
+  const code = (machineCode || '').trim().toUpperCase();
+  if (!code) throw new ApiError(400, 'bad_request', 'Machine code is required.');
+
+  const machine = await prisma.machine.findFirst({
+    where: { organizationId: org(), code },
+  });
+  if (!machine) throw new ApiError(404, 'not_found', `Machine ${code} was not found.`);
+
+  const [activePlans, logbooks, maintenance] = await Promise.all([
+    prisma.productionPlan.findMany({
+      where: { machineId: machine.id, status: { in: ['scheduled', 'running'] } },
+      include: {
+        salesOrder: { select: { soNumber: true, product: true } },
+        logbook: { select: { id: true, status: true, updatedAt: true } },
+        logbookTemplate: { select: { id: true, docNo: true, productName: true, layout: true } },
+      },
+      orderBy: [{ scheduledStartDate: 'asc' }],
+    }),
+    prisma.machineLogbook.findMany({
+      where: {
+        OR: [
+          { machineId: machine.code },
+          { productionPlan: { machineId: machine.id } },
+        ],
+      },
+      select: {
+        id: true,
+        status: true,
+        date: true,
+        shift: true,
+        productName: true,
+        formulaNo: true,
+        totalRollKgs: true,
+        totalRollsProduced: true,
+        operatorSignature: true,
+        updatedAt: true,
+        productionPlanId: true,
+        productionPlan: {
+          select: {
+            id: true,
+            status: true,
+            salesOrder: { select: { soNumber: true, product: true } },
+          },
+        },
+      },
+      orderBy: [{ updatedAt: 'desc' }],
+      take: 20,
+    }),
+    prisma.maintenanceTask.findMany({
+      where: { machineId: machine.id },
+      orderBy: [{ status: 'asc' }, { dueDate: 'desc' }],
+      take: 15,
+    }),
+  ]);
+
+  const openPlan = activePlans.find((p) => !p.logbook || p.logbook.status !== 'submitted') ?? null;
+  const started = machine.status === 'running'
+    || activePlans.some((p) => p.status === 'running')
+    || (openPlan != null && openPlan.logbook?.status === 'draft');
+
+  return {
+    machine: {
+      id: machine.id,
+      code: machine.code,
+      line: machine.line,
+      family: machine.family,
+      logbookFormat: machine.logbookFormat,
+      status: machine.status,
+      statusReason: machine.statusReason,
+      currentProduct: machine.currentProduct,
+      currentFormula: machine.currentFormula,
+      currentLot: machine.currentLot,
+    },
+    started,
+    activePlan: openPlan
+      ? {
+          id: openPlan.id,
+          shift: openPlan.shift,
+          status: openPlan.status,
+          operatorName: openPlan.operatorName,
+          scheduledStartDate: openPlan.scheduledStartDate,
+          salesOrder: openPlan.salesOrder,
+          logbook: openPlan.logbook,
+          logbookTemplate: openPlan.logbookTemplate,
+        }
+      : null,
+    activePlans: activePlans.map((p) => ({
+      id: p.id,
+      shift: p.shift,
+      status: p.status,
+      operatorName: p.operatorName,
+      scheduledStartDate: p.scheduledStartDate,
+      salesOrder: p.salesOrder,
+      logbook: p.logbook,
+      logbookTemplate: p.logbookTemplate,
+    })),
+    logbooks: logbooks.map((lb) => ({
+      id: lb.id,
+      status: lb.status,
+      date: lb.date,
+      shift: lb.shift,
+      productName: lb.productName,
+      formulaNo: lb.formulaNo,
+      totalRollKgs: lb.totalRollKgs,
+      totalRollsProduced: lb.totalRollsProduced,
+      operatorSignature: lb.operatorSignature,
+      updatedAt: lb.updatedAt,
+      productionPlanId: lb.productionPlanId,
+      soNumber: lb.productionPlan?.salesOrder?.soNumber ?? null,
+      planStatus: lb.productionPlan?.status ?? null,
+    })),
+    maintenance: maintenance.map((t) => ({
+      id: t.id,
+      taskName: t.taskName,
+      type: t.type,
+      frequency: t.frequency,
+      dueDate: t.dueDate,
+      status: t.status,
+      cost: t.cost,
+    })),
+  };
+}
+
 const num = (s: string | null | undefined): number => {
   const n = Number.parseFloat(String(s ?? '').replace(/,/g, ''));
   return Number.isFinite(n) ? n : 0;

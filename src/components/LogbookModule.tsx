@@ -35,6 +35,10 @@ interface LogbookModuleProps {
   salesOrders: SalesOrder[];
   initialTab?: 'operator' | 'admin';
   initialPlanId?: string;
+  /** page = full module; sheet = compact fill UI for bottom sheets. */
+  presentation?: 'page' | 'sheet';
+  /** Mobile section chrome — accordion used inside bottom-sheet log entry. */
+  mobileLayout?: 'pager' | 'accordion';
 }
 
 /* ---------------------------------------------------------------- helpers */
@@ -213,7 +217,9 @@ export default function LogbookModule({
   productionPlans,
   salesOrders,
   initialTab = 'operator',
-  initialPlanId
+  initialPlanId,
+  presentation = 'page',
+  mobileLayout = 'pager',
 }: LogbookModuleProps) {
   const [activeTab, setActiveTab] = useState<'operator' | 'admin'>(initialTab);
   useEffect(() => { setActiveTab(initialTab); }, [initialTab]);
@@ -254,6 +260,9 @@ export default function LogbookModule({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const isNarrow = useIsNarrow();
+  const sheetMode = presentation === 'sheet';
+  const useMobileFill = isNarrow || sheetMode;
+  const fillLayout = sheetMode ? (mobileLayout === 'pager' ? 'pager' : 'accordion') : mobileLayout;
   const activeSection = sectionOfField(activeField);
 
   // The active panel input registers itself here so we can scroll it into view.
@@ -408,9 +417,10 @@ export default function LogbookModule({
           </div>
         ) : (
         <>
-          {isNarrow ? (
-            /* —— Mobile: section-card entry only (no paper sheet, no guided wizard) —— */
-            <div className="logbook-print-hide space-y-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+          {useMobileFill ? (
+            /* —— Mobile / sheet: section-card entry only (no paper sheet, no guided wizard) —— */
+            <div className={`logbook-print-hide space-y-3 ${sheetMode ? 'pb-2' : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'}`}>
+              {!sheetMode && (
               <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -436,6 +446,7 @@ export default function LogbookModule({
                   <MoreHorizontal className="h-5 w-5" />
                 </button>
               </div>
+              )}
 
               {(err || savedFlash) && (
                 <div className="flex flex-wrap items-center gap-2 px-0.5">
@@ -509,6 +520,7 @@ export default function LogbookModule({
                   setScrap={setScrap}
                   onSelectField={selectField}
                   focusField={activeField}
+                  layout={fillLayout}
                 />
               )}
 
@@ -523,7 +535,9 @@ export default function LogbookModule({
               )}
 
               {!locked && (
-                <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 border-t border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur-sm md:hidden">
+                <div className={sheetMode
+                  ? 'sticky bottom-0 z-10 -mx-1 border-t border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur-sm'
+                  : 'fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 border-t border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur-sm md:hidden'}>
                   <div className="mx-auto flex max-w-lg gap-2">
                     <button
                       type="button"

@@ -158,7 +158,7 @@ export const initialProductionPlans: ProductionPlan[] = [
     salesOrderId: 'so-1',
     machineId: 'M04',
     shift: 'D',
-    operatorName: 'Ramesh Sawant',
+    operatorName: 'Nandlal',
     scheduledStartDate: '2026-07-14T08:00:00',
     scheduledEndDate: '2026-07-14T16:00:00',
     status: 'scheduled'
