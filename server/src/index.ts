@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import path from 'path';
+import { readFile } from 'node:fs/promises';
 import { createServer as createViteServer } from 'vite';
 import { mountApi } from './app';
 import { errorHandler } from './middleware/error';
@@ -15,8 +16,20 @@ async function start(): Promise<void> {
   mountApi(app); // express.json + /api routes + legacy /api/data
 
   if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
+    const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'custom' });
     app.use(vite.middlewares);
+    app.use('*', async (req, res, next) => {
+      if (req.originalUrl.startsWith('/api')) return next();
+      try {
+        const templatePath = path.resolve(process.cwd(), 'index.html');
+        const template = await readFile(templatePath, 'utf8');
+        const html = await vite.transformIndexHtml(req.originalUrl, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+      } catch (err) {
+        vite.ssrFixStacktrace(err as Error);
+        next(err);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));

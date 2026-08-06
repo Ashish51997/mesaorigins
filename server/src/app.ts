@@ -6,6 +6,7 @@ import { resolveTenant } from './middleware/tenant';
 import { notFound, errorHandler } from './middleware/error';
 import { legacyDataRouter } from './legacy/dataJson';
 import { authRouter } from './modules/auth/router';
+import { onboardingRouter } from './modules/onboarding/router';
 import { salesRouter } from './modules/sales/router';
 import { maintenanceRouter } from './modules/maintenance/router';
 import { planningRouter } from './modules/planning/router';
@@ -39,13 +40,16 @@ export function buildApiRouter(): Router {
     });
   });
 
-  // Public: email + password → Auth.js Session cookie.
+  // Public: password auth.
   api.use(authRouter);
 
   // Everything below requires an identity and a resolved tenant.
   api.use(authenticate);
   api.use(resolveTenant);
   api.get('/me', (req, res) => { res.json({ user: req.user }); });
+
+  // Protected onboarding for the internal team only.
+  api.use(onboardingRouter);
 
   // Vertical slice: customers → inquiry → quotation → order + directory.
   api.use(salesRouter);

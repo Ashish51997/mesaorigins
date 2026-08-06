@@ -91,6 +91,7 @@ import { clearMachineQueryFromUrl, readMachineCodeFromLocation } from './lib/mac
 import LogbookLedger from './components/LogbookLedger';
 import TemplateBuilder from './components/TemplateBuilder';
 import { EmployeeDirectory, RolesAccess } from './components/admin/AdminScreens';
+import OnboardingPage from './components/OnboardingPage';
 import { useMyPermissions } from './lib/queries/admin';
 import { useLang, setLang, useT } from './lib/i18n';
 
@@ -121,6 +122,11 @@ type ModuleType =
   | 'users';
 
 export default function App() {
+  const onboardingRoute = typeof window !== 'undefined' && (
+    window.location.pathname === '/onboarding' ||
+    window.location.hash === '#/onboarding' ||
+    new URLSearchParams(window.location.search).get('screen') === 'onboarding'
+  );
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
   const [pendingMachineCode, setPendingMachineCode] = useState<string | null>(() => readMachineCodeFromLocation());
   const [sidebarOpen, setSidebarOpen] = useState(() =>
@@ -310,13 +316,11 @@ export default function App() {
     localStorage.removeItem('erp_session');
   };
 
-  // Restore Auth.js cookie session when not in DEV_AUTH picker mode.
+  // Restore any Auth.js cookie session on boot.
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const health = await fetch('/api/health').then((r) => r.json()) as { auth?: string };
-        if (cancelled || health.auth === 'dev') return;
         const me = await api.get<{ user: { userId: string; role: string; email: string; name: string } }>('/me');
         if (cancelled || !me.user) return;
         const session = {
@@ -617,6 +621,12 @@ export default function App() {
   const storeData: StoreData = { onOpen: nav, onTrace: handleTraceOpen };
   const dispatchData: DispatchData = { onOpen: nav, onTrace: handleTraceOpen };
   const maintData: MaintData = { onOpen: nav, onTrace: handleTraceOpen, user: roleInfo(currentRole).user };
+
+  // Onboarding is a separate portal: always show its own login/console, even if
+  // another ERP session is already active in this browser.
+  if (onboardingRoute) {
+    return <OnboardingPage onLogin={handleCustomLogin} />;
+  }
 
   // Prefer login over the splash when there is no session yet.
   if (!user) {
