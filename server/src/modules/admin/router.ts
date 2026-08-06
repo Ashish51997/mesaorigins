@@ -2,7 +2,7 @@ import express, { type RequestHandler } from 'express';
 import { requirePermission } from '../../middleware/authz';
 import { validateBody } from '../../middleware/validate';
 import { ALL_SCREENS } from '../../lib/permissions';
-import { employeeCreateSchema, employeeUpdateSchema, roleCreateSchema, roleUpdateSchema, grantsSetSchema } from './schemas';
+import { employeeCreateSchema, employeeUpdateSchema, roleCreateSchema, roleUpdateSchema, grantsSetSchema, passwordSetSchema } from './schemas';
 import * as svc from './service';
 
 const ah = (fn: (req: express.Request, res: express.Response) => Promise<unknown>): RequestHandler =>
@@ -30,6 +30,8 @@ adminRouter.post('/employees', requirePermission(USERS), validateBody(employeeCr
   ah(async (req, res) => { res.status(201); return svc.createEmployee(req.body); }));
 adminRouter.patch('/employees/:id', requirePermission(USERS), validateBody(employeeUpdateSchema),
   ah((req) => svc.updateEmployee(req.params.id, req.body)));
+adminRouter.post('/employees/:id/password', requirePermission(USERS), validateBody(passwordSetSchema),
+  ah((req) => svc.setEmployeePassword(req.params.id, req.body)));
 
 // Roles list is read by both the employee form and the roles page.
 adminRouter.get('/roles', requirePermission(USERS), ah(() => svc.listRoles()));

@@ -36,3 +36,8 @@ export const grantsSetSchema = z.object({
   grants: z.array(z.object({ screen: z.string().min(1), state: z.enum(['on', 'off']) })).default([]),
 });
 export type GrantsSet = z.infer<typeof grantsSetSchema>;
+
+export const passwordSetSchema = z.object({
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+export type PasswordSet = z.infer<typeof passwordSetSchema>;

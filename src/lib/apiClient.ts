@@ -1,5 +1,4 @@
-import { auth as firebaseAuth } from '../firebase';
-import { getDevUser, getSessionToken } from './apiIdentity';
+import { getDevUser } from './apiIdentity';
 
 const BASE = '/api';
 
@@ -18,22 +17,6 @@ export class ApiError extends Error {
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
 
-  // Password-mode HMAC session (preferred when present).
-  const session = getSessionToken();
-  if (session) {
-    headers.Authorization = `Bearer ${session}`;
-  } else {
-    // Firebase ID token when a federated session is active.
-    const fbUser = firebaseAuth.currentUser;
-    if (fbUser) {
-      try {
-        headers.Authorization = `Bearer ${await fbUser.getIdToken()}`;
-      } catch {
-        /* fall through to dev identity */
-      }
-    }
-  }
-
   // Phase-1 / local demo: x-dev-user (employee code or email).
   const dev = getDevUser();
   if (dev) headers['x-dev-user'] = dev;
@@ -43,6 +26,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const res = await fetch(BASE + path, {
     method,
     headers,
+    credentials: 'include',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
@@ -58,8 +42,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
-  patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
-  put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
+  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+  patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body ?? {}),
+  put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body ?? {}),
+  delete: <T>(path: string) => request<T>('DELETE', path),
   del: <T>(path: string) => request<T>('DELETE', path),
 };

@@ -82,7 +82,8 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseSchema: obj({
       status: { type: 'string', enum: ['ok'] },
       time: { type: 'string', format: 'date-time' },
-      auth: { type: 'string', enum: ['dev', 'firebase', 'password'], description: 'dev = x-dev-user; password = LOGIN_PASSWORD sessions; firebase = Google Bearer' },
+      auth: { type: 'string', enum: ['dev', 'authjs'], description: 'dev = x-dev-user picker; authjs = Google OAuth + per-user password (Postgres sessions)' },
+      google: { type: 'boolean', description: 'True when AUTH_GOOGLE_ID/SECRET are configured' },
     }),
     public: true,
   },
@@ -100,6 +101,36 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
         role: str, isAdmin: { type: 'boolean' }, screens: arr(str),
       }),
     }),
+  },
+  'POST /api/auth/login': {
+    tag: 'Health',
+    operationId: 'passwordLogin',
+    summary: 'Email + password sign-in',
+    description: 'Verifies User.passwordHash, creates an Auth.js Session row, and sets the httpOnly session cookie. Google OAuth uses /auth/signin/google instead.',
+    responseDescription: 'The authenticated membership; session cookie is set.',
+    public: true,
+    responseSchema: obj({
+      user: obj({
+        userId: str, email: { type: 'string', format: 'email' }, name: str,
+        membershipId: str, employeeCode: str,
+        organizationId: str, organizationName: str,
+        role: str, isAdmin: { type: 'boolean' }, screens: arr(str),
+      }),
+    }),
+    errors: [
+      { status: 401, code: 'invalid_credentials', when: 'Email or password is wrong, or the user has no passwordHash.' },
+      { status: 403, code: 'no_membership', when: 'The email is not an active organization member.' },
+      { status: 503, code: 'auth_not_configured', when: 'AUTH_SECRET is missing.' },
+    ],
+  },
+  'POST /api/auth/logout': {
+    tag: 'Health',
+    operationId: 'passwordLogout',
+    summary: 'Clear session cookie',
+    description: 'Deletes the Session row for the cookie (if any) and clears the Auth.js session cookie.',
+    responseDescription: 'Signed out.',
+    public: true,
+    responseSchema: ACK,
   },
 
   // ── Sales ─────────────────────────────────────────────────────────────────
@@ -192,6 +223,15 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     description: 'Reference data, readable by any signed-in member.',
     responseDescription: 'The machine registry.',
     responseModel: 'Machine', responseIsArray: true,
+  },
+  'POST /api/machines': {
+    tag: 'Maintenance',
+    operationId: 'createMachine',
+    summary: 'Register a machine',
+    status: 201,
+    responseDescription: 'The created machine.',
+    responseModel: 'Machine',
+    errors: [{ status: 409, code: 'code_taken', when: 'A machine with that code already exists in this organization.' }],
   },
   'GET /api/maintenance': {
     tag: 'Maintenance',
@@ -705,6 +745,16 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The updated employee.',
     responseModel: 'Membership', responseIncludes: ['user'],
     errors: [NOT_FOUND('employee'), { status: 422, code: 'bad_role', when: 'The referenced role does not exist in this organization.' }],
+  },
+  'POST /api/employees/:id/password': {
+    tag: 'Administration',
+    operationId: 'setEmployeePassword',
+    summary: 'Set an employee’s login password',
+    description: 'Stores a bcrypt hash on the linked User. Required for email/password sign-in.',
+    params: { id: 'Membership id.' },
+    responseDescription: 'Password updated.',
+    responseSchema: ACK,
+    errors: [NOT_FOUND('employee')],
   },
   'GET /api/roles': {
     tag: 'Administration',

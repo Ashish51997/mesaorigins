@@ -11,7 +11,6 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { ROLES, RoleName } from '../lib/roles';
 import { useDirectory, type ApiDirectoryEntry } from '../lib/queries/admin';
-import { setSessionToken } from '../lib/apiIdentity';
 import Logo from './Logo';
 
 interface LoginScreenProps {
@@ -34,23 +33,45 @@ const ROLE_ICON: Record<string, typeof Flame> = {
 };
 const iconFor = (role: string) => ROLE_ICON[role] ?? Users2;
 
+async function startGoogleSignIn(): Promise<void> {
+  const csrfRes = await fetch('/auth/csrf', { credentials: 'include' });
+  const csrfJson = (await csrfRes.json()) as { csrfToken?: string };
+  const csrfToken = csrfJson.csrfToken;
+  if (!csrfToken) throw new Error('Could not start Google sign-in (CSRF).');
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/auth/signin/google';
+  const csrf = document.createElement('input');
+  csrf.type = 'hidden';
+  csrf.name = 'csrfToken';
+  csrf.value = csrfToken;
+  form.appendChild(csrf);
+  const cb = document.createElement('input');
+  cb.type = 'hidden';
+  cb.name = 'callbackUrl';
+  cb.value = '/';
+  form.appendChild(cb);
+  document.body.appendChild(form);
+  form.submit();
+}
+
 export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: LoginScreenProps) {
   const modeQ = useQuery({
     queryKey: ['auth-mode'],
     queryFn: async () => {
       const r = await fetch('/api/health');
-      const j = await r.json() as { auth?: string };
-      if (j.auth === 'password') return 'password' as const;
-      if (j.auth === 'firebase') return 'firebase' as const;
-      return 'dev' as const;
+      const j = await r.json() as { auth?: string; google?: boolean };
+      if (j.auth === 'authjs') return { mode: 'authjs' as const, google: Boolean(j.google) };
+      return { mode: 'dev' as const, google: Boolean(j.google) };
     },
     staleTime: 60_000,
   });
-  const mode = modeQ.data;
-  const passwordOnly = mode === 'password';
-  const firebaseOnly = mode === 'firebase';
+  const mode = modeQ.data?.mode;
+  const googleOk = modeQ.data?.google ?? false;
+  const authjsOnly = mode === 'authjs';
 
-  const dirQ = useDirectory(!passwordOnly && !firebaseOnly);
+  const dirQ = useDirectory(!authjsOnly);
   const dir = (dirQ.data ?? []).slice().sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name));
 
   const [email, setEmail] = useState('deepak.bansal@masspolymer.in');
@@ -73,13 +94,13 @@ export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: Lo
       const r = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email: email.trim(), password }),
       });
       const data = await r.json();
       if (!r.ok) {
         throw new Error(data?.error?.message || 'Sign-in failed');
       }
-      setSessionToken(data.token);
       onLogin({
         uid: `emp-${data.user.userId}`,
         email: data.user.email,
@@ -90,6 +111,17 @@ export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: Lo
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed');
     } finally {
+      setBusy(false);
+    }
+  };
+
+  const onGoogle = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      await startGoogleSignIn();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
       setBusy(false);
     }
   };
@@ -122,6 +154,66 @@ export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: Lo
     );
   };
 
+  const passwordForm = (
+    <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm max-w-md mx-auto w-full">
+      <p className="font-display font-bold text-slate-900 text-lg mb-1">Sign in</p>
+      <p className="text-sm text-slate-500 mb-6">
+        Use your People directory email and password.
+      </p>
+      {googleOk && (
+        <button
+          type="button"
+          onClick={onGoogle}
+          disabled={busy}
+          className="w-full mb-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-800 font-bold px-6 py-3 text-sm shadow-sm"
+        >
+          Continue with Google
+        </button>
+      )}
+      {googleOk && (
+        <div className="relative mb-4">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
+          <div className="relative flex justify-center text-[11px] uppercase tracking-wide"><span className="bg-white px-2 text-slate-400">or</span></div>
+        </div>
+      )}
+      <form onSubmit={submitPassword} className="space-y-4">
+        <label className="block">
+          <span className="text-[12px] font-semibold text-slate-600">Email</span>
+          <input
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[12px] font-semibold text-slate-600">Password</span>
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </label>
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold px-6 py-3 text-sm shadow-sm"
+        >
+          {busy ? 'Signing in…' : 'Sign in'}
+        </button>
+      </form>
+      <p className="mt-4 text-[11px] text-slate-400 text-center">
+        Example: deepak.bansal@masspolymer.in — seed password from SEED_USER_PASSWORD
+      </p>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4 sm:p-10 text-slate-700" id="login-screen-root">
       <div className="w-full max-w-4xl">
@@ -143,55 +235,8 @@ export default function LoginScreen({ onLogin, theme = 'light', onSetTheme }: Lo
 
         {modeQ.isLoading ? (
           <div className="text-center text-sm text-slate-400 py-16">Loading…</div>
-        ) : passwordOnly ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm max-w-md mx-auto">
-            <p className="font-display font-bold text-slate-900 text-lg mb-1">Sign in</p>
-            <p className="text-sm text-slate-500 mb-6">
-              Use your People directory email and the shared password.
-            </p>
-            <form onSubmit={submitPassword} className="space-y-4">
-              <label className="block">
-                <span className="text-[12px] font-semibold text-slate-600">Email</span>
-                <input
-                  type="email"
-                  autoComplete="username"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </label>
-              <label className="block">
-                <span className="text-[12px] font-semibold text-slate-600">Password</span>
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </label>
-              {error && <p className="text-sm text-rose-600">{error}</p>}
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold px-6 py-3 text-sm shadow-sm"
-              >
-                {busy ? 'Signing in…' : 'Sign in'}
-              </button>
-            </form>
-            <p className="mt-4 text-[11px] text-slate-400 text-center">
-              Example: deepak.bansal@masspolymer.in (Administrator)
-            </p>
-          </div>
-        ) : firebaseOnly ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-            <p className="font-display font-bold text-slate-900 text-lg mb-2">Sign in unavailable</p>
-            <p className="text-sm text-slate-500 max-w-md mx-auto">
-              This deployment expects password login. Set <code className="text-xs bg-slate-100 px-1 rounded">LOGIN_PASSWORD</code> on the server, or switch to local directory mode.
-            </p>
-          </div>
+        ) : authjsOnly ? (
+          passwordForm
         ) : dirQ.isLoading ? (
           <div className="text-center text-sm text-slate-400 py-16">Loading your team…</div>
         ) : dir.length > 0 ? (

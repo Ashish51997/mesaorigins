@@ -1,8 +1,9 @@
-import { prisma, tenantTx } from '../../db';
+import { prisma, tenantTx, basePrisma } from '../../db';
 import { tenantContext } from '../../lib/tenantContext';
 import { audit } from '../../lib/audit';
 import { ApiError } from '../../middleware/error';
-import type { EmployeeCreate, EmployeeUpdate, RoleCreate, RoleUpdate, GrantsSet } from './schemas';
+import type { EmployeeCreate, EmployeeUpdate, RoleCreate, RoleUpdate, GrantsSet, PasswordSet } from './schemas';
+import { hashPassword } from '../../lib/password';
 
 function ctx() {
   const c = tenantContext.getStore();
@@ -79,6 +80,24 @@ export async function updateEmployee(id: string, patch: EmployeeUpdate) {
     await audit(tx, { action: 'employee.update', entity: 'Membership', entityId: id, after: patch });
     return updated;
   });
+}
+
+/** Set or replace the login password for an employee (User.passwordHash). */
+export async function setEmployeePassword(membershipId: string, input: PasswordSet) {
+  const c = ctx();
+  const membership = await prisma.membership.findFirst({
+    where: { id: membershipId, organizationId: c.organizationId },
+  });
+  if (!membership) throw new ApiError(404, 'not_found', 'Employee not found.');
+  const passwordHash = await hashPassword(input.password);
+  await basePrisma.user.update({
+    where: { id: membership.userId },
+    data: { passwordHash },
+  });
+  await tenantTx(async (tx) => {
+    await audit(tx, { action: 'employee.password_set', entity: 'User', entityId: membership.userId, after: { set: true } });
+  });
+  return { ok: true };
 }
 
 /* ---------------------------------------------------------------- roles */

@@ -1,6 +1,7 @@
-import express, { type Express, type Router } from 'express';
+import express, { type Express, type RequestHandler, type Router } from 'express';
+import { ExpressAuth } from '@auth/express';
 import { requestLog } from './middleware/log';
-import { authenticate, isDevAuthEnabled, authMode } from './middleware/auth';
+import { authenticate, isDevAuthEnabled, authMode, googleSignInAvailable } from './middleware/auth';
 import { resolveTenant } from './middleware/tenant';
 import { notFound, errorHandler } from './middleware/error';
 import { legacyDataRouter } from './legacy/dataJson';
@@ -18,6 +19,7 @@ import { dashboardRouter } from './modules/dashboard/router';
 import { adminRouter } from './modules/admin/router';
 import { createDocsRouter } from './openapi/router';
 import { collectRoutes, type DiscoveredRoute } from './openapi/routes';
+import { authConfig, authSecretConfigured } from './auth/config';
 
 /**
  * Builds the `/api` router. Exported on its own so the OpenAPI generator can
@@ -33,10 +35,11 @@ export function buildApiRouter(): Router {
       status: 'ok',
       time: new Date().toISOString(),
       auth: authMode(),
+      google: googleSignInAvailable(),
     });
   });
 
-  // Public: email + password → session token (when LOGIN_PASSWORD is set).
+  // Public: email + password → Auth.js Session cookie.
   api.use(authRouter);
 
   // Everything below requires an identity and a resolved tenant.
@@ -86,8 +89,21 @@ export function discoverRoutes(): DiscoveredRoute[] {
  * Mounts the API onto an Express app. Everything under the authenticated router
  * runs with a resolved tenant, so the guarded Prisma client scopes all data.
  */
+/** Express 4 mount shim so @auth/express getBasePath sees a splat param. */
+const expressAuthHandler: RequestHandler = (req, res, next) => {
+  (req.params as Record<string | number, string>)[0] = req.path.replace(/^\//, '') || '';
+  return ExpressAuth(authConfig)(req, res, next);
+};
+
 export function mountApi(app: Express): void {
+  app.set('trust proxy', true);
   app.use(express.json({ limit: '50mb' }));
+
+  // Auth.js OAuth routes (Google callback, CSRF, sign-out). Requires AUTH_SECRET.
+  if (authSecretConfigured()) {
+    app.use('/auth', expressAuthHandler);
+  }
+
   app.use('/api', requestLog);
 
   // Strangler bridge: legacy blob store for domains not yet on Postgres.

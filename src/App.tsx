@@ -69,9 +69,9 @@ import LoginScreen from './components/LoginScreen';
 import Logo from './components/Logo';
 import MobileBottomNav from './components/MobileBottomNav';
 import { setCurrentEmployee, useRoleRules, useGrants, useDelegations, checkFor, can, grantState } from './lib/accessStore';
-import { employeeForRole, employeeForEmail } from './lib/userStore';
+import { employeeForRole } from './lib/userStore';
 import { setDevUser } from './lib/apiIdentity';
-import { api, ApiError } from './lib/apiClient';
+import { api } from './lib/apiClient';
 import { groupNav } from './lib/navGroups';
 import { roleInfo, themeForRole, homeForRole, normalizeRole } from './lib/roles';
 import { ToastHost, pushToast } from './components/Notify';
@@ -93,12 +93,6 @@ import TemplateBuilder from './components/TemplateBuilder';
 import { EmployeeDirectory, RolesAccess } from './components/admin/AdminScreens';
 import { useMyPermissions } from './lib/queries/admin';
 import { useLang, setLang, useT } from './lib/i18n';
-
-// Firebase imports
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, signOut } from './firebase';
-import { clearSessionToken } from './lib/apiIdentity';
-import { fetchFromFirestore, saveToFirestore } from './lib/firebaseSync';
 
 type ModuleType =
   | 'dashboard'
@@ -217,7 +211,6 @@ export default function App() {
     isFirebase?: boolean;
     role?: string;
   } | null>(null); // Always start on the login page — pick a role to begin the flow.
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
 
   const lastSavedState = React.useRef<any>(null);
 
@@ -295,118 +288,81 @@ export default function App() {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      const csrfRes = await fetch('/auth/csrf', { credentials: 'include' });
+      if (csrfRes.ok) {
+        const { csrfToken } = (await csrfRes.json()) as { csrfToken?: string };
+        if (csrfToken) {
+          await fetch('/auth/signout', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ csrfToken, callbackUrl: '/' }),
+          });
+        }
+      }
     } catch (err) {
       console.error('Error signing out:', err);
     }
-    clearSessionToken();
+    setDevUser('');
+    setIdentityEmail('');
     setUser(null);
     localStorage.removeItem('erp_session');
   };
 
-  // Monitor Auth State
+  // Restore Auth.js cookie session when not in DEV_AUTH picker mode.
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        // Bind federated identity to a directory employee by email. Role comes
-        // from the server membership when /api/me succeeds; client lookup is a
-        // UX hint only until that resolves.
-        const email = (u.email || '').toLowerCase();
-        const emp = employeeForEmail(email);
-        const resolvedRole = emp ? emp.role : 'Operator';
+    let cancelled = false;
+    (async () => {
+      try {
+        const health = await fetch('/api/health').then((r) => r.json()) as { auth?: string };
+        if (cancelled || health.auth === 'dev') return;
+        const me = await api.get<{ user: { userId: string; role: string; email: string; name: string } }>('/me');
+        if (cancelled || !me.user) return;
         const session = {
-          uid: u.uid,
-          email,
-          displayName: u.displayName || emp?.name || 'Signed-in user',
-          photoURL: u.photoURL || undefined,
-          isFirebase: true,
-          role: resolvedRole,
+          uid: me.user.userId,
+          email: me.user.email,
+          displayName: me.user.name,
+          isFirebase: false,
+          role: me.user.role,
         };
         setUser(session);
         localStorage.setItem('erp_session', JSON.stringify(session));
-        setIdentityEmail(email);
-        setDevUser(email);
-        setCurrentRole(resolvedRole);
+        setIdentityEmail(me.user.email);
+        setDevUser(me.user.email);
+        setCurrentRole(me.user.role);
         const qrMachine = readMachineCodeFromLocation();
         if (qrMachine) {
           setPendingMachineCode(qrMachine);
           setActiveModule('machine_tasks');
         } else {
-          setActiveModule(homeForRole(resolvedRole) as ModuleType);
+          setActiveModule(homeForRole(me.user.role) as ModuleType);
         }
-
-        // Prefer the server's membership role/screens once the Bearer token works.
-        try {
-          const me = await api.get<{ user: { role: string; email: string; name: string } }>('/me');
-          if (me.user?.role) {
-            setCurrentRole(me.user.role);
-            setUser((prev) => prev ? { ...prev, role: me.user.role, displayName: me.user.name || prev.displayName } : prev);
-            const stillQr = readMachineCodeFromLocation();
-            if (stillQr) {
-              setPendingMachineCode(stillQr);
-              setActiveModule('machine_tasks');
-            } else {
-              setActiveModule(homeForRole(me.user.role) as ModuleType);
-            }
-          }
-        } catch (err) {
-          const code = err instanceof ApiError ? err.code : (err as { code?: string })?.code;
-          if (code === 'no_membership' || code === 'inactive') {
-            pushToast(`Signed in as ${email || 'this account'}, but there is no active People directory membership. Ask an administrator to add you.`);
-          } else if (!emp) {
-            pushToast(`Signed in as ${email || 'an unrecognized account'} — no directory match yet. An administrator can add you in People & Roles.`);
-          }
-        }
-      } else {
-        setUser(prev => {
-          if (prev?.isFirebase) {
-            localStorage.removeItem('erp_session');
-            setIdentityEmail('');
-            setDevUser('');
-            return null;
-          }
-          return prev;
-        });
+      } catch {
+        // No cookie session — LoginScreen.
       }
-    });
-    return () => unsubscribe();
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  // Fetch initial ERP state (Firestore if authenticated, fallback JSON database if not)
+  // Fetch ERP state from the API once signed in (Postgres / legacy blob).
   React.useEffect(() => {
-    if (!user || !user.isFirebase) {
-      setIsLoaded(false);
-      fetch('/api/data')
-        .then(res => res.json())
-        .then(data => {
-          if (data) {
-            if (data.customers) setCustomers(data.customers);
-            if (data.inquiries) setInquiries(data.inquiries);
-            if (data.salesOrders) setSalesOrders(data.salesOrders);
-            if (data.productionPlans) setProductionPlans(data.productionPlans);
-            if (data.templates) setTemplates(data.templates);
-            if (data.machineLogbooks) setMachineLogbooks(data.machineLogbooks);
-            if (data.inspections) setInspections(data.inspections);
-            if (data.packingRecords) setPackingRecords(data.packingRecords);
-            if (data.inventory) setInventory(data.inventory);
-            if (data.dispatches) setDispatches(data.dispatches);
-            if (data.complaints) setComplaints(data.complaints);
-            if (data.capas) setCapas(data.capas);
-          }
-          setIsLoaded(true);
-        })
-        .catch(err => {
-          console.error('Error fetching backend ERP state, using mock fallback:', err);
-          setIsLoaded(true);
-        });
+    if (!user) {
+      // Allow LoginScreen to render — do not stay on the splash forever.
+      setIsLoaded(true);
       return;
     }
 
+    let cancelled = false;
     setIsLoaded(false);
-    setSyncStatus('syncing');
-    fetchFromFirestore()
-      .then(({ data, hasData }) => {
-        if (hasData) {
+    fetch('/api/data', { credentials: 'include' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`GET /api/data → ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        if (data) {
           if (data.customers) setCustomers(data.customers);
           if (data.inquiries) setInquiries(data.inquiries);
           if (data.salesOrders) setSalesOrders(data.salesOrders);
@@ -419,81 +375,20 @@ export default function App() {
           if (data.dispatches) setDispatches(data.dispatches);
           if (data.complaints) setComplaints(data.complaints);
           if (data.capas) setCapas(data.capas);
-
           lastSavedState.current = data;
-          setSyncStatus('success');
-        } else {
-          console.log('[Firestore] Empty DB. Initializing cloud storage with current local state...');
-          const currentState = {
-            customers, inquiries, salesOrders, productionPlans, templates,
-            machineLogbooks, inspections, packingRecords, inventory, dispatches,
-            complaints, capas
-          };
-          saveToFirestore(currentState, Object.keys(currentState))
-            .then(() => {
-              lastSavedState.current = currentState;
-              setSyncStatus('success');
-            })
-            .catch(err => {
-              console.error('[Firestore] Error initializing cloud storage:', err);
-              setSyncStatus('error');
-            });
         }
         setIsLoaded(true);
       })
-      .catch(err => {
-        console.error('Error fetching from Firestore:', err);
-        setSyncStatus('error');
-        setIsLoaded(true);
+      .catch((err) => {
+        console.error('Error fetching backend ERP state, using mock fallback:', err);
+        if (!cancelled) setIsLoaded(true);
       });
-  }, [user?.uid, user?.isFirebase]);
+    return () => { cancelled = true; };
+  }, [user?.uid]);
 
-  // Client-side Firestore auto-save (Only when signed in)
+  // Backend auto-save for legacy /api/data collections still on the blob store.
   React.useEffect(() => {
-    if (!isLoaded || !user || !user.isFirebase) return;
-
-    const currentState = {
-      customers, inquiries, salesOrders, productionPlans, templates,
-      machineLogbooks, inspections, packingRecords, inventory, dispatches,
-      complaints, capas
-    };
-
-    const changed: string[] = [];
-    if (lastSavedState.current) {
-      Object.keys(currentState).forEach((key) => {
-        if (JSON.stringify((currentState as any)[key]) !== JSON.stringify(lastSavedState.current[key])) {
-          changed.push(key);
-        }
-      });
-    } else {
-      changed.push(...Object.keys(currentState));
-    }
-
-    if (changed.length === 0) return;
-
-    const save = async () => {
-      setSyncStatus('syncing');
-      try {
-        await saveToFirestore(currentState, changed);
-        lastSavedState.current = currentState;
-        setSyncStatus('success');
-      } catch (err) {
-        console.error('Error auto-saving to Firestore:', err);
-        setSyncStatus('error');
-      }
-    };
-
-    const timer = setTimeout(save, 1000);
-    return () => clearTimeout(timer);
-  }, [
-    user?.uid, user?.isFirebase, isLoaded, customers, inquiries, salesOrders, productionPlans,
-    templates, machineLogbooks, inspections, packingRecords, inventory,
-    dispatches, complaints, capas
-  ]);
-
-  // Backend fallback auto-save (Only when NOT signed in via Google)
-  React.useEffect(() => {
-    if (!isLoaded || (user && user.isFirebase)) return;
+    if (!isLoaded || !user) return;
 
     const currentState = {
       customers, inquiries, salesOrders, productionPlans, templates,
@@ -501,10 +396,6 @@ export default function App() {
       complaints, capas,
     };
 
-    // Send ONLY the collections that changed since the last successful save.
-    // The server merges incoming keys onto a fresh read of the store, so a
-    // client that hasn't touched (say) `customers` no longer overwrites another
-    // client's concurrent customer edits — this closes the cross-user clobber.
     const changed: Record<string, unknown> = {};
     if (lastSavedState.current) {
       (Object.keys(currentState) as (keyof typeof currentState)[]).forEach((key) => {
@@ -523,6 +414,7 @@ export default function App() {
         await fetch('/api/data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(changed),
         });
         lastSavedState.current = currentState;
@@ -535,7 +427,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [
     user?.uid,
-    user?.isFirebase,
     isLoaded,
     customers,
     inquiries,
@@ -727,6 +618,17 @@ export default function App() {
   const dispatchData: DispatchData = { onOpen: nav, onTrace: handleTraceOpen };
   const maintData: MaintData = { onOpen: nav, onTrace: handleTraceOpen, user: roleInfo(currentRole).user };
 
+  // Prefer login over the splash when there is no session yet.
+  if (!user) {
+    return (
+      <LoginScreen
+        onLogin={handleCustomLogin}
+        theme={theme}
+        onSetTheme={setTheme}
+      />
+    );
+  }
+
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center font-sans gap-4" id="applet-loading">
@@ -738,16 +640,6 @@ export default function App() {
           <p className="text-xs text-slate-500 font-bold">Synchronizing Terminal Records...</p>
         </div>
       </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <LoginScreen
-        onLogin={handleCustomLogin}
-        theme={theme}
-        onSetTheme={setTheme}
-      />
     );
   }
 
