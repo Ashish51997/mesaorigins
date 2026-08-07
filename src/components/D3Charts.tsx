@@ -16,6 +16,12 @@ export interface BarChartData {
   color?: string;
 }
 
+export interface GroupedBarChartDatum {
+  label: string;
+  productionKg: number;
+  scrapKg: number;
+}
+
 export interface DonutChartData {
   label: string;
   value: number;
@@ -68,7 +74,7 @@ export function D3BarChart({ data, height = 200, yAxisLabel }: D3BarChartProps) 
     svg.append('g')
       .attr('class', 'grid')
       .attr('opacity', 0.1)
-      .attr('stroke', '#cbd5e1')
+      .attr('stroke', '#E2E8F0')
       .call(
         d3.axisLeft(yGrid)
           .tickSize(-width)
@@ -93,9 +99,9 @@ export function D3BarChart({ data, height = 200, yAxisLabel }: D3BarChartProps) 
       .append('g')
       .attr('transform', `translate(0,${chartHeight})`)
       .call(d3.axisBottom(x).tickSize(4))
-      .attr('font-family', 'JetBrains Mono, monospace')
+      .attr('font-family', 'Roboto, system-ui, sans-serif')
       .attr('font-size', '10px')
-      .attr('color', '#64748b')
+      .attr('color', '#94A3B8')
       .selectAll('text')
       .attr('font-weight', '500');
 
@@ -110,15 +116,15 @@ export function D3BarChart({ data, height = 200, yAxisLabel }: D3BarChartProps) 
     svg
       .append('g')
       .call(yAxis)
-      .attr('font-family', 'JetBrains Mono, monospace')
+      .attr('font-family', 'Roboto, system-ui, sans-serif')
       .attr('font-size', '10px')
-      .attr('color', '#64748b');
+      .attr('color', '#94A3B8');
 
     // Gradient Definition
     const defs = svg.append('defs');
     data.forEach((d, i) => {
       const gradientId = `bar-gradient-${i}`;
-      const baseColor = d.color || '#6366f1';
+      const baseColor = d.color || '#1E40AF';
       const grad = defs.append('linearGradient')
         .attr('id', gradientId)
         .attr('x1', '0%')
@@ -144,7 +150,7 @@ export function D3BarChart({ data, height = 200, yAxisLabel }: D3BarChartProps) 
       .attr('rx', 4)          // Soft round corners
       .attr('ry', 4)
       .attr('fill', (d, i) => `url(#bar-gradient-${i})`)
-      .attr('stroke', d => d.color || '#6366f1')
+      .attr('stroke', d => d.color || '#1E40AF')
       .attr('stroke-width', 1)
       .attr('cursor', 'pointer')
       .on('mouseover', function (event, d) {
@@ -202,6 +208,153 @@ export function D3BarChart({ data, height = 200, yAxisLabel }: D3BarChartProps) 
       {tooltip && tooltip.active && (
         <div
           className="absolute z-50 bg-slate-900/95 border border-slate-700 text-white font-mono text-[10px] font-bold px-2 py-1 rounded shadow-md pointer-events-none transition-all duration-75"
+          style={{ left: `${tooltip.x}px`, top: `${tooltip.y}px`, transform: 'translate(-50%, -100%)' }}
+        >
+          {tooltip.text}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// 1b. GROUPED BAR CHART (production vs scrap)
+// ==========================================
+
+interface D3GroupedBarChartProps {
+  data: GroupedBarChartDatum[];
+  height?: number;
+  productionColor?: string;
+  scrapColor?: string;
+}
+
+export function D3GroupedBarChart({
+  data,
+  height = 220,
+  productionColor = '#1E40AF',
+  scrapColor = '#F59E0B',
+}: D3GroupedBarChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string; active: boolean } | null>(null);
+  const [widthPx, setWidthPx] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => setWidthPx(el.getBoundingClientRect().width || 0);
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!containerRef.current || data.length === 0 || widthPx <= 0) return;
+    d3.select(containerRef.current).selectAll('svg').remove();
+
+    const containerWidth = widthPx;
+    const margin = { top: 16, right: 12, bottom: 36, left: 44 };
+    const width = Math.max(0, containerWidth - margin.left - margin.right);
+    const chartHeight = height - margin.top - margin.bottom;
+    const seriesKeys = ['productionKg', 'scrapKg'] as const;
+    const colors: Record<(typeof seriesKeys)[number], string> = {
+      productionKg: productionColor,
+      scrapKg: scrapColor,
+    };
+    const labels: Record<(typeof seriesKeys)[number], string> = {
+      productionKg: 'Production (Kg)',
+      scrapKg: 'Scrap (Kg)',
+    };
+
+    const svg = d3
+      .select(containerRef.current)
+      .append('svg')
+      .attr('width', containerWidth)
+      .attr('height', height)
+      .attr('role', 'img')
+      .attr('aria-label', 'Production and scrap by day')
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x0 = d3.scaleBand().domain(data.map((d) => d.label)).range([0, width]).paddingInner(0.28);
+    const x1 = d3.scaleBand().domain(seriesKeys as unknown as string[]).range([0, x0.bandwidth()]).padding(0.12);
+    const yMax = d3.max(data, (d) => Math.max(d.productionKg, d.scrapKg)) || 1;
+    const y = d3.scaleLinear().domain([0, yMax * 1.15]).range([chartHeight, 0]);
+
+    svg.append('g')
+      .attr('class', 'grid')
+      .attr('opacity', 0.35)
+      .call(d3.axisLeft(y).ticks(5).tickSize(-width).tickFormat(() => ''))
+      .selectAll('line')
+      .attr('stroke', '#E2E8F0');
+    svg.select('.grid').select('.domain').remove();
+
+    svg.append('g')
+      .attr('transform', `translate(0,${chartHeight})`)
+      .call(d3.axisBottom(x0).tickSize(4))
+      .attr('font-family', 'Roboto, system-ui, sans-serif')
+      .attr('font-size', '10px')
+      .attr('color', '#94A3B8');
+
+    svg.append('g')
+      .call(d3.axisLeft(y).ticks(5).tickSize(4).tickFormat((d) => {
+        const n = Number(d);
+        return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(d);
+      }))
+      .attr('font-family', 'Roboto, system-ui, sans-serif')
+      .attr('font-size', '10px')
+      .attr('color', '#94A3B8');
+
+    const groups = svg.selectAll('.day-group')
+      .data(data)
+      .enter()
+      .append('g')
+      .attr('class', 'day-group')
+      .attr('transform', (d) => `translate(${x0(d.label) || 0},0)`);
+
+    const preferReduced =
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    groups.selectAll('rect')
+      .data((d) => seriesKeys.map((key) => ({ key, value: d[key], label: d.label })))
+      .enter()
+      .append('rect')
+      .attr('x', (d) => x1(d.key) || 0)
+      .attr('width', x1.bandwidth())
+      .attr('y', preferReduced ? ((d) => y(d.value)) : chartHeight)
+      .attr('height', preferReduced ? ((d) => chartHeight - y(d.value)) : 0)
+      .attr('rx', 4)
+      .attr('fill', (d) => colors[d.key])
+      .attr('cursor', 'pointer')
+      .on('mouseover', function (event, d) {
+        const [mX, mY] = d3.pointer(event, containerRef.current);
+        setTooltip({ x: mX, y: mY - 36, text: `${d.label} · ${labels[d.key]}: ${d.value.toLocaleString()}`, active: true });
+      })
+      .on('mousemove', function (event) {
+        const [mX, mY] = d3.pointer(event, containerRef.current);
+        setTooltip((prev) => (prev ? { ...prev, x: mX, y: mY - 36 } : null));
+      })
+      .on('mouseout', () => setTooltip(null));
+
+    if (!preferReduced) {
+      groups.selectAll('rect')
+        .transition()
+        .duration(600)
+        .delay((_, i) => i * 40)
+        .attr('y', (d) => y((d as { value: number }).value))
+        .attr('height', (d) => chartHeight - y((d as { value: number }).value));
+    }
+  }, [data, height, productionColor, scrapColor, widthPx]);
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {tooltip?.active && (
+        <div
+          className="pointer-events-none absolute z-50 rounded-md border border-slate-700 bg-slate-900/95 px-2 py-1 font-mono text-[10px] font-bold text-white shadow-md"
           style={{ left: `${tooltip.x}px`, top: `${tooltip.y}px`, transform: 'translate(-50%, -100%)' }}
         >
           {tooltip.text}
@@ -337,7 +490,7 @@ interface D3LineChartProps {
   color?: string;
 }
 
-export function D3LineChart({ data, height = 220, yAxisLabel, showArea = true, color = '#6366f1' }: D3LineChartProps) {
+export function D3LineChart({ data, height = 220, yAxisLabel, showArea = true, color = '#1E40AF' }: D3LineChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; date: string; value: number; secValue?: number; active: boolean } | null>(null);
 
@@ -389,9 +542,9 @@ export function D3LineChart({ data, height = 220, yAxisLabel, showArea = true, c
             return d;
           })
       )
-      .attr('font-family', 'JetBrains Mono, monospace')
+      .attr('font-family', 'Roboto, system-ui, sans-serif')
       .attr('font-size', '9px')
-      .attr('color', '#64748b');
+      .attr('color', '#94A3B8');
 
     // Y Axis ticks
     const yAxis = d3.axisLeft(y).ticks(5).tickSize(4);
@@ -404,9 +557,9 @@ export function D3LineChart({ data, height = 220, yAxisLabel, showArea = true, c
     svg
       .append('g')
       .call(yAxis)
-      .attr('font-family', 'JetBrains Mono, monospace')
+      .attr('font-family', 'Roboto, system-ui, sans-serif')
       .attr('font-size', '9px')
-      .attr('color', '#64748b');
+      .attr('color', '#94A3B8');
 
     // Horizontal guidelines
     svg.append('g')
@@ -443,8 +596,8 @@ export function D3LineChart({ data, height = 220, yAxisLabel, showArea = true, c
       .attr('x2', '0%')
       .attr('y2', '100%');
 
-    secAreaGrad.append('stop').attr('offset', '0%').attr('stop-color', '#f43f5e').attr('stop-opacity', 0.25);
-    secAreaGrad.append('stop').attr('offset', '100%').attr('stop-color', '#f43f5e').attr('stop-opacity', 0.01);
+    secAreaGrad.append('stop').attr('offset', '0%').attr('stop-color', '#EF4444').attr('stop-opacity', 0.25);
+    secAreaGrad.append('stop').attr('offset', '100%').attr('stop-color', '#EF4444').attr('stop-opacity', 0.01);
 
     // Define line generators
     const lineGenerator = d3
@@ -500,7 +653,7 @@ export function D3LineChart({ data, height = 220, yAxisLabel, showArea = true, c
         .append('path')
         .datum(data)
         .attr('fill', 'none')
-        .attr('stroke', '#f43f5e')
+        .attr('stroke', '#EF4444')
         .attr('stroke-width', 2.5)
         .attr('d', secLineGenerator);
 
@@ -538,7 +691,7 @@ export function D3LineChart({ data, height = 220, yAxisLabel, showArea = true, c
     // Vertical track line
     focus.append('line')
       .attr('class', 'focus-line')
-      .attr('stroke', '#cbd5e1')
+      .attr('stroke', '#E2E8F0')
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '3,3')
       .attr('y1', 0)
@@ -547,7 +700,7 @@ export function D3LineChart({ data, height = 220, yAxisLabel, showArea = true, c
     // Focus dots
     focus.append('circle').attr('class', 'focus-dot-main').attr('r', 5).attr('fill', color).attr('stroke', '#ffffff').attr('stroke-width', 1.5);
     if (hasSecondary) {
-      focus.append('circle').attr('class', 'focus-dot-sec').attr('r', 5).attr('fill', '#f43f5e').attr('stroke', '#ffffff').attr('stroke-width', 1.5);
+      focus.append('circle').attr('class', 'focus-dot-sec').attr('r', 5).attr('fill', '#EF4444').attr('stroke', '#ffffff').attr('stroke-width', 1.5);
     }
 
     // Interactive transparency pane for hover interaction
@@ -632,7 +785,7 @@ interface D3RadialProgressProps {
   strokeWidth?: number;
 }
 
-export function D3RadialProgress({ value, color = '#6366f1', size = 80, strokeWidth = 8 }: D3RadialProgressProps) {
+export function D3RadialProgress({ value, color = '#1E40AF', size = 80, strokeWidth = 8 }: D3RadialProgressProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -756,7 +909,7 @@ export function D3GaugeChart({ value, size = 180, label = 'OEE' }: D3GaugeChartP
       .datum({ startAngle, endAngle })
       .attr('d', arcGenerator as any)
       .attr('fill', '#f1f5f9')
-      .attr('stroke', '#cbd5e1')
+      .attr('stroke', '#E2E8F0')
       .attr('stroke-width', 0.5);
 
     // Colored sectors: Red (<60%), Amber (60%-80%), Green (>=80%)
@@ -779,7 +932,7 @@ export function D3GaugeChart({ value, size = 180, label = 'OEE' }: D3GaugeChartP
 
     // Main value active arc
     const targetAngle = gaugeScale(value);
-    const activeColor = value < 60 ? '#f43f5e' : value < 80 ? '#d97706' : '#10b981';
+    const activeColor = value < 60 ? '#EF4444' : value < 80 ? '#d97706' : '#10b981';
 
     const activeArc = svg.append('path')
       .datum({ startAngle, endAngle: startAngle })
@@ -848,7 +1001,7 @@ export function D3GaugeChart({ value, size = 180, label = 'OEE' }: D3GaugeChartP
         .attr('y', yPos)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('font-family', 'JetBrains Mono, monospace')
+        .attr('font-family', 'Roboto, system-ui, sans-serif')
         .attr('font-size', '8px')
         .attr('fill', '#94a3b8')
         .attr('font-weight', 'bold')

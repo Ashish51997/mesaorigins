@@ -24,7 +24,7 @@ export const NAV_STEPS: NavStep[] = [
 
 const STEP_OF: Record<string, string> = {
   dashboard: 'overview',
-  inquiries: 'sales', quotations: 'sales', orders: 'sales', sales_customers: 'sales', sales_complaints: 'sales',
+  sales_customers: 'sales', enquiry_desk: 'sales', inquiries: 'sales', quotations: 'sales', orders: 'sales', sales_complaints: 'sales',
   orders_to_plan: 'planning', plan_board: 'planning', formulations: 'planning', logbook_templates: 'planning',
   machine_tasks: 'planning',
   logbook_ledger: 'planning',
@@ -35,11 +35,34 @@ const STEP_OF: Record<string, string> = {
   users: 'admin', acl: 'admin',
 };
 
+/** Canonical within-group order (value chain). Unknown ids sort last. */
+export const NAV_ITEM_ORDER: string[] = [
+  'dashboard',
+  'sales_customers', 'enquiry_desk', 'inquiries', 'quotations', 'orders', 'sales_complaints',
+  'orders_to_plan', 'plan_board', 'formulations', 'logbook_templates', 'machine_tasks', 'logbook_ledger',
+  'roll_queue', 'holds',
+  'receive', 'issue_lot', 'rm_stock',
+  'ready', 'dispatch_history',
+  'machines', 'preventive',
+  'users', 'acl',
+];
+
+const ORDER_INDEX = new Map(NAV_ITEM_ORDER.map((id, i) => [id, i]));
+
 export const stepOf = (id: string): string => STEP_OF[id] ?? 'overview';
 
-// Group items into value-chain steps, keeping step order and dropping empty steps.
+function byNavOrder<T extends { id: string }>(a: T, b: T): number {
+  const ai = ORDER_INDEX.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+  const bi = ORDER_INDEX.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+  return ai - bi;
+}
+
+// Group items into value-chain steps, keeping step order and sorting items within each step.
 export function groupNav<T extends { id: string }>(items: T[]): { step: NavStep; items: T[] }[] {
   return NAV_STEPS
-    .map((step) => ({ step, items: items.filter((it) => stepOf(it.id) === step.key) }))
+    .map((step) => ({
+      step,
+      items: items.filter((it) => stepOf(it.id) === step.key).sort(byNavOrder),
+    }))
     .filter((g) => g.items.length > 0);
 }

@@ -20,6 +20,7 @@ const A = (verb: string, label: string, area: string): Feature => ({ key: `actio
 export const FEATURES: Feature[] = [
   // General
   S('dashboard', 'Home', 'General'),
+  S('management_dashboard', 'Management Overview API', 'General'),
   // Planning & Production
   S('orders_to_plan', 'Orders to Plan', 'Planning & Production'),
   S('plan_board', 'Plan Board', 'Planning & Production'),
@@ -43,11 +44,12 @@ export const FEATURES: Feature[] = [
   S('issue_lot', 'Issue Lot', 'Stores'),
   S('rm_stock', 'RM Stock Board', 'Stores'),
   A('lot.issue', 'Issue a lot to production', 'Stores'),
-  // Sales
-  S('inquiries', 'Inquiries', 'Sales'),
-  S('quotations', 'Quotations', 'Sales'),
-  S('orders', 'Orders', 'Sales'),
+  // Sales (Customers → Enquiry → Orders → Complaints)
   S('sales_customers', 'Customers', 'Sales'),
+  S('enquiry_desk', 'Enquiry Desk', 'Sales'),
+  S('inquiries', 'Inquiries (legacy)', 'Sales'),
+  S('quotations', 'Quotations (legacy)', 'Sales'),
+  S('orders', 'Orders', 'Sales'),
   S('sales_complaints', 'Complaints', 'Sales'),
   A('order.approve', 'Confirm an order to production', 'Sales'),
   A('order.setPriority', 'Set order priority', 'Sales'),
@@ -75,12 +77,15 @@ export const WIRED_ACTIONS: string[] = [
 // Role preset: the screens each role sees by default (bare ids). Administrator = all.
 // Mirrors server/src/lib/permissions.ts ROLE_DEFAULT_SCREENS.
 export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
-  'Managing Director': ['dashboard', 'rm_stock', 'dispatch_history', 'logbook_ledger'],
+  'Managing Director': [
+    'dashboard', 'management_dashboard', 'rm_stock', 'dispatch_history', 'logbook_ledger',
+    'sales_complaints', 'ready', 'roll_queue', 'holds', 'preventive',
+  ],
   'Production Planner': ['dashboard', 'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates', 'logbook_ledger'],
   'Operator': ['dashboard', 'machine_tasks', 'logbooks', 'logbook_ledger'],
   'Quality Inspector': ['dashboard', 'roll_queue', 'holds'],
   'Store Manager': ['dashboard', 'receive', 'issue_lot', 'rm_stock'],
-  'Sales Executive': ['dashboard', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints'],
+  'Sales Executive': ['dashboard', 'sales_customers', 'enquiry_desk', 'orders', 'sales_complaints'],
   'Dispatch Executive': ['dashboard', 'ready', 'dispatch_history'],
   'Maintenance Head': ['dashboard', 'machines', 'preventive'],
   'Administrator': ['dashboard', 'users', 'acl', 'logbooks', 'logbook_templates', 'machine_tasks', 'logbook_ledger'],
@@ -89,7 +94,11 @@ export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
 export function roleSeesScreenByDefault(role: string, screenId: string): boolean {
   if (role === 'Owner' || role === 'Administrator' || role === 'Admin' || role === 'Management') return true;
   const list = ROLE_DEFAULT_SCREENS[role];
-  return list ? list.includes(screenId) : false;
+  if (!list) return false;
+  if (list.includes(screenId)) return true;
+  if (screenId === 'enquiry_desk' && (list.includes('inquiries') || list.includes('quotations'))) return true;
+  if ((screenId === 'inquiries' || screenId === 'quotations') && list.includes('enquiry_desk')) return true;
+  return false;
 }
 
 export function featuresByArea(): { area: string; features: Feature[] }[] {

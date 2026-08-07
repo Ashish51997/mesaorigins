@@ -4,13 +4,14 @@
  */
 import { useMemo, useState, type ReactNode } from 'react';
 import {
-  BookOpen, CheckCircle2, Gauge, Package2, Trash2, Factory, ArrowLeft, ArrowRight,
+  BookOpen, CheckCircle2, Gauge, Package2, Trash2, Factory, ArrowRight,
   CalendarRange, Percent,
 } from 'lucide-react';
 import { EmptyState } from './EmptyState';
 import { DataTable } from './DataTable';
 import { D3BarChart, D3DonutChart, D3LineChart } from './D3Charts';
 import LogbookModule from './LogbookModule';
+import PageHeader from './ui/PageHeader';
 import { useLogbookLedger, type ApiLogbookLedgerRow } from '../lib/queries/logbook';
 
 const STUB = {
@@ -48,7 +49,7 @@ function SummaryCard({ icon, label, value, sub }: {
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
         {icon}{label}
       </div>
-      <div className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">{value}</div>
+      <div className="mt-1 font-sans text-[28px] font-extrabold text-slate-900 dark:text-white leading-tight">{value}</div>
       {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
     </div>
   );
@@ -114,7 +115,7 @@ export default function LogbookLedger() {
     () => (charts?.byMachine ?? []).slice(0, 8).map((m) => ({
       label: m.label,
       value: m.producedKg,
-      color: '#0d9488',
+      color: '#1E40AF',
     })),
     [charts],
   );
@@ -123,22 +124,16 @@ export default function LogbookLedger() {
     const produced = summary?.producedKg ?? 0;
     const waste = summary?.wasteKg ?? 0;
     const data = [
-      { label: 'Produced', value: produced, color: '#059669' },
-      { label: 'Waste / reject', value: waste, color: '#e11d48' },
+      { label: 'Produced', value: produced, color: '#10B981' },
+      { label: 'Waste / reject', value: waste, color: '#EF4444' },
     ].filter((d) => d.value > 0);
-    return data.length ? data : [{ label: 'No mass yet', value: 1, color: '#cbd5e1' }];
+    return data.length ? data : [{ label: 'No mass yet', value: 1, color: '#E2E8F0' }];
   }, [summary]);
 
   if (openPlan) {
     return (
       <div className="space-y-3">
-        <button
-          type="button"
-          onClick={() => setOpenPlan(null)}
-          className="inline-flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-500"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to logbook ledger
-        </button>
+        <PageHeader title="Log entry" onBack={() => setOpenPlan(null)} />
         <LogbookModule {...STUB} initialTab="operator" initialPlanId={openPlan} />
       </div>
     );
@@ -152,7 +147,7 @@ export default function LogbookLedger() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Logbook Ledger</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Logbook Ledger</h2>
           <p className="text-[12px] text-slate-500">
             Submitted production sheets — filter by date, read trends, open any entry.
           </p>

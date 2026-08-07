@@ -20,6 +20,7 @@ import { EmptyState } from '../EmptyState';
 import { TraceLink } from '../TraceLink';
 import { DataTable } from '../DataTable';
 import ResponsiveOverlay from '../ui/ResponsiveOverlay';
+import { StatusBadge, type StatusTone } from '../ui/StatusBadge';
 import { ApiError } from '../../lib/apiClient';
 import { useMachines } from '../../lib/queries/maintenance';
 import { useOrdersToPlan, usePlans, useOperators, useSchedulePlan, useUpdatePlan, useReleasePlan, planIsEditable, type ApiPlanOrder, type ApiPlan } from '../../lib/queries/planning';
@@ -52,8 +53,12 @@ function Card({ title, right, children }: { title: string; right?: ReactNode; ch
 }
 
 const priorityChip = (pr: string) => {
-  const cls = pr === 'high' ? 'bg-rose-100 text-rose-800' : pr === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700';
-  return <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cls}`}>{pr === 'high' ? 'High priority' : pr === 'medium' ? 'Medium' : 'Low'}</span>;
+  const tone: StatusTone = pr === 'high' ? 'error' : pr === 'medium' ? 'warn' : 'neutral';
+  return (
+    <StatusBadge tone={tone}>
+      {pr === 'high' ? 'High priority' : pr === 'medium' ? 'Medium' : 'Low'}
+    </StatusBadge>
+  );
 };
 
 // Delivery urgency relative to today.
@@ -64,12 +69,12 @@ const daysUntil = (dateStr: string): number => {
 };
 function DueBadge({ date }: { date: string }) {
   const d = daysUntil(date);
-  const m = Number.isNaN(d) ? { cls: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400', text: date }
-    : d < 0 ? { cls: 'bg-rose-100 text-rose-700', text: `${-d}d overdue` }
-    : d === 0 ? { cls: 'bg-rose-100 text-rose-700', text: 'due today' }
-    : d <= 3 ? { cls: 'bg-amber-100 text-amber-800', text: `due in ${d}d` }
-    : { cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300', text: `due in ${d}d` };
-  return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${m.cls}`}>{m.text}</span>;
+  const m = Number.isNaN(d) ? { tone: 'neutral' as StatusTone, text: date }
+    : d < 0 ? { tone: 'error' as StatusTone, text: `${-d}d overdue` }
+    : d === 0 ? { tone: 'error' as StatusTone, text: 'due today' }
+    : d <= 3 ? { tone: 'warn' as StatusTone, text: `due in ${d}d` }
+    : { tone: 'neutral' as StatusTone, text: `due in ${d}d` };
+  return <StatusBadge tone={m.tone}>{m.text}</StatusBadge>;
 }
 const shiftName = (sh: string) => (sh === 'D' ? 'Day' : 'Night');
 const shiftHours = (sh: string) => (sh === 'D' ? '08:00–20:00' : '20:00–08:00');
@@ -307,7 +312,7 @@ export function PlanBoardScreen(p: PlannerData) {
       columns={[
         { key: 'machine', header: 'Machine', className: 'font-bold whitespace-nowrap', cell: (pl) => pl.machine.code },
         { key: 'shift', header: 'Shift', cell: (pl) => (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pl.shift === 'D' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>{pl.shift === 'D' ? 'Day' : 'Night'}</span>
+          <StatusBadge tone={pl.shift === 'D' ? 'warn' : 'info'}>{pl.shift === 'D' ? 'Day' : 'Night'}</StatusBadge>
         ) },
         { key: 'so', header: 'SO', cell: (pl) => <TraceLink id={pl.salesOrder.soNumber} onTrace={p.onTrace} className="text-indigo-600 dark:text-indigo-400 font-semibold font-mono" /> },
         { key: 'product', header: 'Product / Customer', cell: (pl) => <span className="truncate block max-w-[280px]">{pl.productName || pl.salesOrder.product} · {pl.salesOrder.customer.name}</span> },
@@ -383,7 +388,7 @@ export function Formulations(p: PlannerData) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <Card title="Formulations" right={canEdit ? (
-        <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1 h-8 px-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold"><Plus className="w-3.5 h-3.5" /> Add formulation</button>
+        <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold"><Plus className="w-3.5 h-3.5" /> Add formulation</button>
       ) : undefined}>
         {formulasQ.isLoading ? <div className="text-[12px] text-slate-400 py-6 text-center">Loading…</div> : formulas.length === 0 ? (
           <EmptyState icon={<Beaker className="w-8 h-8" />} title="No formulations yet." hint="Add your first BOM to start." />
@@ -512,8 +517,8 @@ function AddFormulationModal({ onClose }: { onClose: () => void }) {
           <p className="mt-1 text-[10px] text-slate-400">Percentages needn't total 100% here — use “Normalize to 100%” after saving.</p>
         </div>
         <div className="flex justify-end gap-2 pt-1">
-          <button onClick={onClose} className="min-h-[42px] px-4 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300">Cancel</button>
-          <button onClick={submit} disabled={!valid || create.isPending} className="min-h-[42px] px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add formulation</button>
+          <button onClick={onClose} className="min-h-[42px] px-4 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300">Cancel</button>
+          <button onClick={submit} disabled={!valid || create.isPending} className="min-h-[42px] px-5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add formulation</button>
         </div>
       </div>
     </ResponsiveOverlay>

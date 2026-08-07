@@ -151,7 +151,7 @@ export function ToastHost(): ReactElement {
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none">
       {ts.map((t) => (
-        <div key={t.id} className="pointer-events-auto max-w-md bg-slate-900 text-white text-[13px] font-medium px-4 py-2.5 rounded-lg shadow-lg border border-slate-700 flex items-center gap-2">
+        <div key={t.id} className="pointer-events-auto max-w-md bg-slate-900 text-white text-[13px] font-medium px-4 py-2.5 rounded-lg border border-slate-700 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{t.message}</span>
         </div>

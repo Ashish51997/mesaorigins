@@ -760,6 +760,34 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       stock: obj({ rawMaterialKg: int, finishedGoodsKg: int }),
     }),
   },
+  'GET /api/management/overview': {
+    tag: 'Dashboard',
+    operationId: 'getManagementOverview',
+    summary: 'Managing Director plant overview',
+    description: 'Live production, scrap, on-time delivery, complaints, QA/dispatch queues and alerts for the MD management dashboard. No financial figures. Requires screen:management_dashboard.',
+    responseDescription: 'Management overview payload.',
+    responseSchema: obj({
+      context: obj({ shift: { type: 'string', enum: ['D', 'N'] }, asOf: str }),
+      kpis: obj({
+        productionKg: obj({ value: num, trendPct: { type: ['number', 'null'] }, vs: str }),
+        scrapRatePct: obj({ value: num, trendPct: { type: ['number', 'null'] }, vs: str }),
+        onTimeDeliveryPct: obj({ value: num, trendPct: { type: ['number', 'null'] }, vs: str }),
+        complaints: obj({ open: int, high: int, medium: int, low: int }),
+      }),
+      productionSeries: arr(obj({ date: str, productionKg: num, scrapKg: num })),
+      feedbackOpen: arr(obj({ rank: int, title: str, occurrences: int, openCount: int })),
+      queues: obj({
+        qa: obj({ waitingRolls: int, alerts: arr(str), actions: arr(str) }),
+        dispatch: obj({ vehicles: int, alerts: arr(str), actions: arr(str) }),
+      }),
+      alerts: arr(obj({
+        id: str,
+        severity: { type: 'string', enum: ['critical', 'warning', 'info'] },
+        message: str,
+        href: str,
+      })),
+    }),
+  },
 
   // ── Administration ────────────────────────────────────────────────────────
   'GET /api/me/permissions': {

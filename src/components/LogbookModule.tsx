@@ -19,6 +19,8 @@ import MachineLogBookSheet, { LogbookHandlers } from './MachineLogBookSheet';
 import GuidedPreviewSheet from './GuidedPreviewSheet';
 import MobileLogEntry from './MobileLogEntry';
 import BottomSheet from './ui/BottomSheet';
+import PageHeader from './ui/PageHeader';
+import { StatusBadge } from './ui/StatusBadge';
 import { pushToast } from './Notify';
 import { ApiError } from '../lib/apiClient';
 import { useLogbookTemplates, useLogbookPlans, useLogbookFormulas, useOpenLogbook, useSaveLogbook, useSubmitLogbook } from '../lib/queries/logbook';
@@ -39,6 +41,9 @@ interface LogbookModuleProps {
   presentation?: 'page' | 'sheet';
   /** Mobile section chrome — accordion used inside bottom-sheet log entry. */
   mobileLayout?: 'pager' | 'accordion';
+  /** Full-screen log entry — hide app chrome; show back on the log header. */
+  immersive?: boolean;
+  onLeave?: () => void;
 }
 
 /* ---------------------------------------------------------------- helpers */
@@ -219,7 +224,9 @@ export default function LogbookModule({
   initialTab = 'operator',
   initialPlanId,
   presentation = 'page',
-  mobileLayout = 'pager',
+  mobileLayout = 'accordion',
+  immersive = false,
+  onLeave,
 }: LogbookModuleProps) {
   const [activeTab, setActiveTab] = useState<'operator' | 'admin'>(initialTab);
   useEffect(() => { setActiveTab(initialTab); }, [initialTab]);
@@ -256,7 +263,7 @@ export default function LogbookModule({
   const [savedFlash, setSavedFlash] = useState<boolean>(false);
   const [err, setErr] = useState<string>('');
   const [submitIssues, setSubmitIssues] = useState<LogbookFieldIssue[]>([]);
-  const [mode, setMode] = useState<'sheet' | 'guided'>('sheet');
+  const [mode, setMode] = useState<'sheet' | 'guided'>('guided');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const isNarrow = useIsNarrow();
@@ -408,44 +415,52 @@ export default function LogbookModule({
         plansQ.isLoading ? (
           <div className="p-10 text-center text-sm text-slate-400">Loading scheduled extruders…</div>
         ) : scheduledPlans.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-10 max-w-lg mx-auto mt-8 text-center shadow-md space-y-4" id="logbook-no-schedule">
-            <div className="mx-auto h-14 w-14 rounded-2xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center border border-amber-100 dark:border-amber-900/40">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-10 max-w-lg mx-auto mt-8 text-center space-y-4" id="logbook-no-schedule">
+            <div className="mx-auto h-14 w-14 rounded-xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center border border-amber-100 dark:border-amber-900/40">
               <CalendarClock className="h-7 w-7 text-amber-600" />
             </div>
-            <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">No extruder scheduled</h3>
+            <h3 className="font-sans text-lg font-bold text-slate-900 dark:text-white">No extruder scheduled</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">A shift logbook can only be started for a machine Planning has scheduled. Ask the Production Planner to plan an order onto a line — it will appear here the moment it's scheduled.</p>
           </div>
         ) : (
         <>
           {useMobileFill ? (
             /* —— Mobile / sheet: section-card entry only (no paper sheet, no guided wizard) —— */
-            <div className={`logbook-print-hide space-y-3 ${sheetMode ? 'pb-2' : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'}`}>
+            <div className={`logbook-print-hide space-y-3 ${
+              sheetMode
+                ? 'pb-2'
+                : immersive
+                  ? 'px-4 pt-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))]'
+                  : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
+            }`}>
               {!sheetMode && (
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-[14px] font-semibold text-slate-900">
-                      {currentPlan ? `Machine ${currentPlan.machine.code}` : activeLogbook.machineId || 'Log book'}
-                    </span>
-                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${locked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+              <PageHeader
+                sticky={immersive}
+                className={immersive ? 'mx-0 px-4 lg:px-4' : undefined}
+                title={currentPlan ? `Machine ${currentPlan.machine.code}` : activeLogbook.machineId || 'Log book'}
+                subtitle={
+                  currentPlan
+                    ? `${currentPlan.shift === 'D' ? 'Day' : 'Night'} · ${currentPlan.salesOrder?.soNumber ?? 'no order'} · ${currentPlan.scheduledStartDate.split('T')[0]}`
+                    : `${activeLogbook.date || '—'} · shift ${activeLogbook.shift || '—'}`
+                }
+                onBack={immersive ? onLeave : undefined}
+                backLabel="Tasks"
+                actions={
+                  <>
+                    <StatusBadge tone={locked ? 'success' : 'warn'}>
                       {locked ? <><Lock className="h-3 w-3" /> Closed</> : 'Draft'}
-                    </span>
-                  </div>
-                  <p className="truncate text-[12px] text-slate-500">
-                    {currentPlan
-                      ? `${currentPlan.shift === 'D' ? 'Day' : 'Night'} · ${currentPlan.salesOrder?.soNumber ?? 'no order'} · ${currentPlan.scheduledStartDate.split('T')[0]}`
-                      : `${activeLogbook.date || '—'} · shift ${activeLogbook.shift || '—'}`}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMobileMoreOpen(true)}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600"
-                  aria-label="More actions"
-                >
-                  <MoreHorizontal className="h-5 w-5" />
-                </button>
-              </div>
+                    </StatusBadge>
+                    <button
+                      type="button"
+                      onClick={() => setMobileMoreOpen(true)}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"
+                      aria-label="More actions"
+                    >
+                      <MoreHorizontal className="h-5 w-5" />
+                    </button>
+                  </>
+                }
+              />
               )}
 
               {(err || savedFlash) && (
@@ -456,7 +471,7 @@ export default function LogbookModule({
               )}
 
               {submitIssues.length > 0 && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-sm" role="alert">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3" role="alert">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                     <div className="min-w-0 flex-1">
@@ -537,7 +552,9 @@ export default function LogbookModule({
               {!locked && (
                 <div className={sheetMode
                   ? 'sticky bottom-0 z-10 -mx-1 border-t border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur-sm'
-                  : 'fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 border-t border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur-sm md:hidden'}>
+                  : immersive
+                    ? 'fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] backdrop-blur-sm'
+                    : 'fixed inset-x-0 bottom-[calc(48px+env(safe-area-inset-bottom))] z-30 border-t border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur-sm md:hidden'}>
                   <div className="mx-auto flex max-w-lg gap-2">
                     <button
                       type="button"
@@ -597,43 +614,54 @@ export default function LogbookModule({
             /* —— Desktop: sheet | guided two-column workspace —— */
             <>
           {/* Toolbar — plan context + sheet/guided + print / submit / close */}
-          <div className="logbook-print-hide flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200/80 rounded-2xl px-3 py-3 shadow-sm">
+          <div className="logbook-print-hide flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200 rounded-xl px-3 py-3">
             <div className="flex items-center gap-3 min-w-0">
+              {immersive && onLeave && (
+                <button
+                  type="button"
+                  onClick={onLeave}
+                  className="inline-flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 text-sky-600 hover:bg-slate-50 hover:text-sky-700 sm:px-3"
+                  aria-label="Back to tasks"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="hidden text-sm font-medium sm:inline">Tasks</span>
+                </button>
+              )}
               <span className="inline-flex items-center gap-2 text-[13px] font-medium text-slate-700 truncate">
                 <FileSpreadsheet className="w-4 h-4 text-indigo-500 shrink-0" />
                 {currentPlan ? <>Machine {currentPlan.machine.code} · {currentPlan.shift === 'D' ? 'Day' : 'Night'} shift · {currentPlan.salesOrder?.soNumber ?? 'no order'} · {currentPlan.scheduledStartDate.split('T')[0]}</> : 'Production log book'}
               </span>
-              <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${locked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+              <StatusBadge tone={locked ? 'success' : 'warn'}>
                 {locked ? <><Lock className="w-3 h-3" /> Closed</> : 'Draft'}
-              </span>
+              </StatusBadge>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {err && <span className="inline-flex items-center gap-1 text-[12px] font-medium text-rose-600 max-w-[200px] truncate" title={err}><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {err}</span>}
               {savedFlash && <span className="inline-flex items-center gap-1 text-[12px] font-medium text-emerald-700"><CheckCircle2 className="w-3.5 h-3.5" /> Saved</span>}
-              {!locked && (
-                <div className="flex items-center gap-0.5 p-0.5 rounded-lg border border-slate-200 bg-slate-50">
-                  <button type="button" onClick={() => setMode('sheet')} className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-[12px] font-medium ${mode === 'sheet' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500'}`}><FileSpreadsheet className="w-3.5 h-3.5" /> Sheet</button>
-                  <button type="button" onClick={() => setMode('guided')} className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-[12px] font-medium ${mode === 'guided' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}><Wand2 className="w-3.5 h-3.5" /> Guided</button>
+            {!locked && (
+                <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                  <button type="button" onClick={() => setMode('sheet')} className={`inline-flex min-h-9 items-center gap-1 rounded-md px-2.5 text-[12px] font-medium ${mode === 'sheet' ? 'border border-slate-200 bg-white text-[#1E40AF]' : 'text-slate-500 hover:text-slate-700'}`}><FileSpreadsheet className="h-3.5 w-3.5" /> Sheet</button>
+                  <button type="button" onClick={() => setMode('guided')} className={`inline-flex min-h-9 items-center gap-1 rounded-md px-2.5 text-[12px] font-medium ${mode === 'guided' ? 'bg-[#1E40AF] text-white' : 'text-slate-500 hover:text-slate-700'}`}><Wand2 className="h-3.5 w-3.5" /> Guided</button>
                 </div>
               )}
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-slate-600 border border-slate-200 bg-white hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-lg text-[12px] font-medium text-slate-600 border border-slate-200 bg-white hover:bg-slate-50"
                 title="Print the sheet"
               >
                 <Printer className="w-3.5 h-3.5" /> Print
               </button>
               {!locked && (
                 <>
-                  <button type="button" onClick={handleNew} disabled={locked} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"><RotateCcw className="w-3.5 h-3.5" /> Clear draft</button>
-                  <button type="button" onClick={handleSubmit} disabled={locked || saveLb.isPending} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed" title="Save progress — empty fields are allowed"><Save className="w-3.5 h-3.5" /> Submit</button>
+                  <button type="button" onClick={handleNew} disabled={locked} className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-lg text-[12px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"><RotateCcw className="w-3.5 h-3.5" /> Clear draft</button>
+                  <button type="button" onClick={handleSubmit} disabled={locked || saveLb.isPending} className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-lg text-[12px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed" title="Save progress — empty fields are allowed"><Save className="w-3.5 h-3.5" /> Submit</button>
                   <button
                     type="button"
                     onClick={handleClose}
                     disabled={locked || submitLb.isPending}
                     title="Finalize and lock — empty required fields will be flagged"
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-lg text-[12px] font-medium text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Lock className="w-3.5 h-3.5" /> Close
                   </button>
@@ -643,7 +671,7 @@ export default function LogbookModule({
           </div>
 
           {submitIssues.length > 0 && (
-            <div className="logbook-print-hide sticky top-0 z-20 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-sm" role="alert">
+            <div className="logbook-print-hide sticky top-0 z-20 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3" role="alert">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
@@ -723,7 +751,7 @@ export default function LogbookModule({
             </div>
 
             {/* Fill panel — hidden once the logbook is closed. */}
-            {!locked && <div className="w-full xl:w-[380px] xl:flex-none overflow-y-auto xl:sticky xl:top-2 xl:self-start xl:max-h-[calc(100vh-10rem)] pr-0.5">
+            {!locked && <div className="w-full overflow-y-auto pr-0.5 xl:w-[400px] xl:flex-none xl:sticky xl:top-2 xl:self-start xl:max-h-[calc(100vh-10rem)]">
               {mode === 'guided' ? (
                 <GuidedWizard logbook={activeLogbook} template={t} on={on} addRoll={addRoll} removeRoll={removeRoll} setScrap={setScrap} onSelectField={selectField} locked={locked} headerLocked={!!activeLogbook.productionPlanId} activeField={activeField} formulaOptions={formulaOptions} employeeOptions={peopleOptions} />
               ) : (
@@ -907,7 +935,8 @@ function RollRegister({ rolls, locked, onAdd, onRemove, employeeOptions }: { rol
     onAdd({ rollNumber: num.trim() || nextNum, weight: Number.parseFloat(wt) || 0, length: Number.parseFloat(len) || 0, winderBy: winder, packedBy: packed, status });
     setNum(''); setWt(''); setLen(''); setWinder(''); setPacked(''); setStatus('passed');
   };
-  const chip = (s: RollRecord['status']) => s === 'passed' ? 'bg-emerald-100 text-emerald-700' : s === 'failed' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
+  const chipTone = (s: RollRecord['status']): 'success' | 'error' | 'warn' =>
+    s === 'passed' ? 'success' : s === 'failed' ? 'error' : 'warn';
   return (
     <div>
       {rolls.length > 0 && (
@@ -916,7 +945,7 @@ function RollRegister({ rolls, locked, onAdd, onRemove, employeeOptions }: { rol
             <div key={i} className="flex items-center gap-2 text-[11px] border border-slate-100 rounded-lg px-2 py-1">
               <span className="font-mono font-bold text-slate-700">{r.rollNumber}</span>
               <span className="text-slate-500">{r.weight}kg · {r.length}m</span>
-              <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${chip(r.status)}`}>{r.status}</span>
+              <StatusBadge tone={chipTone(r.status)} className="ml-auto uppercase">{r.status}</StatusBadge>
               {!locked && <button onClick={() => onRemove(i)} className="text-slate-400 hover:text-rose-600 shrink-0" title="Remove roll"><Trash2 className="w-3.5 h-3.5" /></button>}
             </div>
           ))}
@@ -930,7 +959,7 @@ function RollRegister({ rolls, locked, onAdd, onRemove, employeeOptions }: { rol
           <input value={len} onChange={(e) => setLen(sanitizeDecimal(e.target.value))} inputMode="decimal" placeholder="Length m" className={inputCls} />
           <select value={winder} onChange={(e) => setWinder(e.target.value)} className={inputCls}><option value="">Winder</option>{employeeOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select>
           <select value={packed} onChange={(e) => setPacked(e.target.value)} className={inputCls}><option value="">Packed by</option>{employeeOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select>
-          <button onClick={add} className="col-span-2 inline-flex items-center justify-center gap-1 py-1.5 rounded-full bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700"><Plus className="w-3.5 h-3.5" /> Register roll</button>
+          <button onClick={add} className="col-span-2 inline-flex items-center justify-center gap-1 min-h-11 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700"><Plus className="w-3.5 h-3.5" /> Register roll</button>
         </div>
       )}
     </div>
@@ -1001,24 +1030,70 @@ function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, on
   useEffect(() => { if (found < 0) onSelectField(keyOf(items[0])); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
   const pct = Math.round(((idx + 1) / items.length) * 100);
   const fieldLocked = locked || (headerLocked && cur.kind === 'field' && HEADER_KEYS.has(cur.key));
+  const fieldBad = cur.kind === 'field' && (oorOf(cur.value, cur.lo, cur.hi) || (!!cur.numeric && isInvalidNumber(cur.value)));
+  const wizInput = [
+    'w-full min-h-11 rounded-lg border bg-white px-3 text-[15px] text-slate-800',
+    'placeholder:text-slate-400',
+    'focus:outline-none focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]',
+    'disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed',
+    'read-only:bg-slate-100 read-only:text-slate-500',
+  ].join(' ');
 
   return (
-    <div className="rounded-2xl border border-indigo-200 bg-white shadow-md p-3 space-y-3">
-      <div>
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide text-indigo-700">
-          <span className="inline-flex items-center gap-1"><Wand2 className="w-3.5 h-3.5" /> Guided entry</span>
-          <span>Step {idx + 1} / {items.length}</span>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white" data-testid="guided-wizard">
+      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#DBEAFE] text-[#1E40AF]" aria-hidden>
+              <Wand2 className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold leading-tight text-slate-900">Guided entry</p>
+              <p className="mt-0.5 truncate text-[13px] text-slate-500">{cur.step}</p>
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Step</p>
+            <p className="text-[15px] font-bold tabular-nums text-[#1E40AF]">
+              {idx + 1}
+              <span className="font-medium text-slate-400">/{items.length}</span>
+            </p>
+          </div>
         </div>
-        <div className="mt-1 h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-indigo-600 transition-all" style={{ width: `${pct}%` }} /></div>
-        <div className="mt-1 inline-block text-[9px] font-bold uppercase tracking-wide bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">{cur.step}</div>
+        <div
+          className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"
+          role="progressbar"
+          aria-valuemin={1}
+          aria-valuemax={items.length}
+          aria-valuenow={idx + 1}
+          aria-label={`Guided progress, step ${idx + 1} of ${items.length}`}
+        >
+          <div className="h-full rounded-full bg-[#1E40AF] transition-[width] duration-200 ease-out" style={{ width: `${pct}%` }} />
+        </div>
+        <span className="mt-2 inline-flex items-center rounded-md bg-[#DBEAFE] px-2 py-0.5 text-[11px] font-medium text-[#1E40AF]">
+          {cur.step}
+        </span>
       </div>
 
-      <div className="min-h-[96px] max-h-[46vh] overflow-y-auto pr-0.5">
+      <div className="max-h-[46vh] min-h-[120px] space-y-3 overflow-y-auto px-4 py-4">
         {cur.kind === 'field' ? (
           <label className="block">
-            <span className="block text-[11px] font-bold text-slate-600 mb-1">{cur.label}{cur.lo != null && cur.hi != null && cur.hi > cur.lo ? <span className="text-slate-400 font-normal"> · permissible {cur.lo}–{cur.hi}</span> : null}</span>
+            <span className="mb-1.5 block text-[13px] font-medium text-slate-700">
+              {cur.label}
+              {cur.lo != null && cur.hi != null && cur.hi > cur.lo ? (
+                <span className="ml-1 font-normal text-slate-500">· permissible {cur.lo}–{cur.hi}</span>
+              ) : null}
+            </span>
             {cur.type === 'select' ? (
-              <select key={cur.key} autoFocus disabled={fieldLocked} value={cur.value} onChange={(e) => cur.set(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go(idx + 1); }} className={inputCls + ' !py-2'}>
+              <select
+                key={cur.key}
+                autoFocus
+                disabled={fieldLocked}
+                value={cur.value}
+                onChange={(e) => cur.set(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') go(idx + 1); }}
+                className={`${wizInput} border-slate-200`}
+              >
                 <option value="">—</option>
                 {(cur.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -1038,121 +1113,182 @@ function GuidedWizard({ logbook, template, on, addRoll, removeRoll, setScrap, on
                   else cur.set(raw);
                 }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); go(idx + 1); } }}
-                className={`${inputCls} !py-2${oorOf(cur.value, cur.lo, cur.hi) || (cur.numeric && isInvalidNumber(cur.value)) ? ' border-amber-400 bg-amber-50 text-amber-700 font-bold' : ''}`}
-                placeholder={cur.type === 'date' || cur.type === 'time' ? undefined : 'Type, then press ↵'}
+                className={`${wizInput} ${fieldBad ? 'border-amber-400 bg-amber-50 text-amber-900 font-semibold focus:border-amber-500 focus:ring-amber-400' : 'border-slate-200'}`}
+                placeholder={cur.type === 'date' || cur.type === 'time' ? undefined : 'Type, then press Enter'}
               />
             )}
             {fieldLocked && headerLocked && cur.kind === 'field' && HEADER_KEYS.has(cur.key) && (
-              <span className="block mt-1 text-[10px] font-bold text-slate-500">Set at planning — not editable here.</span>
+              <span className="mt-2 block text-[12px] text-slate-500">Set at planning — not editable here.</span>
             )}
-            {oorOf(cur.value, cur.lo, cur.hi) && <span className="block mt-1 text-[10px] font-bold text-amber-700">Outside the permissible range — check the setting.</span>}
-            {cur.numeric && isInvalidNumber(cur.value) && <span className="block mt-1 text-[10px] font-bold text-amber-700">Enter a number only.</span>}
-            <span className="block mt-1 text-[9px] text-slate-400">Press ↵ to save &amp; go to the next field.</span>
+            {oorOf(cur.value, cur.lo, cur.hi) && (
+              <span className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-amber-800">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Outside the permissible range — check the setting.
+              </span>
+            )}
+            {cur.numeric && isInvalidNumber(cur.value) && (
+              <span className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-amber-800">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Enter a number only.
+              </span>
+            )}
+            {!fieldLocked && (
+              <span className="mt-2 block text-[12px] text-slate-400">Press Enter to save and continue.</span>
+            )}
           </label>
         ) : cur.kind === 'coil' ? (
           <div>
-            <span className="block text-[11px] font-bold text-slate-600 mb-1">Coil weights — {logbook.coilWeights.filter((c) => c.trim() !== '').length}/{logbook.coilWeights.length} filled <span className="text-slate-400 font-normal">({template.coil.rangeLo}–{template.coil.rangeHi} kg)</span></span>
-            <div className="grid grid-cols-4 gap-1">
+            <p className="mb-2 text-[13px] font-medium text-slate-700">
+              Coil weights — {logbook.coilWeights.filter((c) => c.trim() !== '').length}/{logbook.coilWeights.length} filled
+              <span className="ml-1 font-normal text-slate-500">({template.coil.rangeLo}–{template.coil.rangeHi} kg)</span>
+            </p>
+            <div className="grid grid-cols-4 gap-1.5">
               {logbook.coilWeights.map((c, i) => {
                 const oor = oorOf(c, template.coil.rangeLo, template.coil.rangeHi);
-                return <input key={i} readOnly={locked} inputMode="decimal" value={c} onChange={(e) => on.coil(i, sanitizeDecimal(e.target.value))} placeholder={String(i + 1)} className={`border rounded px-1 py-1 text-[10px] text-center ${oor ? 'border-amber-400 bg-amber-50 text-amber-700 font-bold' : 'border-slate-200'}`} />;
+                return (
+                  <input
+                    key={i}
+                    readOnly={locked}
+                    inputMode="decimal"
+                    value={c}
+                    onChange={(e) => on.coil(i, sanitizeDecimal(e.target.value))}
+                    placeholder={String(i + 1)}
+                    aria-label={`Coil ${i + 1}`}
+                    className={`min-h-11 rounded-lg border px-1.5 text-center text-[13px] ${oor ? 'border-amber-400 bg-amber-50 font-semibold text-amber-900' : 'border-slate-200 bg-white text-slate-800'} focus:outline-none focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]`}
+                  />
+                );
               })}
             </div>
           </div>
         ) : cur.kind === 'hourly' ? (
-          <div className="space-y-2">
-            <span className="block text-[11px] font-bold text-slate-600 mb-1">Hourly inspection — {logbook.hourlyInspections.length} time slots</span>
+          <div className="space-y-2.5">
+            <p className="text-[13px] font-medium text-slate-700">Hourly inspection — {logbook.hourlyInspections.length} time slots</p>
             {logbook.hourlyInspections.map((row, i) => {
               const isPipe = (template.layout ?? 'coil') === 'pipe';
               const od = template.pipeSpecs?.od;
               const wt = template.pipeSpecs?.weight;
               return (
-              <div key={i} className="border border-slate-200 rounded-lg p-1.5">
-                <div className="text-[10px] font-bold text-slate-600 mb-1">{row.timeSlot}</div>
-                <div className="grid grid-cols-3 gap-1">
-                  {isPipe ? <>
-                    <input readOnly={locked} inputMode="decimal" placeholder={`OD ${od ? `(${od.lo}–${od.hi})` : ''}`} value={row.od ?? ''} onChange={(e) => on.hourly(i, 'od', sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(row.od ?? '', od?.lo, od?.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />
-                    <input readOnly={locked} inputMode="decimal" placeholder={`Wt ${wt ? `(${wt.lo}–${wt.hi})` : ''}`} value={row.weight ?? ''} onChange={(e) => on.hourly(i, 'weight', sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(row.weight ?? '', wt?.lo, wt?.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />
-                    <input readOnly={locked} placeholder="Colour" value={row.colour} onChange={(e) => on.hourly(i, 'colour', e.target.value)} className={inputCls} />
-                    <select disabled={locked} value={row.okNotOk ?? ''} onChange={(e) => on.hourly(i, 'okNotOk', e.target.value)} className={inputCls}><option value="">Ok / Not ok</option><option value="Ok">Ok</option><option value="Not ok">Not ok</option></select>
-                    <select disabled={locked} value={row.inspectionBy} onChange={(e) => on.hourly(i, 'inspectionBy', e.target.value)} className={inputCls}><option value="">Inspector</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select>
-                  </> : <>
-                    <input readOnly={locked} inputMode="decimal" placeholder={`${template.dimensionSpecs.top.label} (${template.dimensionSpecs.top.lo}–${template.dimensionSpecs.top.hi})`} value={row.topDim} onChange={(e) => on.hourly(i, 'topDim', sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(row.topDim, template.dimensionSpecs.top.lo, template.dimensionSpecs.top.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />
-                    <input readOnly={locked} inputMode="decimal" placeholder={`${template.dimensionSpecs.bottom.label} (${template.dimensionSpecs.bottom.lo}–${template.dimensionSpecs.bottom.hi})`} value={row.bottomDim} onChange={(e) => on.hourly(i, 'bottomDim', sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(row.bottomDim, template.dimensionSpecs.bottom.lo, template.dimensionSpecs.bottom.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />
-                    {row.thickness.map((th, j) => <input key={j} readOnly={locked} inputMode="decimal" placeholder={`Thk ${j + 1}`} value={th} onChange={(e) => on.hourlyThickness(i, j, sanitizeDecimal(e.target.value))} className={`${inputCls}${oorOf(th, template.dimensionSpecs.thickness.lo, template.dimensionSpecs.thickness.hi) ? ' border-amber-400 bg-amber-50' : ''}`} />)}
-                    <input readOnly={locked} placeholder="Finish" value={row.finish} onChange={(e) => on.hourly(i, 'finish', e.target.value)} className={inputCls} />
-                    <input readOnly={locked} inputMode="decimal" placeholder="Per m" value={row.perMeter} onChange={(e) => on.hourly(i, 'perMeter', sanitizeDecimal(e.target.value))} className={inputCls} />
-                    <input readOnly={locked} placeholder="Colour" value={row.colour} onChange={(e) => on.hourly(i, 'colour', e.target.value)} className={inputCls} />
-                    <input readOnly={locked} placeholder="Tearing" value={row.tearing} onChange={(e) => on.hourly(i, 'tearing', e.target.value)} className={inputCls} />
-                    <select disabled={locked} value={row.inspectionBy} onChange={(e) => on.hourly(i, 'inspectionBy', e.target.value)} className={inputCls}><option value="">Inspector</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select>
-                  </>}
+                <div key={i} className="rounded-xl border border-slate-200 bg-slate-50/80 p-2.5">
+                  <div className="mb-2 text-[12px] font-semibold text-slate-800">{row.timeSlot}</div>
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                    {isPipe ? <>
+                      <input readOnly={locked} inputMode="decimal" placeholder={`OD ${od ? `(${od.lo}–${od.hi})` : ''}`} value={row.od ?? ''} onChange={(e) => on.hourly(i, 'od', sanitizeDecimal(e.target.value))} className={`${wizInput} text-[13px] ${oorOf(row.od ?? '', od?.lo, od?.hi) ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`} />
+                      <input readOnly={locked} inputMode="decimal" placeholder={`Wt ${wt ? `(${wt.lo}–${wt.hi})` : ''}`} value={row.weight ?? ''} onChange={(e) => on.hourly(i, 'weight', sanitizeDecimal(e.target.value))} className={`${wizInput} text-[13px] ${oorOf(row.weight ?? '', wt?.lo, wt?.hi) ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`} />
+                      <input readOnly={locked} placeholder="Colour" value={row.colour} onChange={(e) => on.hourly(i, 'colour', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`} />
+                      <select disabled={locked} value={row.okNotOk ?? ''} onChange={(e) => on.hourly(i, 'okNotOk', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`}><option value="">Ok / Not ok</option><option value="Ok">Ok</option><option value="Not ok">Not ok</option></select>
+                      <select disabled={locked} value={row.inspectionBy} onChange={(e) => on.hourly(i, 'inspectionBy', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`}><option value="">Inspector</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+                    </> : <>
+                      <input readOnly={locked} inputMode="decimal" placeholder={`${template.dimensionSpecs.top.label} (${template.dimensionSpecs.top.lo}–${template.dimensionSpecs.top.hi})`} value={row.topDim} onChange={(e) => on.hourly(i, 'topDim', sanitizeDecimal(e.target.value))} className={`${wizInput} text-[13px] ${oorOf(row.topDim, template.dimensionSpecs.top.lo, template.dimensionSpecs.top.hi) ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`} />
+                      <input readOnly={locked} inputMode="decimal" placeholder={`${template.dimensionSpecs.bottom.label} (${template.dimensionSpecs.bottom.lo}–${template.dimensionSpecs.bottom.hi})`} value={row.bottomDim} onChange={(e) => on.hourly(i, 'bottomDim', sanitizeDecimal(e.target.value))} className={`${wizInput} text-[13px] ${oorOf(row.bottomDim, template.dimensionSpecs.bottom.lo, template.dimensionSpecs.bottom.hi) ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`} />
+                      {row.thickness.map((th, j) => <input key={j} readOnly={locked} inputMode="decimal" placeholder={`Thk ${j + 1}`} value={th} onChange={(e) => on.hourlyThickness(i, j, sanitizeDecimal(e.target.value))} className={`${wizInput} text-[13px] ${oorOf(th, template.dimensionSpecs.thickness.lo, template.dimensionSpecs.thickness.hi) ? 'border-amber-400 bg-amber-50' : 'border-slate-200'}`} />)}
+                      <input readOnly={locked} placeholder="Finish" value={row.finish} onChange={(e) => on.hourly(i, 'finish', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`} />
+                      <input readOnly={locked} inputMode="decimal" placeholder="Per m" value={row.perMeter} onChange={(e) => on.hourly(i, 'perMeter', sanitizeDecimal(e.target.value))} className={`${wizInput} border-slate-200 text-[13px]`} />
+                      <input readOnly={locked} placeholder="Colour" value={row.colour} onChange={(e) => on.hourly(i, 'colour', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`} />
+                      <input readOnly={locked} placeholder="Tearing" value={row.tearing} onChange={(e) => on.hourly(i, 'tearing', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`} />
+                      <select disabled={locked} value={row.inspectionBy} onChange={(e) => on.hourly(i, 'inspectionBy', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`}><option value="">Inspector</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+                    </>}
+                  </div>
                 </div>
-              </div>
               );
             })}
           </div>
         ) : cur.kind === 'rolls' ? (
           <div>
-            <span className="block text-[11px] font-bold text-slate-600 mb-1">Register finished rolls</span>
+            <p className="mb-2 text-[13px] font-medium text-slate-700">Register finished rolls</p>
             <RollRegister rolls={logbook.rolls} locked={locked} onAdd={addRoll} onRemove={removeRoll} employeeOptions={employeeOptions} />
           </div>
         ) : cur.kind === 'traceability' ? (
           <div>
-            <span className="block text-[11px] font-bold text-slate-600 mb-1">Traceability — {logbook.traceabilityRows.filter((r) => r.lotNumber.trim() !== '').length}/{logbook.traceabilityRows.length} packed</span>
-            <div className="space-y-1">
+            <p className="mb-2 text-[13px] font-medium text-slate-700">
+              Traceability — {logbook.traceabilityRows.filter((r) => r.lotNumber.trim() !== '').length}/{logbook.traceabilityRows.length} packed
+            </p>
+            <div className="space-y-1.5">
               {logbook.traceabilityRows.map((row, i) => (
-                <div key={i} className="grid grid-cols-[16px_1fr_52px_58px] gap-1 items-center">
-                  <span className="text-[8px] text-slate-400 text-right">{i + 1}</span>
-                  <input readOnly={locked} placeholder="Lot Number" value={row.lotNumber} onChange={(e) => on.trace(i, 'lotNumber', e.target.value)} className="border border-slate-200 rounded px-1 py-0.5 text-[10px]" />
-                  <input readOnly={locked} placeholder="Col" value={row.colour} onChange={(e) => on.trace(i, 'colour', e.target.value)} className="border border-slate-200 rounded px-1 py-0.5 text-[10px]" />
-                  <input readOnly={locked} placeholder="Code" value={row.code} onChange={(e) => on.trace(i, 'code', e.target.value)} className="border border-slate-200 rounded px-1 py-0.5 text-[10px]" />
+                <div key={i} className="grid grid-cols-[20px_1fr_56px_64px] items-center gap-1.5">
+                  <span className="text-right text-[11px] tabular-nums text-slate-400">{i + 1}</span>
+                  <input readOnly={locked} placeholder="Lot Number" value={row.lotNumber} onChange={(e) => on.trace(i, 'lotNumber', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`} />
+                  <input readOnly={locked} placeholder="Col" value={row.colour} onChange={(e) => on.trace(i, 'colour', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`} />
+                  <input readOnly={locked} placeholder="Code" value={row.code} onChange={(e) => on.trace(i, 'code', e.target.value)} className={`${wizInput} border-slate-200 text-[13px]`} />
                 </div>
               ))}
             </div>
           </div>
         ) : cur.kind === 'production' ? (
-          <div className="space-y-2">
-            <span className="block text-[11px] font-bold text-slate-600 mb-1">Production report</span>
-            <div className="grid grid-cols-3 gap-1.5 text-[10px] text-slate-500 bg-slate-50 rounded-lg p-2">
-              <div>Total rolls<div className="font-bold text-slate-800 text-[12px]">{logbook.totalRollsProduced || '0'}</div></div>
-              <div>Total kg<div className="font-bold text-slate-800 text-[12px]">{logbook.totalRollKgs || '0'}</div></div>
-              <div>Consumed kg<div className="font-bold text-slate-800 text-[12px]">{logbook.totalConsumedKg || '0'}</div></div>
+          <div className="space-y-3">
+            <p className="text-[13px] font-medium text-slate-700">Production report</p>
+            <div className="grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total rolls</div>
+                <div className="mt-0.5 text-[16px] font-bold tabular-nums text-slate-900">{logbook.totalRollsProduced || '0'}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total kg</div>
+                <div className="mt-0.5 text-[16px] font-bold tabular-nums text-slate-900">{logbook.totalRollKgs || '0'}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Consumed</div>
+                <div className="mt-0.5 text-[16px] font-bold tabular-nums text-slate-900">{logbook.totalConsumedKg || '0'}</div>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <label className="block"><span className="block text-[9px] font-semibold uppercase text-slate-500">Process waste (kg)</span><input readOnly={locked} inputMode="decimal" value={logbook.processWasteKg} onChange={(e) => on.scalar('processWasteKg', sanitizeDecimal(e.target.value))} className={inputCls} /></label>
-              <label className="block"><span className="block text-[9px] font-semibold uppercase text-slate-500">Lumps waste (kg)</span><input readOnly={locked} inputMode="decimal" value={logbook.lumpsWasteKg} onChange={(e) => on.scalar('lumpsWasteKg', sanitizeDecimal(e.target.value))} className={inputCls} /></label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block"><span className="mb-1 block text-[12px] font-medium text-slate-600">Process waste (kg)</span><input readOnly={locked} inputMode="decimal" value={logbook.processWasteKg} onChange={(e) => on.scalar('processWasteKg', sanitizeDecimal(e.target.value))} className={`${wizInput} border-slate-200`} /></label>
+              <label className="block"><span className="mb-1 block text-[12px] font-medium text-slate-600">Lumps waste (kg)</span><input readOnly={locked} inputMode="decimal" value={logbook.lumpsWasteKg} onChange={(e) => on.scalar('lumpsWasteKg', sanitizeDecimal(e.target.value))} className={`${wizInput} border-slate-200`} /></label>
             </div>
             {template.rejectionReasons.length > 0 && <>
-              <span className="block text-[9px] font-semibold uppercase text-slate-500">Reason for rejections (counts)</span>
-              <div className="grid grid-cols-2 gap-1.5">
+              <span className="block text-[12px] font-medium text-slate-600">Reason for rejections (counts)</span>
+              <div className="grid grid-cols-2 gap-2">
                 {template.rejectionReasons.map((r) => (
-                  <label key={r} className="block"><span className="block text-[9px] text-slate-500 truncate">{r}</span><input readOnly={locked} inputMode="decimal" value={logbook.rejectionCounts[r] ?? ''} onChange={(e) => on.rejection(r, sanitizeDecimal(e.target.value))} className={inputCls} /></label>
+                  <label key={r} className="block"><span className="mb-1 block truncate text-[12px] text-slate-500">{r}</span><input readOnly={locked} inputMode="decimal" value={logbook.rejectionCounts[r] ?? ''} onChange={(e) => on.rejection(r, sanitizeDecimal(e.target.value))} className={`${wizInput} border-slate-200`} /></label>
                 ))}
               </div>
             </>}
-            <span className="block text-[9px] font-semibold uppercase text-slate-500">Meter check</span>
-            <div className="grid grid-cols-2 gap-1.5">
-              <label className="block"><span className="block text-[9px] text-slate-500">Checked by</span><select disabled={locked} value={logbook.meterCheckedBy} onChange={(e) => on.scalar('meterCheckedBy', e.target.value)} className={inputCls}><option value="">—</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
-              <label className="block"><span className="block text-[9px] text-slate-500">Time</span><input readOnly={locked} type="time" value={normalizeTime(logbook.meterCheckTime)} onChange={(e) => on.scalar('meterCheckTime', normalizeTime(e.target.value))} className={inputCls} /></label>
-              <label className="block"><span className="block text-[9px] text-slate-500">Meter</span><input readOnly={locked} placeholder="154/M" value={logbook.meter} onChange={(e) => on.scalar('meter', sanitizeMeter(e.target.value))} className={inputCls} /></label>
-              <label className="block"><span className="block text-[9px] text-slate-500">Meter Count Set</span><input readOnly={locked} inputMode="decimal" value={logbook.meterCountSet} onChange={(e) => on.scalar('meterCountSet', sanitizeDecimal(e.target.value))} className={inputCls} /></label>
+            <span className="block text-[12px] font-medium text-slate-600">Meter check</span>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block"><span className="mb-1 block text-[12px] text-slate-500">Checked by</span><select disabled={locked} value={logbook.meterCheckedBy} onChange={(e) => on.scalar('meterCheckedBy', e.target.value)} className={`${wizInput} border-slate-200`}><option value="">—</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+              <label className="block"><span className="mb-1 block text-[12px] text-slate-500">Time</span><input readOnly={locked} type="time" value={normalizeTime(logbook.meterCheckTime)} onChange={(e) => on.scalar('meterCheckTime', normalizeTime(e.target.value))} className={`${wizInput} border-slate-200`} /></label>
+              <label className="block"><span className="mb-1 block text-[12px] text-slate-500">Meter</span><input readOnly={locked} placeholder="154/M" value={logbook.meter} onChange={(e) => on.scalar('meter', sanitizeMeter(e.target.value))} className={`${wizInput} border-slate-200`} /></label>
+              <label className="block"><span className="mb-1 block text-[12px] text-slate-500">Meter Count Set</span><input readOnly={locked} inputMode="decimal" value={logbook.meterCountSet} onChange={(e) => on.scalar('meterCountSet', sanitizeDecimal(e.target.value))} className={`${wizInput} border-slate-200`} /></label>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-2">
-            <label className="block"><span className="block text-[11px] font-bold text-slate-600 mb-1">Start-up scrap (kg)</span><input readOnly={locked} value={logbook.scrapKg} onChange={(e) => setScrap(sanitizeDecimal(e.target.value))} inputMode="decimal" className={inputCls + ' !py-2'} /></label>
-            <label className="block"><span className="block text-[11px] font-bold text-slate-600 mb-1">Operator signature</span><select disabled={locked} value={logbook.operatorSignature} onChange={(e) => on.scalar('operatorSignature', e.target.value)} className={inputCls + ' !py-2'}><option value="">—</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
-            <label className="block"><span className="block text-[11px] font-bold text-slate-600 mb-1">Shift supervisor signature</span><select disabled={locked} value={logbook.supervisorSignature} onChange={(e) => on.scalar('supervisorSignature', e.target.value)} className={inputCls + ' !py-2'}><option value="">—</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+          <div className="grid grid-cols-1 gap-3">
+            <label className="block"><span className="mb-1.5 block text-[13px] font-medium text-slate-700">Start-up scrap (kg)</span><input readOnly={locked} value={logbook.scrapKg} onChange={(e) => setScrap(sanitizeDecimal(e.target.value))} inputMode="decimal" className={`${wizInput} border-slate-200`} /></label>
+            <label className="block"><span className="mb-1.5 block text-[13px] font-medium text-slate-700">Operator signature</span><select disabled={locked} value={logbook.operatorSignature} onChange={(e) => on.scalar('operatorSignature', e.target.value)} className={`${wizInput} border-slate-200`}><option value="">—</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+            <label className="block"><span className="mb-1.5 block text-[13px] font-medium text-slate-700">Shift supervisor signature</span><select disabled={locked} value={logbook.supervisorSignature} onChange={(e) => on.scalar('supervisorSignature', e.target.value)} className={`${wizInput} border-slate-200`}><option value="">—</option>{employeeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <button onClick={() => go(idx - 1)} disabled={idx === 0} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-40"><ArrowLeft className="w-3.5 h-3.5" /> Prev</button>
-        <button onClick={() => go(idx + 1)} disabled={idx === items.length - 1} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40">Next <ArrowRight className="w-3.5 h-3.5" /></button>
-        <select value={idx} onChange={(e) => go(Number(e.target.value))} className={inputCls + ' !w-auto ml-auto'} title="Jump to step">
-          {items.map((it, i) => <option key={i} value={i}>{i + 1}. {it.kind === 'field' ? it.label : it.step}</option>)}
-        </select>
+      <div className="space-y-2 border-t border-slate-200 bg-slate-50 px-3 py-3">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => go(idx - 1)}
+            disabled={idx === 0}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ArrowLeft className="h-4 w-4" /> Prev
+          </button>
+          <button
+            type="button"
+            onClick={() => go(idx + 1)}
+            disabled={idx === items.length - 1}
+            className="inline-flex min-h-11 flex-[1.4] items-center justify-center gap-1.5 rounded-lg bg-[#1E40AF] px-3 text-[13px] font-medium text-white hover:bg-[#1E3A8A] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Next <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+        <label className="block">
+          <span className="sr-only">Jump to step</span>
+          <select
+            value={idx}
+            onChange={(e) => go(Number(e.target.value))}
+            className={`${wizInput} border-slate-200 text-[13px]`}
+            title="Jump to step"
+          >
+            {items.map((it, i) => (
+              <option key={i} value={i}>{i + 1}. {it.kind === 'field' ? it.label : it.step}</option>
+            ))}
+          </select>
+        </label>
       </div>
     </div>
   );
@@ -1200,7 +1336,7 @@ function ChipEditor({ label, items, onChange, placeholder }: { label: string; it
       <span className="block text-[9px] font-semibold uppercase tracking-wide text-slate-500 mb-1">{label}</span>
       <div className="flex flex-wrap gap-1.5 mb-1.5">
         {items.map((it, i) => (
-          <span key={i} className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+          <span key={i} className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md px-2 py-0.5 text-[11px] font-medium">
             {it}
             <button onClick={() => onChange(items.filter((_, idx) => idx !== i))} className="text-indigo-400 hover:text-rose-600" title="Remove"><X className="w-3 h-3" /></button>
           </span>
@@ -1247,24 +1383,24 @@ function AdminTemplateEditor({ template, templates, selectedTemplateId, setSelec
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-200 rounded-2xl p-2.5 shadow-md">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-200 rounded-xl p-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">Template</span>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Template</span>
           <select className={inputCls + ' !w-auto min-w-[220px]'} value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)}>
             {templates.map((tpl) => <option key={tpl.id} value={tpl.id}>{tpl.productName} · {tpl.docNo}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
-          {savedFlash && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700"><CheckCircle2 className="w-3.5 h-3.5" /> Saved</span>}
-          <button onClick={addTemplate} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200"><Plus className="w-3.5 h-3.5" /> New template</button>
-          <button onClick={save} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700"><Save className="w-3.5 h-3.5" /> Save template</button>
+          {savedFlash && <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700"><CheckCircle2 className="w-3.5 h-3.5" /> Saved</span>}
+          <button onClick={addTemplate} className="inline-flex items-center gap-1 min-h-11 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200"><Plus className="w-3.5 h-3.5" /> New template</button>
+          <button onClick={save} className="inline-flex items-center gap-1 min-h-11 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700"><Save className="w-3.5 h-3.5" /> Save template</button>
         </div>
       </div>
 
       {/* Two columns: builder form (left) + live preview (right, sticky) */}
       <div className="flex flex-col xl:flex-row gap-4 items-start">
         <div className="w-full xl:flex-1 min-w-0 space-y-3">
-          <div className="bg-white border border-slate-200 rounded-2xl p-3 grid grid-cols-2 md:grid-cols-3 gap-2.5">
+          <div className="bg-white border border-slate-200 rounded-xl p-3 grid grid-cols-2 md:grid-cols-3 gap-2.5">
             <PText label="Doc No" value={draft.docNo} onChange={(v) => set('docNo', v)} />
             <PText label="Rev No" value={draft.revNo} onChange={(v) => set('revNo', v)} />
             <PText label="Rev Date" value={draft.revDate} onChange={(v) => set('revDate', v)} />
@@ -1277,7 +1413,7 @@ function AdminTemplateEditor({ template, templates, selectedTemplateId, setSelec
             <PText label="Lot number note" value={draft.lotNumberNote} onChange={(v) => set('lotNumberNote', v)} />
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-3">
+          <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-3">
             <ChipEditor label="Shifts" items={draft.shifts} onChange={(n) => set('shifts', n)} placeholder="D / N …" />
             <ChipEditor label="Supervisors" items={draft.supervisors} onChange={(n) => set('supervisors', n)} placeholder="Add a name" />
             <ChipEditor label="Die zones" items={draft.dieZones} onChange={(n) => set('dieZones', n)} placeholder="e.g. Die 6" />
@@ -1286,7 +1422,7 @@ function AdminTemplateEditor({ template, templates, selectedTemplateId, setSelec
             <ChipEditor label="Rejection reasons" items={draft.rejectionReasons} onChange={(n) => set('rejectionReasons', n)} placeholder="Add a defect reason" />
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-3">
+          <div className="bg-white border border-slate-200 rounded-xl p-3">
             <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-2">Zone temperature setpoints (°C) — flags out-of-range temps on the sheet</span>
             <div className="space-y-1.5">
               <div className="grid grid-cols-[1fr_64px_64px_64px] gap-1.5 text-[9px] font-bold uppercase text-slate-400 px-0.5"><span>Zone</span><span className="text-center">Target</span><span className="text-center">Min</span><span className="text-center">Max</span></div>
@@ -1307,7 +1443,7 @@ function AdminTemplateEditor({ template, templates, selectedTemplateId, setSelec
             <p className="mt-1.5 text-[9px] text-slate-400">Leave a zone at max ≤ min to skip range-checking it.</p>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-3">
+          <div className="bg-white border border-slate-200 rounded-xl p-3">
             <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-2">Coil weight spec</span>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2.5">
               <PText label="Per M" value={String(draft.coil.perM)} onChange={(v) => set('coil', { ...draft.coil, perM: Number(v) || 0 })} />
@@ -1319,7 +1455,7 @@ function AdminTemplateEditor({ template, templates, selectedTemplateId, setSelec
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-3">
+          <div className="bg-white border border-slate-200 rounded-xl p-3">
             <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-2">Dimension specs (lo/hi auto = nominal ± tol)</span>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
               <PText label="Top nominal" value={String(draft.dimensionSpecs.top.nominal)} onChange={(v) => set('dimensionSpecs', dimWith(draft, 'top', { nominal: Number(v) || 0 }))} />
@@ -1358,7 +1494,7 @@ function dimWith(draft: LogbookTemplate, key: 'top' | 'bottom', patch: { nominal
 
 // Minimal safety fallback if no template exists at first render (should not happen — one is seeded).
 const FALLBACK_TEMPLATE: LogbookTemplate = {
-  id: 'fallback', docNo: 'QR/MFG/013', revNo: '02', revDate: '', brandName: 'MASS POLYMERS', location: '', title: 'MACHINE LOG BOOK',
+  id: 'fallback', docNo: 'QR/MFG/013', revNo: '02', revDate: '', brandName: 'MesaDesk', location: '', title: 'MACHINE LOG BOOK',
   productName: 'Untitled', shifts: ['D', 'N'], supervisors: [], lotNumberNote: '', dieZones: ['Die 6', 'Die 5'],
   barrelZones: ['Zone 4', 'Zone 3', 'Zone 2', 'Zone 1'],
   coil: { perM: 150, targetKg: 0, bobbinGms: 0, rangeLo: 0, rangeHi: 0, count: 44 },

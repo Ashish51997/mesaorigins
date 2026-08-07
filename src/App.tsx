@@ -9,7 +9,6 @@ import {
   Users,
   Briefcase,
   CalendarDays,
-  FileSpreadsheet,
   CheckCircle2,
   Package2,
   Truck,
@@ -20,12 +19,9 @@ import {
   HelpCircle,
   Menu,
   X,
-  Sun,
-  Moon,
   Gauge,
   LogOut,
   Search,
-  Globe,
   ChevronDown,
   ChevronsLeft,
   Compass,
@@ -73,7 +69,7 @@ import { employeeForRole } from './lib/userStore';
 import { setDevUser } from './lib/apiIdentity';
 import { api } from './lib/apiClient';
 import { groupNav } from './lib/navGroups';
-import { roleInfo, themeForRole, homeForRole, normalizeRole } from './lib/roles';
+import { roleInfo, homeForRole, normalizeRole } from './lib/roles';
 import { ToastHost, pushToast } from './components/Notify';
 import { RoleSwitcher } from './components/RoleSwitcher';
 import { OfflineBanner, PracticeBanner } from './components/Banners';
@@ -82,10 +78,11 @@ import { useQueue } from './lib/offline';
 import { OrdersToPlan, PlanBoardScreen, Formulations, PlannerData } from './components/planner/PlannerScreens';
 import { RollInspectionQueue, Holds, QualityData } from './components/quality/QualityScreens';
 import { ReceiveMaterial, IssueLot, RMStockBoard, StoreData } from './components/store/StoreScreens';
-import { Inquiries, Quotations, Orders, SalesCustomers, SalesComplaints, SalesData } from './components/sales/SalesScreens';
+import { Orders, SalesCustomers, SalesComplaints, SalesData, EnquiryDesk } from './components/sales/SalesScreens';
 import { ReadyToDispatch, DispatchHistory, DispatchData } from './components/dispatch/DispatchScreens';
 import { PreventiveSchedule, MachinesBoard, MaintData } from './components/maintenance/MaintenanceScreens';
 import RoleDashboard from './components/RoleDashboard';
+import ManagementDashboard from './components/ManagementDashboard';
 import MachineTasks from './components/MachineTasks';
 import { clearMachineQueryFromUrl, readMachineCodeFromLocation } from './lib/machineQr';
 import LogbookLedger from './components/LogbookLedger';
@@ -94,7 +91,7 @@ import { EmployeeDirectory, RolesAccess } from './components/admin/AdminScreens'
 import OnboardingPage from './components/OnboardingPage';
 import InstallAppButton from './components/InstallAppButton';
 import { useMyPermissions } from './lib/queries/admin';
-import { useLang, setLang, useT } from './lib/i18n';
+import { useT } from './lib/i18n';
 
 type ModuleType =
   | 'dashboard'
@@ -110,6 +107,7 @@ type ModuleType =
   | 'receive'
   | 'issue_lot'
   | 'rm_stock'
+  | 'enquiry_desk'
   | 'inquiries'
   | 'quotations'
   | 'orders'
@@ -130,8 +128,9 @@ export default function App() {
   );
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
   const [pendingMachineCode, setPendingMachineCode] = useState<string | null>(() => readMachineCodeFromLocation());
+  const [logEntryImmersive, setLogEntryImmersive] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true,
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true,
   );
   const [currentRole, setCurrentRole] = useState<string>(() => {
     const saved = localStorage.getItem('erp_session');
@@ -143,39 +142,33 @@ export default function App() {
     }
     return 'Managing Director';
   });
-  // Theme is a global user preference now (top toggle), persisted and applied to
-  // every screen. New light-first guideline is the default until the user chooses.
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    const saved = localStorage.getItem('theme');
-    return (saved === 'light' || saved === 'dark') ? saved : 'light';
-  });
-
+  // Light theme only — strip any leftover dark class / preference.
   React.useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    window.document.documentElement.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+  }, []);
 
-  // Keep desktop sidebar expanded when leaving mobile widths.
+  // Keep desktop sidebar expanded when entering lg+ viewports.
   React.useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
+    const mq = window.matchMedia('(min-width: 1024px)');
     const sync = () => {
-      if (!mq.matches) setSidebarOpen(true);
+      if (mq.matches) setSidebarOpen(true);
     };
     sync();
     mq.addEventListener('change', sync);
     return () => mq.removeEventListener('change', sync);
   }, []);
 
+  // Leaving Machine Tasks clears immersive log-entry chrome.
+  React.useEffect(() => {
+    if (activeModule !== 'machine_tasks') setLogEntryImmersive(false);
+  }, [activeModule]);
+
   const openModule = (id: ModuleType) => {
     setActiveModule(id);
   };
 
-  // Shell state: trace search + Batch Passport, language, bell dropdown.
+  // Shell state: trace search + Batch Passport, menu filter.
   const [traceQuery, setTraceQuery] = useState('');
   const [menuQuery, setMenuQuery] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -186,11 +179,7 @@ export default function App() {
   });
   const [passportQuery, setPassportQuery] = useState<string | null>(null);
   const queued = useQueue();
-  const lang = useLang();
   const t = useT();
-
-  // Theme no longer follows the role — the user's choice from the top toggle wins
-  // globally and persists across roles and sessions (see the theme state above).
 
   // Start the live simulation ticker once.
   React.useEffect(() => { startSimulation(); }, []);
@@ -465,12 +454,12 @@ export default function App() {
   };
 
   // Navigation schema
+  // Full catalog — order matches navGroups NAV_ITEM_ORDER (value chain).
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
-    { id: 'inquiries', label: 'Inquiries', icon: Briefcase, color: 'text-emerald-600' },
-    { id: 'quotations', label: 'Quotations', icon: FileSpreadsheet, color: 'text-indigo-600' },
-    { id: 'orders', label: 'Orders', icon: CheckCircle2, color: 'text-blue-600' },
     { id: 'sales_customers', label: 'Customers', icon: Users, color: 'text-sky-600' },
+    { id: 'enquiry_desk', label: 'Enquiry Desk', icon: Briefcase, color: 'text-emerald-600' },
+    { id: 'orders', label: 'Orders', icon: CheckCircle2, color: 'text-blue-600' },
     { id: 'sales_complaints', label: 'Complaints & CAPA', icon: ShieldAlert, color: 'text-rose-600' },
     { id: 'orders_to_plan', label: 'Orders to Plan', icon: Briefcase, color: 'text-indigo-600' },
     { id: 'plan_board', label: 'Production Plan', icon: CalendarDays, color: 'text-teal-600' },
@@ -491,12 +480,15 @@ export default function App() {
     { id: 'acl', label: 'Roles & Access', icon: ShieldAlert, color: 'text-rose-600' },
   ];
 
-  // Managing Director — real read-only exec: dashboard KPIs + read-only boards.
+  // Managing Director — exec overview + read-only drill-downs for queue CTAs.
   const mdNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
-    { id: 'rm_stock', label: 'Stock & Inventory', icon: Package2, color: 'text-cyan-600' },
-    { id: 'dispatch_history', label: 'Dispatch History', icon: Truck, color: 'text-slate-500' },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-sky-600' },
+    { id: 'sales_complaints', label: 'Complaints', icon: ShieldAlert, color: 'text-rose-600' },
     { id: 'logbook_ledger', label: 'Logbook Ledger', icon: BookOpen, color: 'text-teal-600' },
+    { id: 'roll_queue', label: 'QA Gate', icon: CheckCircle2, color: 'text-rose-500' },
+    { id: 'rm_stock', label: 'Stock & Inventory', icon: Package2, color: 'text-cyan-600' },
+    { id: 'ready', label: 'Ready to Dispatch', icon: Truck, color: 'text-emerald-600' },
+    { id: 'dispatch_history', label: 'Dispatch History', icon: Truck, color: 'text-slate-500' },
   ];
   // Production Planner — planning + machine tasks (log books open from a task).
   const plannerNavItems = [
@@ -526,10 +518,9 @@ export default function App() {
   ];
   const salesNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
-    { id: 'inquiries', label: 'Inquiries', icon: Briefcase, color: 'text-emerald-600' },
-    { id: 'quotations', label: 'Quotations', icon: FileSpreadsheet, color: 'text-indigo-600' },
-    { id: 'orders', label: 'Orders', icon: CheckCircle2, color: 'text-blue-600' },
     { id: 'sales_customers', label: 'Customers', icon: Users, color: 'text-sky-600' },
+    { id: 'enquiry_desk', label: 'Enquiry Desk', icon: Briefcase, color: 'text-emerald-600' },
+    { id: 'orders', label: 'Orders', icon: CheckCircle2, color: 'text-blue-600' },
     { id: 'sales_complaints', label: 'Complaints', icon: ShieldAlert, color: 'text-rose-600' },
   ];
   const dispatchNavItems = [
@@ -544,11 +535,11 @@ export default function App() {
   ];
   const adminNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600' },
-    { id: 'users', label: 'People & Roles', icon: Users, color: 'text-indigo-600' },
-    { id: 'acl', label: 'Roles & Access', icon: ShieldAlert, color: 'text-rose-600' },
     { id: 'logbook_templates', label: 'Logbook Templates', icon: Settings, color: 'text-indigo-600' },
     { id: 'machine_tasks', label: 'Machine Tasks', icon: Gauge, color: 'text-amber-600' },
     { id: 'logbook_ledger', label: 'Logbook Ledger', icon: BookOpen, color: 'text-teal-600' },
+    { id: 'users', label: 'People & Roles', icon: Users, color: 'text-indigo-600' },
+    { id: 'acl', label: 'Roles & Access', icon: ShieldAlert, color: 'text-rose-600' },
   ];
 
   const moduleLabel = (id: string): string => {
@@ -577,8 +568,10 @@ export default function App() {
   const myPerms = useMyPermissions(devEmail || currentRole).data;
   const dbAllows = (id: string): boolean => {
     if (id === 'dashboard') return true;
-    if (!myPerms) return can(`screen:${id}`);
-    return myPerms.isAdmin || myPerms.screens.includes(id);
+    const has = (screen: string) => (!myPerms ? can(`screen:${screen}`) : myPerms.isAdmin || myPerms.screens.includes(screen));
+    if (id === 'enquiry_desk') return has('enquiry_desk') || has('inquiries') || has('quotations');
+    if (id === 'inquiries' || id === 'quotations') return has(id) || has('enquiry_desk');
+    return has(id);
   };
 
   const roleNav = isMD ? mdNavItems : isPlanner ? plannerNavItems : isOperator ? operatorNavItems : isQA ? qualityNavItems : isStore ? storeNavItems : isSales ? salesNavItems : isDispatch ? dispatchNavItems : isMaint ? maintNavItems : isAdmin ? adminNavItems : navItems;
@@ -589,14 +582,25 @@ export default function App() {
   const shownIds = new Set(visibleNav.map((i) => i.id));
   // …plus any DB-allowed renderable screen beyond the role's curated menu (e.g. a
   // per-employee grant), pulled from the full screen catalog for its label/icon.
-  const extraNav = navItems.filter((item) => !shownIds.has(item.id) && dbAllows(item.id));
+  // Skip legacy inquiries/quotations — merged into Enquiry Desk.
+  const extraNav = navItems.filter((item) =>
+    !shownIds.has(item.id)
+    && item.id !== 'inquiries'
+    && item.id !== 'quotations'
+    && dbAllows(item.id),
+  );
   const currentNavItems = [...visibleNav, ...extraNav];
-  const canViewActive = activeModule === 'dashboard' || currentNavItems.some((n) => n.id === activeModule) || dbAllows(activeModule);
+  const canViewActive = activeModule === 'dashboard'
+    || activeModule === 'enquiry_desk'
+    || activeModule === 'inquiries'
+    || activeModule === 'quotations'
+    || currentNavItems.some((n) => n.id === activeModule)
+    || dbAllows(activeModule);
   const homeModule = homeForRole(currentRole) as ModuleType;
   const bestTraceTarget = (query: string): ModuleType => {
     const q = query.trim().toLowerCase();
     if (!q) return activeModule;
-    if (q.startsWith('inq')) return 'inquiries';
+    if (q.startsWith('inq')) return 'enquiry_desk';
     if (q.startsWith('so')) return 'orders';
     if (q.startsWith('capa') || q.startsWith('compl') || q.startsWith('cmp')) return 'sales_complaints';
     if (q.startsWith('inv') || q.startsWith('gp')) return 'dispatch_history';
@@ -634,21 +638,17 @@ export default function App() {
     return (
       <LoginScreen
         onLogin={handleCustomLogin}
-        theme={theme}
-        onSetTheme={setTheme}
       />
     );
   }
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center font-sans gap-4" id="applet-loading">
-        <div className="animate-bounce">
-          <Logo className="h-12 w-12 rounded-xl shadow-lg shadow-indigo-600/30" />
-        </div>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans gap-4" id="applet-loading">
+        <Logo className="h-12 w-12" />
         <div className="space-y-1 text-center">
-          <h3 className="font-display font-extrabold text-white text-sm uppercase tracking-widest">MASS POLIMER</h3>
-          <p className="text-xs text-slate-500 font-bold">Synchronizing Terminal Records...</p>
+          <h3 className="font-extrabold text-slate-900 text-base">MesaDesk</h3>
+          {/* <p className="text-xs text-slate-500 font-medium">One Platform. Every Operation.</p> */}
         </div>
       </div>
     );
@@ -657,32 +657,32 @@ export default function App() {
   const showSidebarLabels = sidebarOpen;
 
   return (
-    <div className={`h-screen overflow-hidden bg-slate-50 flex ${theme === 'dark' ? 'dark' : ''}`} id="applet-root">
-      {/* SIDEBAR — desktop only; mobile uses bottom nav + More sheet */}
-      <aside 
-        className={`hidden md:flex bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 flex-col transition-all duration-300 border-r border-slate-200 dark:border-slate-800 shrink-0 ${
-          sidebarOpen ? 'w-64' : 'w-20'
+    <div className="h-screen overflow-hidden bg-slate-50 flex" id="applet-root">
+      {/* SIDEBAR — lg+ desktop; mobile uses bottom nav + More sheet */}
+      <aside
+        data-md-sidebar
+        className={`md-sidebar ${logEntryImmersive ? 'hidden' : 'hidden lg:flex'} bg-white text-slate-600 flex-col transition-all duration-300 shrink-0 ${
+          sidebarOpen ? 'w-[260px]' : 'w-20'
         }`}
       >
-        {/* LOGO FRAME — logo + name + collapse toggle when open; only the logo when collapsed */}
-        <div className={`h-16 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 ${showSidebarLabels ? 'px-4' : 'justify-center px-0'}`}>
+        {/* Brand lockup */}
+        <div className={`min-h-12 flex items-center gap-2.5 border-b border-slate-200 ${showSidebarLabels ? 'px-3' : 'justify-center px-0'}`}>
           <button
             onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }}
-            className={`shrink-0 rounded-lg ${showSidebarLabels ? 'cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'}`}
-            title={showSidebarLabels ? 'Mesadesk' : 'Expand menu'}
-            aria-label={showSidebarLabels ? 'Mesadesk' : 'Expand menu'}
+            className={`shrink-0 ${showSidebarLabels ? 'cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'}`}
+            title={showSidebarLabels ? 'MesaDesk' : 'Expand menu'}
+            aria-label={showSidebarLabels ? 'MesaDesk' : 'Expand menu'}
           >
-            <Logo className="h-9 w-9 rounded-lg shadow-xs" />
+            <Logo className="h-8 w-8" />
           </button>
           {showSidebarLabels && (
             <>
               <div className="min-w-0">
-                <h1 className="font-display font-bold text-slate-800 dark:text-white tracking-tight text-sm leading-none">Mesadesk</h1>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold tracking-wider uppercase">ERP Suite</span>
+                <h1 className="font-extrabold text-slate-900 tracking-tight text-[15px] leading-none">MesaDesk</h1>
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors shrink-0"
+                className="ml-auto p-1.5 min-h-9 min-w-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
                 title="Collapse sidebar"
                 aria-label="Collapse sidebar"
               >
@@ -692,8 +692,7 @@ export default function App() {
           )}
         </div>
 
-        {/* NAVIGATION SYSTEM */}
-        <nav className="flex-1 py-3 px-3 overflow-y-auto">
+        <nav className="flex-1 py-2 px-2.5 overflow-y-auto">
           {showSidebarLabels && (
             <div className="relative mb-2">
               <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -701,7 +700,7 @@ export default function App() {
                 value={menuQuery}
                 onChange={(e) => setMenuQuery(e.target.value)}
                 placeholder="Search menu"
-                className="w-full pl-8 pr-3 h-9 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none"
+                className="w-full pl-8 pr-2.5 h-9 rounded-lg border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-600"
               />
             </div>
           )}
@@ -710,22 +709,21 @@ export default function App() {
             const filtered = q ? currentNavItems.filter((i) => i.label.toLowerCase().includes(q)) : currentNavItems;
             const groups = groupNav(filtered);
             if (groups.length === 0) {
-              return showSidebarLabels ? <div className="px-3 py-4 text-xs text-slate-400">No menu item matches “{menuQuery}”.</div> : null;
+              return showSidebarLabels ? <div className="px-3 py-4 text-xs text-slate-500">No menu item matches “{menuQuery}”.</div> : null;
             }
             return groups.map(({ step, items }, gi) => {
-              // Collapsible only when labels are shown and not searching (search shows all).
               const collapsed = showSidebarLabels && !q && collapsedGroups.has(step.key);
               return (
-              <div key={step.key} className={gi > 0 ? (showSidebarLabels ? 'mt-2.5' : 'mt-1 pt-1 border-t border-slate-100 dark:border-slate-800') : ''}>
+              <div key={step.key} className={gi > 0 ? (showSidebarLabels ? 'mt-2' : 'mt-1 pt-1 border-t border-slate-200') : ''}>
                 {showSidebarLabels && (
-                  <button onClick={() => toggleGroup(step.key)} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 transition-colors" aria-expanded={!collapsed}>
-                    <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+                  <button onClick={() => toggleGroup(step.key)} className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-400 transition-colors" aria-expanded={!collapsed}>
+                    <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
                     <span className="flex-1 text-left truncate">{step.label}</span>
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">{items.length}</span>
+                    <span className="text-[10px] font-medium text-slate-400 tabular-nums">{items.length}</span>
                   </button>
                 )}
                 {!collapsed && (
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {items.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeModule === item.id;
@@ -733,15 +731,14 @@ export default function App() {
                       <button
                         key={item.id}
                         onClick={() => openModule(item.id as ModuleType)}
-                        className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${showSidebarLabels ? '' : 'justify-center'} ${
+                        className={`relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium tracking-wide transition-colors ${showSidebarLabels ? '' : 'justify-center'} ${
                           isActive
-                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
-                            : 'text-slate-500 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
+                            ? 'bg-sky-50 text-sky-700'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         }`}
                         title={item.label}
                       >
-                        {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-current" aria-hidden="true" />}
-                        <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${isActive ? '' : 'text-slate-500 dark:text-slate-400'}`} />
+                        <Icon className="h-4 w-4 shrink-0" />
                         {showSidebarLabels && <span className="truncate">{t(item.label)}</span>}
                       </button>
                     );
@@ -754,28 +751,27 @@ export default function App() {
           })()}
         </nav>
 
-        {/* PROFILE BAR */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs">
+        <div className="p-2.5 border-t border-slate-200 text-xs">
           {user && (
             showSidebarLabels ? (
-              <div className="flex items-center gap-2.5 rounded-xl p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-3xs">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-bold text-white text-[11px] shrink-0 shadow-sm">
+              <div className="flex items-center gap-2 rounded-xl p-1.5 bg-slate-50 border border-slate-200">
+                <div className="h-8 w-8 rounded-lg bg-sky-600 flex items-center justify-center font-bold text-white text-[11px] shrink-0">
                   {(roleInfo(currentRole).user || 'U').split(/\s+/).map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-bold text-slate-800 dark:text-slate-100 text-xs leading-tight truncate">{user?.displayName || roleInfo(currentRole).user}</p>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">{currentRole} · Shift {roleInfo(currentRole).shift}</span>
+                  <p className="font-medium text-slate-900 text-xs leading-tight truncate">{user?.displayName || roleInfo(currentRole).user}</p>
+                  <span className="text-[10px] text-slate-500 truncate block">{currentRole} · Shift {roleInfo(currentRole).shift}</span>
                 </div>
-                <button onClick={handleSignOut} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0 cursor-pointer" title="Sign out" aria-label="Sign out">
+                <button onClick={handleSignOut} className="p-1.5 min-h-9 min-w-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer" title="Sign out" aria-label="Sign out">
                   <LogOut className="h-4 w-4" />
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-bold text-white text-[11px] shadow-sm" title={`${roleInfo(currentRole).user} · ${currentRole}`}>
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="h-8 w-8 rounded-lg bg-sky-600 flex items-center justify-center font-bold text-white text-[11px]" title={`${roleInfo(currentRole).user} · ${currentRole}`}>
                   {(roleInfo(currentRole).user || 'U').split(/\s+/).map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase()}
                 </div>
-                <button onClick={handleSignOut} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer" title="Sign out" aria-label="Sign out">
+                <button onClick={handleSignOut} className="p-1.5 min-h-9 min-w-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer" title="Sign out" aria-label="Sign out">
                   <LogOut className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -784,108 +780,65 @@ export default function App() {
         </div>
       </aside>
 
-      {/* CORE MODULE CONTAINER */}
       <div className="flex-1 flex flex-col min-w-0">
-        
-        {/* HEADER BAR — floating pill */}
-        <header className="h-14 sm:h-16 bg-white border border-slate-200 px-3 sm:px-6 flex items-center justify-between shadow-md shrink-0 gap-2 sm:gap-3 m-2 sm:m-3 md:m-4 rounded-full">
+        {/* Flat top bar — hidden during immersive log entry */}
+        {!logEntryImmersive && (
+        <header className="min-h-12 bg-white border-b border-slate-200 px-3 lg:px-5 flex items-center justify-between shrink-0 gap-2 sm:gap-3">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hidden md:inline-flex p-2 rounded-full hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-700 shrink-0"
+              className="hidden lg:inline-flex p-1.5 min-h-9 min-w-9 items-center justify-center rounded-lg hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-700 shrink-0"
               aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
               <Menu className="h-4.5 w-4.5" />
             </button>
-            <div className="text-xs hidden lg:block truncate">
-              <span className="text-slate-400 font-medium">Mesadesk</span>
-              <span className="mx-2 text-slate-300">/</span>
-              <span className="font-bold text-slate-800 uppercase tracking-wider">
-                {moduleLabel(activeModule)}
-              </span>
+            <div className="lg:hidden shrink-0">
+              <Logo className="h-8 w-8" />
             </div>
-            <div className="text-xs font-bold text-slate-800 uppercase tracking-wider truncate lg:hidden">
-              {moduleLabel(activeModule)}
+            <div className="min-w-0">
+              <h2 className="text-[15px] sm:text-base font-bold text-slate-900 truncate leading-tight">
+                {moduleLabel(activeModule)}
+              </h2>
             </div>
           </div>
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-2 text-xs font-semibold shrink-0">
+          <div className="flex items-center gap-2 text-xs font-medium shrink-0">
             <div className="hidden sm:flex flex-col items-end leading-tight pr-1">
-              <span className="font-bold text-slate-800 text-[12px]">{user?.displayName || roleInfo(currentRole).user}</span>
+              <span className="font-medium text-slate-800 text-[12px]">{user?.displayName || roleInfo(currentRole).user}</span>
               <span className="text-[10px] text-slate-500">{currentRole} · Shift {roleInfo(currentRole).shift}</span>
             </div>
 
-            <div className="hidden sm:flex items-center rounded-lg border border-slate-200 overflow-hidden">
-              {(['EN', 'KN', 'HI'] as const).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  className={`px-2 py-1.5 text-[10px] font-bold ${lang === l ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
-
             {queued.length > 0 && (
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium">
                 <Clock className="h-3.5 w-3.5" /> {queued.length} waiting to send
               </span>
             )}
 
             <InstallAppButton compact />
-
-            {/* Global light / dark switch — applies to every screen, persists */}
-            <div
-              className="flex items-center gap-0.5 p-0.5 rounded-full border border-slate-200 bg-slate-50 shrink-0"
-              role="group"
-              aria-label="Theme"
-            >
-              <button
-                onClick={() => setTheme('light')}
-                aria-pressed={theme === 'light'}
-                title="Light theme"
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                  theme === 'light'
-                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <Sun className="h-3.5 w-3.5" /> <span className="hidden md:inline">Light</span>
-              </button>
-              <button
-                onClick={() => setTheme('dark')}
-                aria-pressed={theme === 'dark'}
-                title="Dark theme"
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                  theme === 'dark'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <Moon className="h-3.5 w-3.5" /> <span className="hidden md:inline">Dark</span>
-              </button>
-            </div>
           </div>
         </header>
+        )}
 
         <OfflineBanner />
         <PracticeBanner />
 
-        {/* PRIMARY SCROLL VIEW */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 pb-4 md:pb-6">
+        <main className={`flex-1 overflow-y-auto overflow-x-hidden ${
+          logEntryImmersive
+            ? 'p-0 lg:p-6'
+            : 'p-4 lg:p-6 pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-6'
+        }`}>
           {!canViewActive ? (
             <section
               id="acl-redirect"
-              className="max-w-3xl mx-auto mt-8 rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+              className="max-w-3xl mx-auto mt-8 rounded-xl border border-slate-200 bg-white overflow-hidden"
             >
-              <div className="px-6 py-5 border-b border-slate-100 bg-slate-50">
-                <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-100">
+              <div className="px-6 py-5 border-b border-slate-200 bg-slate-50">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-800 border border-amber-100">
                   <LockKeyhole className="h-5 w-5" />
                 </div>
-                <h2 className="mt-4 text-xl font-semibold text-slate-900">
+                <h2 className="mt-4 text-2xl font-bold text-slate-900">
                   {pendingMachineCode
                     ? `No access to log machine ${pendingMachineCode}`
                     : 'This page isn\'t available in your current access view'}
@@ -893,7 +846,7 @@ export default function App() {
                 <p className="mt-1 text-sm text-slate-500">
                   {pendingMachineCode
                     ? 'Your role cannot open Machine Tasks. Ask an admin for access, or sign in as an operator.'
-                    : 'The old screen bounce has been removed. Choose a real destination below instead of being redirected automatically.'}
+                    : 'Choose a destination below instead of being redirected automatically.'}
                 </p>
               </div>
               <div className="px-6 py-5 space-y-5">
@@ -904,14 +857,14 @@ export default function App() {
                       if (pendingMachineCode) consumeMachineCode();
                       setActiveModule(homeModule);
                     }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 min-h-11 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
                   >
                     <Compass className="h-4 w-4" />
                     Go to {moduleLabel(homeModule)}
                   </button>
                 </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Requested screen</p>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Requested screen</p>
                   <p className="mt-1 text-sm font-medium text-slate-700">
                     {pendingMachineCode ? `Machine QR · ${pendingMachineCode}` : moduleLabel(activeModule)}
                   </p>
@@ -921,16 +874,25 @@ export default function App() {
           ) : (
             <>
               {activeModule === 'dashboard' && (
-                <RoleDashboard
-                  role={currentRole}
-                  userName={user?.displayName || roleInfo(currentRole).user}
-                  canAccess={dbAllows}
-                  onOpen={(m) => setActiveModule(m as ModuleType)}
-                  onScanMachine={(code) => {
-                    setPendingMachineCode(code.trim().toUpperCase());
-                    setActiveModule('machine_tasks');
-                  }}
-                />
+                isMD ? (
+                  <ManagementDashboard
+                    userName={user?.displayName || roleInfo(currentRole).user}
+                    onOpen={(m) => setActiveModule(m as ModuleType)}
+                    onTrace={handleTraceOpen}
+                    passportQuery={passportQuery}
+                  />
+                ) : (
+                  <RoleDashboard
+                    role={currentRole}
+                    userName={user?.displayName || roleInfo(currentRole).user}
+                    canAccess={dbAllows}
+                    onOpen={(m) => setActiveModule(m as ModuleType)}
+                    onScanMachine={(code) => {
+                      setPendingMachineCode(code.trim().toUpperCase());
+                      setActiveModule('machine_tasks');
+                    }}
+                  />
+                )
               )}
 
               {/* Planning & Production (API) */}
@@ -941,6 +903,7 @@ export default function App() {
                 <MachineTasks
                   initialMachineCode={pendingMachineCode}
                   onMachineCodeConsumed={consumeMachineCode}
+                  onImmersiveChange={setLogEntryImmersive}
                 />
               )}
               {activeModule === 'logbook_ledger' && <LogbookLedger />}
@@ -956,8 +919,9 @@ export default function App() {
               {activeModule === 'rm_stock' && <RMStockBoard {...storeData} />}
 
               {/* Sales (API) */}
-              {activeModule === 'inquiries' && <Inquiries {...salesData} />}
-              {activeModule === 'quotations' && <Quotations {...salesData} />}
+              {activeModule === 'enquiry_desk' && <EnquiryDesk {...salesData} />}
+              {activeModule === 'inquiries' && <EnquiryDesk {...salesData} initialTab="enquiries" />}
+              {activeModule === 'quotations' && <EnquiryDesk {...salesData} initialTab="quotes" />}
               {activeModule === 'orders' && <Orders {...salesData} />}
               {activeModule === 'sales_customers' && <SalesCustomers {...salesData} />}
               {activeModule === 'sales_complaints' && <SalesComplaints {...salesData} />}
@@ -977,6 +941,7 @@ export default function App() {
           )}
         </main>
 
+        {!logEntryImmersive && (
         <MobileBottomNav
           items={currentNavItems}
           activeModule={activeModule}
@@ -985,12 +950,15 @@ export default function App() {
           roleLabel={`${currentRole} · Shift ${roleInfo(currentRole).shift}`}
           onSignOut={handleSignOut}
         />
+        )}
 
       </div>
 
       {/* Global shell overlays */}
       <ToastHost />
-      <RoleSwitcher current={currentRole} currentEmail={devEmail} onSelectEmployee={becomeEmployee} />
+      {!logEntryImmersive && (
+        <RoleSwitcher current={currentRole} currentEmail={devEmail} onSelectEmployee={becomeEmployee} />
+      )}
 
     </div>
   );

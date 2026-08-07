@@ -10,6 +10,7 @@ import { pushToast } from '../Notify';
 import { EmptyState } from '../EmptyState';
 import { DataTable } from '../DataTable';
 import ResponsiveOverlay from '../ui/ResponsiveOverlay';
+import { StatusBadge } from '../ui/StatusBadge';
 import { ApiError } from '../../lib/apiClient';
 import {
   useEmployees, useRoles, useCreateEmployee, useUpdateEmployee, useCreateRole, useUpdateRole,
@@ -17,7 +18,7 @@ import {
 } from '../../lib/queries/admin';
 
 const SCREEN_LABEL: Record<string, string> = {
-  dashboard: 'Dashboard', inquiries: 'Inquiries', quotations: 'Quotations', orders: 'Orders',
+  dashboard: 'Dashboard', enquiry_desk: 'Enquiry Desk', inquiries: 'Inquiries', quotations: 'Quotations', orders: 'Orders',
   sales_customers: 'Customers', sales_complaints: 'Complaints & CAPA', orders_to_plan: 'Orders to Plan',
   plan_board: 'Production Plan', formulations: 'Formulations (BOM)', logbooks: 'Log Book (via Machine Tasks)',
   machine_tasks: 'Machine Tasks', logbook_templates: 'Logbook Templates', logbook_ledger: 'Logbook Ledger',
@@ -38,8 +39,10 @@ function Card({ title, right, children }: { title: string; right?: ReactNode; ch
   );
 }
 const inCls = 'w-full min-h-[40px] px-3 py-1.5 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200';
-const roleBadge = (r: string, admin?: boolean) => <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${admin ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-700'}`}>{r}</span>;
-const btn = 'inline-flex items-center gap-1.5 min-h-[38px] px-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shrink-0';
+const roleBadge = (r: string, admin?: boolean) => (
+  <StatusBadge tone={admin ? 'info' : 'neutral'}>{r}</StatusBadge>
+);
+const btn = 'inline-flex items-center gap-1.5 min-h-[38px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shrink-0';
 
 /* ============================================================ Employee Directory */
 
@@ -150,10 +153,10 @@ function AccessModal({ employee, roles, onClose }: { employee: ApiEmployee; role
             return (
               <div key={s} className="flex items-center gap-2 py-1.5">
                 <div className="flex-1 min-w-0"><span className={`text-[13px] font-semibold ${on ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400'}`}>{label(s)}</span> {base.has(s) && <span className="text-[9px] text-slate-400">· in role</span>}</div>
-                <div className="flex items-center gap-0.5 p-0.5 rounded-full border border-slate-200 dark:border-slate-700 text-[10px] font-bold">
+                <div className="flex items-center gap-0.5 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold">
                   {(['inherit', 'on', 'off'] as const).map((opt) => (
                     <button key={opt} onClick={() => setOv((p) => ({ ...p, [s]: opt }))}
-                      className={`px-2 py-1 rounded-full ${st === opt ? (opt === 'on' ? 'bg-emerald-600 text-white' : opt === 'off' ? 'bg-rose-600 text-white' : 'bg-slate-600 text-white') : 'text-slate-400'}`}>
+                      className={`px-2 py-1 rounded-md ${st === opt ? (opt === 'on' ? 'bg-emerald-600 text-white' : opt === 'off' ? 'bg-rose-600 text-white' : 'bg-slate-600 text-white') : 'text-slate-400'}`}>
                       {opt === 'inherit' ? 'Inherit' : opt === 'on' ? 'Grant' : 'Deny'}
                     </button>
                   ))}
@@ -273,8 +276,8 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function ModalActions({ onClose, onSubmit, disabled, label }: { onClose: () => void; onSubmit: () => void; disabled: boolean; label: string }) {
   return (
     <div className="flex justify-end gap-2 pt-2">
-      <button onClick={onClose} className="min-h-[42px] px-4 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300">Cancel</button>
-      <button onClick={onSubmit} disabled={disabled} className="min-h-[42px] px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold inline-flex items-center gap-1.5"><ShieldAlert className="w-4 h-4" /> {label}</button>
+      <button onClick={onClose} className="min-h-[42px] px-4 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300">Cancel</button>
+      <button onClick={onSubmit} disabled={disabled} className="min-h-[42px] px-5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold inline-flex items-center gap-1.5"><ShieldAlert className="w-4 h-4" /> {label}</button>
     </div>
   );
 }
