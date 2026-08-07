@@ -1,0 +1,250 @@
+---
+description: MesaDesk brand and responsive UI rules for dashboard, tablet, and mobile product interfaces
+globs:
+  - "**/*.{html,css,scss,sass,less,js,jsx,ts,tsx,vue,svelte}"
+alwaysApply: true
+---
+
+# MesaDesk design system
+
+Use these rules whenever you create or modify MesaDesk UI. They consolidate the MesaDesk brand, color, typography, spacing, layout, and data-visualization guidelines and extend them to tablet and mobile product screens.
+
+## Rule priority
+
+1. Preserve the existing product architecture and framework conventions.
+2. Apply the brand tokens and component rules in this file.
+3. Adapt the layout responsively without changing the visual identity.
+4. If a requested design conflicts with this file, flag the conflict and follow the user's explicit request.
+
+## Canonical brand
+
+- The parent brand is `MesaWorks`; the product is `MesaDesk`.
+- Always spell the product `MesaDesk`: capital M, capital D, no space. Treat `MezaDesk`, `Mesa Desk`, `mesadesk`, and `MESADESK` as incorrect.
+- MesaDesk is a manufacturing operations dashboard/workstation.
+- The tagline is `One Platform. Every Operation.`
+- Use the tagline only near the logo, in Roboto Light at 10-14px.
+- Use the full brand lockup in spacious contexts such as desktop sidebars, login screens, about pages, and marketing headers.
+- Use the icon-only mark for favicons, mobile app icons, collapsed navigation, loading states, and spaces narrower than 120px.
+- Keep the logo's original aspect ratio, arch/gateway shape, gradient, white icon container, and 6px container radius.
+- Never stretch, skew, rotate, flip, recolor, outline, shadow, or otherwise decorate the logo.
+- Place the logo on white or very light, uncluttered backgrounds with sufficient contrast.
+- Preserve clear space equal to one icon height on every side when practical.
+- Full lockup: standard 228x36px; minimum digital width 120px; minimum print width 160px.
+- Icon-only: 36x36px standard, 61x61px large, 24x24px minimum; favicon may be 16x16px.
+- Product-name wordmark: Roboto ExtraBold 16px, `#0F172A` on light backgrounds.
+- Logo gradients: primary `#1F74FF` to `#0044FF`; secondary `#28C7FF` to `#0538BD`.
+
+## Design tokens
+
+Prefer semantic variables or theme tokens over repeated literals. If the project has no token layer, define equivalents centrally.
+
+```css
+:root {
+  --font-sans: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-primary: #1E40AF;
+  --color-primary-soft: #DBEAFE;
+  --color-selected-soft: #DBEAFE;
+  --color-info-text: #1E40AF;
+
+  --color-slate-900: #0F172A;
+  --color-slate-800: #1E293B;
+  --color-slate-700: #334155;
+  --color-slate-600: #475569;
+  --color-slate-500: #64748B;
+  --color-slate-400: #94A3B8;
+  --color-slate-200: #E2E8F0;
+  --color-slate-100: #F1F5F9;
+  --color-slate-50: #F8FAFC;
+  --color-white: #FFFFFF;
+
+  --color-success-bg: #D1FAE5;
+  --color-success: #10B981;
+  --color-success-text: #065F46;
+  --color-warning-bg: #FEF3C7;
+  --color-warning: #F59E0B;
+  --color-warning-text: #92400E;
+  --color-error-bg: #FEE2E2;
+  --color-error: #EF4444;
+  --color-error-text: #991B1B;
+
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 6px;
+  --space-md: 8px;
+  --space-base: 10px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+  --space-2xl: 20px;
+  --space-3xl: 24px;
+  --space-4xl: 32px;
+
+  --radius-subtle: 2px;
+  --radius-checkbox: 4px;
+  --radius-badge: 6px;
+  --radius-control: 8px;
+  --radius-tooltip: 10px;
+  --radius-card: 12px;
+  --radius-pill: 20px;
+
+  --border-default: 1px solid #E2E8F0;
+  --border-sidebar: 1px solid #334155;
+  --focus-ring: 2px solid #1E40AF;
+}
+```
+
+Do not introduce near-match colors, spacing values, radii, or shadows when an existing token covers the need.
+
+## Typography
+
+- Use Roboto across all MesaDesk product screens.
+- Use `#0F172A` for headings/titles, `#475569` for primary body text, `#64748B` for secondary text, `#94A3B8` for placeholders/muted text, `#1E40AF` for links/actions, and white on dark or colored surfaces.
+- Use the following type scale. Set readable line heights, generally 1.2-1.3 for headings and 1.4-1.6 for body copy.
+
+| Role | Size / weight | Primary use |
+| --- | --- | --- |
+| Display | 28px ExtraBold | KPI values, hero numbers |
+| Page title | 24px Bold | Page headings, modal titles |
+| Section title | 18px SemiBold | Card headers, section titles |
+| Subtitle | 16px SemiBold | Subsections, widget titles |
+| Body large | 15px Regular | Important descriptions |
+| Body | 14px Regular | Default copy, table cells |
+| Body small | 13px Regular | Secondary content, form labels |
+| Caption | 12px Regular | Timestamps, helper text, metadata |
+| Overline | 11px Medium | Section labels, category tags |
+| Micro | 10px Regular | Dense chart labels only |
+
+- Do not use text smaller than 12px for essential mobile content. Use 10-11px only for nonessential chart labels or compact badges when legibility is preserved.
+- Use sentence case for labels and headings unless a source label is conventionally uppercase.
+- Preserve a clear hierarchy; do not compensate for weak hierarchy with arbitrary colors or font weights.
+
+## Color and accessibility
+
+- Page background: `#F8FAFC`; cards/panels: `#FFFFFF`; table headers and hover backgrounds: `#F1F5F9`; borders/dividers: `#E2E8F0`.
+- Primary actions, active navigation, links, and interactive highlights use `#1E40AF`.
+- Status UI must use the supplied background + text pair, with the accent for icons or indicators.
+- Never communicate status by color alone. Add a text label, icon, pattern, or direct annotation.
+- Preserve at least WCAG AA contrast: 4.5:1 for normal text and 3:1 for large text and meaningful non-text UI.
+- Always show keyboard focus with a 2px `#1E40AF` ring or an equivalent accessible focus treatment. Do not remove focus outlines without replacement.
+
+## Desktop dashboard layout
+
+- Desktop sidebar: 260px wide, `#FFFFFF`, right border `#E2E8F0`.
+- Sidebar items use icon + label, a 10px gap, and approximately 8px vertical padding. Active items use `#DBEAFE` background with `#1E40AF` text.
+- Use a responsive content grid. KPI cards appear in a horizontal row when space allows, with 16-20px gaps.
+- Standard card: white background, 12px radius, 1px `#E2E8F0` border, 20-24px padding, no shadow.
+- Use 24px between page sections and 32px for major section breaks.
+- Avoid fixed desktop canvas widths. `1116px` full-width and `540px` half-width from the source are reference sizes, not required viewport widths.
+
+## Responsive breakpoints
+
+Use content-driven behavior, with these defaults unless the project already defines compatible breakpoints:
+
+| Range | Layout behavior |
+| --- | --- |
+| `< 640px` | Mobile: one column, 16px page gutter, compact cards |
+| `640-767px` | Large mobile: one column; two-column KPI grid only when labels remain readable |
+| `768-1023px` | Tablet: 24px gutter, 2-column card grid, drawer or compact navigation |
+| `>= 1024px` | Desktop: persistent 260px sidebar and multi-column dashboard |
+
+- Build mobile-first and enhance with `min-width` queries.
+- Test at 320px, 375px, 390px, 768px, 1024px, and a wide desktop viewport.
+- Prevent page-level horizontal scrolling. Allow horizontal scrolling only inside an intentionally contained data region.
+- Respect notches and home indicators with `env(safe-area-inset-*)` for fixed headers, sheets, and bottom navigation.
+
+## Mobile navigation and shell
+
+- Replace the persistent desktop sidebar below 1024px with an accessible drawer or a compact top/bottom navigation pattern suited to information depth.
+- Mobile top bar: 48px minimum height, 12–16px horizontal padding, icon-only MesaDesk mark, concise page title, and only the highest-priority action.
+- A navigation drawer should retain the white surface, active Sky/primary treatment, labels, and icons from desktop. It must trap focus while open, close on Escape, restore focus to its trigger, and provide a visible close control.
+- Use bottom navigation only for 3-5 stable top-level destinations. Keep it clear of safe areas and show both icon and label.
+- Move secondary actions into an overflow menu; do not crowd the top bar.
+- Never rely on hover to reveal mobile navigation or controls.
+
+## Mobile spacing and touch
+
+- Use 16px screen gutters on mobile and 24px on tablet.
+- Reduce standard card padding from 20-24px to 16px on mobile; use 12px only for dense, secondary cards.
+- Stack dashboard sections vertically with 16px gaps; use 24px for major breaks.
+- Interactive targets must be at least 44x44 CSS pixels; prefer 48px for primary controls and frequently used industrial workflows.
+- Keep at least 8px between adjacent touch targets.
+- Mobile text inputs, selects, and search fields should be at least 44px high. Use 16px input text to avoid unintended mobile browser zoom.
+- Primary mobile actions may become full-width. Keep destructive actions visually separated and require confirmation when consequences are significant.
+- Fixed bottom actions must not cover content; add equivalent bottom padding plus the safe-area inset.
+
+## Cards and KPIs
+
+- Desktop KPI cards use 20-24px padding and a 28px ExtraBold value.
+- On mobile, use a single-column card stack by default. A 2-column KPI grid is allowed only when each card remains at least about 156px wide and labels do not truncate ambiguously.
+- Keep the 28px KPI value when it fits. Reduce to 24px only when necessary for long values; never below 20px.
+- Keep the label, value, unit, trend, and timeframe together. Do not detach context from a metric across scroll positions.
+- Prefer wrapping or a shorter approved label over ellipsis for operationally important content.
+
+## Tables and dense data on mobile
+
+- Desktop table header: `#F8FAFC`, 12-13px SemiBold `#475569`.
+- Desktop rows: white, 14px vertical padding, 1px `#E2E8F0` divider; cell text 13-14px Regular `#475569`.
+- Do not squeeze a many-column desktop table into the viewport.
+- Choose one deliberate mobile pattern based on the task:
+  - Convert records into stacked cards for scanning and actions.
+  - Show the 2-4 highest-priority columns and expose the rest in a details view.
+  - Use a contained horizontal scroller when column comparison is essential; keep the key identifier column sticky and provide a visible affordance that more content exists.
+- Preserve sorting, filtering, selection, pagination, and row actions in the mobile equivalent.
+- Keep headers associated with values for assistive technology. Do not implement a data table as unrelated visual divs without semantics.
+
+## Forms, search, and filters
+
+- Search bar: 40px high on desktop, at least 44px on mobile; 8px radius; 1px `#E2E8F0` border; 2px `#1E40AF` focus ring; 14px placeholder in `#94A3B8`.
+- Stack form controls vertically on mobile. Keep labels visible above controls; do not use placeholder text as the only label.
+- Use the correct mobile input mode and autocomplete value for numeric, phone, email, date, and search fields.
+- Present complex filters in a bottom sheet or full-screen panel on mobile. Show an active-filter count and provide clear Apply and Reset actions.
+- Keep validation next to the affected field, explain how to fix it, and move focus to the first invalid field after submission.
+
+## Buttons and badges
+
+- Primary button: `#1E40AF` fill, white text, 8px radius.
+- Secondary button: white fill, `#1E40AF` text, 1px `#1E40AF` border.
+- Desktop padding: 10px vertical and 16-20px horizontal; 14px Medium text.
+- Maintain the 44px minimum touch height on mobile even when visual padding tokens are smaller.
+- Status badges: 4-6px horizontal and 2-4px vertical padding, 6px radius, 11-12px Medium, semantic background + text color pair.
+- Icon-only buttons require an accessible name and a tooltip for pointer/keyboard users. Do not use an icon whose meaning is unclear without a visible label.
+
+## Charts and data visualization
+
+- Series 1 / production / plan: `#1E40AF`.
+- Series 2 / scrap / actual: `#F59E0B`.
+- Success / completed: `#10B981`; warning / in progress: `#F59E0B`; error / overdue: `#EF4444`; neutral track and grid: `#E2E8F0`.
+- Axis labels: `#94A3B8`; chart titles: `#0F172A`; legend text: `#475569`.
+- Chart cards follow the standard card style with 20-24px desktop padding and 16px mobile padding.
+- Chart header: title on the left and legend on the right at wide widths. On mobile, wrap or stack the legend below the title; never compress it until labels become unreadable.
+- Use horizontal grid lines only, 1px `#E2E8F0`; omit vertical grid lines unless they are necessary for interpretation.
+- Full-size bar/line plot height: 180-220px. Mobile plot height: approximately 200-240px when needed for touch and labels.
+- Grouped bars: 16px nominal width, 3px intra-group gap, 20px group gap, 4px top-corner radius. Scale bar width/gaps responsively rather than forcing overflow.
+- Lines: 2px stroke with filled 8px data points. Increase the invisible pointer/touch hit area without enlarging the visible dot.
+- Donut: 100-140px diameter, 70% hollow center, 28px ExtraBold center value, status palette segments, vertically spaced legend.
+- Mobile donut charts may place the legend below the centered donut. Keep each legend row at least 44px high if it is interactive.
+- For crowded mobile time series, reduce tick frequency, abbreviate labels unambiguously, or use a contained horizontal plot scroller. Do not render overlapping labels.
+- Tooltips use 12px Medium text and must work with touch, keyboard, and pointer. Provide persistent labels or a data summary when hover is unavailable.
+- Supply a concise accessible chart name and a text/table summary of the values or trend. Do not make the canvas/SVG the only source of information.
+- Keep series color assignments stable across chart types and screens.
+
+## Motion, state, and feedback
+
+- Provide explicit loading, empty, error, offline, and permission-denied states for dashboard modules.
+- Prefer skeletons or stable placeholders that preserve layout and prevent large shifts.
+- Keep interaction feedback fast and subtle. Respect `prefers-reduced-motion` and avoid decorative animation in operational flows.
+- Do not make a user repeat a completed action because the viewport changed or the device rotated.
+
+## Implementation checklist
+
+Before considering a MesaDesk screen complete, verify:
+
+- Brand spelling, logo variant, colors, Roboto typography, spacing, and radii match this file.
+- Desktop and mobile share the same information hierarchy and functionality.
+- The screen works at 320px without accidental horizontal overflow.
+- Navigation, dialogs, drawers, sheets, tables, forms, and charts are keyboard and screen-reader usable.
+- Touch targets are at least 44x44px and are not crowded.
+- Status is not conveyed by color alone and text meets WCAG AA contrast.
+- Tables and charts use an intentional small-screen pattern rather than simple shrink-to-fit.
+- Loading, empty, error, and long-content states are implemented.
+- No arbitrary colors, shadows, type sizes, spacing values, or radii were introduced.

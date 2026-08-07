@@ -14,3 +14,10 @@ export const dashboardRouter = express.Router();
 // Real KPI aggregates for the per-role dashboards. Gated on the dashboard screen,
 // which every role holds.
 dashboardRouter.get('/summary', requirePermission('screen:dashboard'), ah(() => svc.summary()));
+
+// Managing Director plant overview (Figma management dashboard). MD-only screen.
+dashboardRouter.get(
+  '/management/overview',
+  requirePermission('screen:management_dashboard'),
+  ah(() => svc.managementOverview()),
+);

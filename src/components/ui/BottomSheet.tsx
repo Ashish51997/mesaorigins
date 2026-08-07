@@ -42,7 +42,7 @@ export default function BottomSheet({ open, onClose, title, children, wide, clas
       />
       <div
         className={[
-          'relative z-10 flex max-h-[90vh] w-full flex-col rounded-t-2xl bg-white dark:bg-slate-900 shadow-xl border-t border-slate-200 dark:border-slate-700',
+          'relative z-10 flex max-h-[90vh] w-full flex-col rounded-t-xl bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700',
           'pb-[env(safe-area-inset-bottom)]',
           className,
         ].join(' ')}
@@ -51,12 +51,12 @@ export default function BottomSheet({ open, onClose, title, children, wide, clas
           <div className="h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-600" aria-hidden />
         </div>
         {(title != null && title !== '') && (
-          <div className="flex items-center justify-between gap-3 px-4 pb-2 border-b border-slate-100 dark:border-slate-800">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white truncate">{title}</h2>
+          <div className="flex items-center justify-between gap-3 px-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{title}</h2>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+              className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
               aria-label="Close"
             >
               <X className="h-4 w-4" />

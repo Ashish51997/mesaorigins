@@ -14,12 +14,15 @@
 // Default screens per built-in role — mirrors the surviving (real) app screens.
 // Seeds the tenant Role rows; admins get everything regardless (isAdmin).
 export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
-  'Managing Director': ['dashboard', 'rm_stock', 'dispatch_history', 'logbook_ledger'],
+  'Managing Director': [
+    'dashboard', 'management_dashboard', 'rm_stock', 'dispatch_history', 'logbook_ledger',
+    'sales_complaints', 'ready', 'roll_queue', 'holds', 'preventive',
+  ],
   'Production Planner': ['dashboard', 'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates', 'logbook_ledger'],
   'Operator': ['dashboard', 'machine_tasks', 'logbooks', 'logbook_ledger'],
   'Quality Inspector': ['dashboard', 'roll_queue', 'holds'],
   'Store Manager': ['dashboard', 'receive', 'issue_lot', 'rm_stock'],
-  'Sales Executive': ['dashboard', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints'],
+  'Sales Executive': ['dashboard', 'sales_customers', 'enquiry_desk', 'orders', 'sales_complaints'],
   'Dispatch Executive': ['dashboard', 'ready', 'dispatch_history'],
   'Maintenance Head': ['dashboard', 'machines', 'preventive'],
   'Administrator': ['dashboard', 'users', 'acl', 'logbooks', 'logbook_templates', 'machine_tasks', 'logbook_ledger'],
@@ -56,7 +59,12 @@ const ACTION_SCREEN: Record<string, string> = {
 export function roleAllowsScreen(role: string, screenId: string): boolean {
   if (ADMIN_ROLES.has(role)) return true;
   if (screenId === 'dashboard') return true; // Home is always available
-  return (ROLE_DEFAULT_SCREENS[role] ?? []).includes(screenId);
+  const list = ROLE_DEFAULT_SCREENS[role] ?? [];
+  if (list.includes(screenId)) return true;
+  // Enquiry Desk merges inquiries + quotations
+  if (screenId === 'enquiry_desk' && (list.includes('inquiries') || list.includes('quotations'))) return true;
+  if ((screenId === 'inquiries' || screenId === 'quotations') && list.includes('enquiry_desk')) return true;
+  return false;
 }
 
 /**
@@ -82,7 +90,13 @@ export function roleHasPermission(role: string, featureKey: string): boolean {
  */
 export function accessAllows(screens: string[], isAdmin: boolean, featureKey: string): boolean {
   if (isAdmin) return true;
-  const allowed = (id: string) => id === 'dashboard' || screens.includes(id);
+  const allowed = (id: string) => {
+    if (id === 'dashboard') return true;
+    if (screens.includes(id)) return true;
+    if (id === 'enquiry_desk' && (screens.includes('inquiries') || screens.includes('quotations'))) return true;
+    if ((id === 'inquiries' || id === 'quotations') && screens.includes('enquiry_desk')) return true;
+    return false;
+  };
   if (featureKey.startsWith('screen:')) return allowed(featureKey.slice(7));
   if (featureKey.startsWith('action:')) {
     const screen = ACTION_SCREEN[featureKey.slice(7)];
@@ -93,8 +107,9 @@ export function accessAllows(screens: string[], isAdmin: boolean, featureKey: st
 
 /** The full list of screen ids the platform knows about (for the roles editor). */
 export const ALL_SCREENS: string[] = [
-  'dashboard', 'inquiries', 'quotations', 'orders', 'sales_customers', 'sales_complaints',
-  'orders_to_plan', 'plan_board', 'formulations', 'machine_tasks', 'logbooks', 'logbook_templates', 'logbook_ledger',
+  'dashboard', 'management_dashboard',
+  'sales_customers', 'enquiry_desk', 'inquiries', 'quotations', 'orders', 'sales_complaints',
+  'orders_to_plan', 'plan_board', 'formulations', 'logbook_templates', 'machine_tasks', 'logbooks', 'logbook_ledger',
   'roll_queue', 'holds', 'receive', 'issue_lot', 'rm_stock', 'ready', 'dispatch_history',
-  'preventive', 'machines', 'users', 'acl',
+  'machines', 'preventive', 'users', 'acl',
 ];

@@ -9,6 +9,8 @@ import {
 import { ApiError } from '../lib/apiClient';
 import { useMachineHub } from '../lib/queries/logbook';
 import BottomSheet from './ui/BottomSheet';
+import PageHeader from './ui/PageHeader';
+import { StatusBadge, type StatusTone } from './ui/StatusBadge';
 import LogbookModule from './LogbookModule';
 
 const STUB = {
@@ -20,12 +22,11 @@ const STUB = {
   salesOrders: [] as never[],
 };
 
-function statusTone(status: string) {
-  if (status === 'running') return 'bg-emerald-100 text-emerald-800';
-  if (status === 'down' || status === 'overdue') return 'bg-rose-100 text-rose-800';
-  if (status === 'draft' || status === 'scheduled') return 'bg-amber-100 text-amber-800';
-  if (status === 'submitted' || status === 'completed') return 'bg-slate-100 text-slate-600';
-  return 'bg-slate-100 text-slate-700';
+function statusTone(status: string): StatusTone {
+  if (status === 'running' || status === 'submitted' || status === 'completed') return 'success';
+  if (status === 'down' || status === 'overdue' || status === 'stopped') return 'error';
+  if (status === 'draft' || status === 'scheduled' || status === 'attention') return 'warn';
+  return 'neutral';
 }
 
 export default function MachineHub({
@@ -41,9 +42,12 @@ export default function MachineHub({
 
   if (q.isLoading) {
     return (
-      <div className="mx-auto mt-10 max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center" data-testid="machine-hub-loading">
-        <Gauge className="mx-auto h-10 w-10 text-indigo-500 animate-pulse" />
-        <h3 className="mt-3 text-lg font-bold text-slate-900">Loading {code}…</h3>
+      <div className="mx-auto max-w-2xl space-y-4" data-testid="machine-hub-loading">
+        <PageHeader title={code} subtitle="Loading…" onBack={onBack} />
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+          <Gauge className="mx-auto h-10 w-10 text-indigo-500 animate-pulse" />
+          <h3 className="mt-3 text-lg font-bold text-slate-900 dark:text-white">Loading {code}…</h3>
+        </div>
       </div>
     );
   }
@@ -52,17 +56,20 @@ export default function MachineHub({
     const err = q.error;
     const status = err instanceof ApiError ? err.status : 0;
     return (
-      <div className="mx-auto mt-10 max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-8 text-center" data-testid="machine-hub-error">
-        <AlertTriangle className="mx-auto h-10 w-10 text-rose-500" />
-        <h3 className="text-lg font-bold text-slate-900">
-          {status === 404 ? `Machine ${code} not found` : status === 403 ? 'No access' : 'Could not open machine'}
-        </h3>
-        <p className="text-sm text-slate-500">
-          {err instanceof ApiError ? err.message : 'Something went wrong.'}
-        </p>
-        <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-1 rounded-full bg-indigo-600 px-5 text-sm font-bold text-white">
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
+      <div className="mx-auto max-w-2xl space-y-4" data-testid="machine-hub-error">
+        <PageHeader title={code} onBack={onBack} />
+        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+          <AlertTriangle className="mx-auto h-10 w-10 text-rose-500" />
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            {status === 404 ? `Machine ${code} not found` : status === 403 ? 'No access' : 'Could not open machine'}
+          </h3>
+          <p className="text-sm text-slate-500">
+            {err instanceof ApiError ? err.message : 'Something went wrong.'}
+          </p>
+          <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-1 rounded-lg bg-indigo-600 px-5 text-sm font-medium text-white">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+        </div>
       </div>
     );
   }
@@ -70,25 +77,33 @@ export default function MachineHub({
   const { machine, started, activePlan, logbooks, maintenance } = q.data;
   const canLog = !!activePlan && activePlan.logbook?.status !== 'submitted';
   const logLabel = activePlan?.logbook?.status === 'draft' ? 'Continue log entry' : 'Start log entry';
+  const hubSubtitle = [machine.line, machine.family, machine.logbookFormat].filter(Boolean).join(' · ') || 'Plant line';
 
   return (
     <div className="mx-auto max-w-2xl space-y-4" data-testid="machine-hub">
-      <button type="button" onClick={onBack} className="inline-flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-500">
-        <ArrowLeft className="h-4 w-4" /> Back
-      </button>
+      <PageHeader
+        title={machine.code}
+        subtitle={hubSubtitle}
+        onBack={onBack}
+        actions={
+          <StatusBadge tone={statusTone(machine.status)} className="uppercase">
+            {machine.status}
+          </StatusBadge>
+        }
+      />
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Machine</div>
-            <h2 className="font-display text-3xl font-bold text-slate-900 dark:text-white">{machine.code}</h2>
+            <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Machine</div>
+            <h2 className="font-sans text-2xl font-bold text-slate-900 dark:text-white">{machine.code}</h2>
             <p className="mt-1 text-sm text-slate-500">
-              {[machine.line, machine.family, machine.logbookFormat].filter(Boolean).join(' · ') || 'Plant line'}
+              {hubSubtitle}
             </p>
           </div>
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase ${statusTone(machine.status)}`}>
+          <StatusBadge tone={statusTone(machine.status)} className="uppercase">
             {machine.status}
-          </span>
+          </StatusBadge>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
@@ -116,8 +131,8 @@ export default function MachineHub({
       </div>
 
       {activePlan && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-indigo-600">Active plan</div>
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-indigo-600">Active plan</div>
           <div className="mt-1 text-sm font-bold text-slate-900 dark:text-white">
             {activePlan.salesOrder?.soNumber ?? 'No order'} · {activePlan.shift === 'D' ? 'Day' : 'Night'}
           </div>
@@ -126,10 +141,10 @@ export default function MachineHub({
             {activePlan.operatorName ? ` · ${activePlan.operatorName}` : ''}
           </p>
           <div className="mt-2 flex items-center gap-2">
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusTone(activePlan.status)}`}>
+            <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusTone(activePlan.status)}`}>
               {activePlan.status}
             </span>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusTone(activePlan.logbook?.status ?? 'ready')}`}>
+            <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusTone(activePlan.logbook?.status ?? 'ready')}`}>
               Log: {activePlan.logbook?.status ?? 'not started'}
             </span>
           </div>
@@ -140,7 +155,7 @@ export default function MachineHub({
         <button
           type="button"
           onClick={() => setLogPlanId(activePlan!.id)}
-          className="inline-flex w-full min-h-12 items-center justify-center gap-2 rounded-2xl bg-indigo-600 text-[15px] font-bold text-white shadow-sm hover:bg-indigo-500"
+          className="inline-flex w-full min-h-12 items-center justify-center gap-2 rounded-lg bg-indigo-600 text-[15px] font-medium text-white hover:bg-indigo-500"
           data-testid="machine-hub-log-cta"
         >
           <PlayCircle className="h-5 w-5" />
@@ -149,15 +164,15 @@ export default function MachineHub({
       )}
 
       {!activePlan && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">
           No scheduled or running plan on this machine right now. Log entry opens when Planning assigns a shift.
         </div>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-slate-400" />
-          <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Logbooks on this machine</h3>
+          <h3 className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Logbooks on this machine</h3>
         </div>
         {logbooks.length === 0 ? (
           <p className="text-sm text-slate-500">No logbooks recorded yet.</p>
@@ -173,14 +188,14 @@ export default function MachineHub({
                     {lb.date || '—'} · {lb.shift === 'D' ? 'Day' : lb.shift === 'N' ? 'Night' : lb.shift} · {lb.totalRollKgs || '0'} kg
                   </div>
                 </div>
-                <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${statusTone(lb.status)}`}>
+                <StatusBadge tone={statusTone(lb.status)}>
                   {lb.status === 'submitted' ? <><Lock className="h-3 w-3" /> Submitted</> : lb.status}
-                </span>
+                </StatusBadge>
                 {lb.status !== 'submitted' && lb.productionPlanId && (
                   <button
                     type="button"
                     onClick={() => setLogPlanId(lb.productionPlanId)}
-                    className="shrink-0 h-8 px-3 rounded-lg bg-indigo-600 text-white text-xs font-bold"
+                    className="shrink-0 min-h-11 px-3 rounded-lg bg-indigo-600 text-white text-xs font-medium"
                   >
                     Open
                   </button>
@@ -191,10 +206,10 @@ export default function MachineHub({
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex items-center gap-2">
           <Wrench className="h-4 w-4 text-slate-400" />
-          <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Maintenance history</h3>
+          <h3 className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Maintenance history</h3>
         </div>
         {maintenance.length === 0 ? (
           <p className="text-sm text-slate-500">No maintenance tasks on file for this machine.</p>
@@ -208,9 +223,7 @@ export default function MachineHub({
                     {t.type} · {t.frequency} · due {t.dueDate || '—'}
                   </div>
                 </div>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${statusTone(t.status)}`}>
-                  {t.status}
-                </span>
+                <StatusBadge tone={statusTone(t.status)}>{t.status}</StatusBadge>
               </li>
             ))}
           </ul>

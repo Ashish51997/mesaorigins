@@ -1,13 +1,13 @@
 {
-  "name": "Mesadesk",
-  "short_name": "Mesadesk",
-  "description": "Mesadesk manufacturing ERP for plant operations.",
+  "name": "MesaDesk",
+  "short_name": "MesaDesk",
+  "description": "MesaDesk — One Platform. Every Operation.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#ffffff",
-  "theme_color": "#0044FF",
+  "background_color": "#F8FAFC",
+  "theme_color": "#1E40AF",
   "lang": "en",
   "icons": [
     {

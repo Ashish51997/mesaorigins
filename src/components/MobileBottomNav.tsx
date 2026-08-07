@@ -1,5 +1,6 @@
 /**
  * Mobile bottom navigation — Home + up to 3 value-chain groups + More sheet.
+ * Shown below the lg (1024px) breakpoint; desktop uses the persistent sidebar.
  */
 import { useMemo, useState, type ComponentType } from 'react';
 import {
@@ -90,10 +91,10 @@ export default function MobileBottomNav({
   return (
     <>
       <nav
-        className="md:hidden shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pb-[env(safe-area-inset-bottom)]"
+        className="lg:hidden shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pb-[env(safe-area-inset-bottom)]"
         aria-label="Primary"
       >
-        <div className="flex items-stretch justify-around min-h-[56px] px-1">
+        <div className="flex items-stretch justify-around min-h-[48px] px-1">
           <TabButton
             label="Home"
             icon={LayoutDashboard}
@@ -129,14 +130,14 @@ export default function MobileBottomNav({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search menu"
-            className="w-full pl-8 pr-3 h-10 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none"
+            className="w-full pl-8 pr-3 h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-base text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none"
           />
         </div>
 
         <div className="space-y-4 pb-2">
           {filteredGroups.map(({ step, items: gItems }) => (
             <section key={step.key}>
-              <h3 className="px-1 mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+              <h3 className="px-1 mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 {step.label}
               </h3>
               <div className="space-y-1">
@@ -148,13 +149,13 @@ export default function MobileBottomNav({
                       key={item.id}
                       type="button"
                       onClick={() => go(item.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-sm font-semibold transition-colors ${
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 min-h-9 rounded-lg text-left text-sm font-medium transition-colors ${
                         isActive
-                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          ? 'bg-[#DBEAFE] text-[#1E40AF]'
+                          : 'text-slate-700 hover:bg-[#EFF6FF] hover:text-[#1E40AF]'
                       }`}
                     >
-                      <Icon className="h-5 w-5 shrink-0 text-slate-400" />
+                      <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#1E40AF]' : 'text-slate-400'}`} />
                       <span className="truncate">{item.label}</span>
                     </button>
                   );
@@ -168,19 +169,19 @@ export default function MobileBottomNav({
         </div>
 
         {(userName || onSignOut) && (
-          <div className="mt-2 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
+          <div className="mt-2 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              {userName && <p className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{userName}</p>}
+              {userName && <p className="font-medium text-sm text-slate-800 dark:text-slate-100 truncate">{userName}</p>}
               {roleLabel && <p className="text-[11px] text-slate-500 truncate">{roleLabel}</p>}
             </div>
             {onSignOut && (
               <button
                 type="button"
                 onClick={() => { setMoreOpen(false); onSignOut(); }}
-                className="p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                className="p-1.5 min-h-9 min-w-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                 aria-label="Sign out"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -205,12 +206,14 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-w-0 transition-colors ${
-        active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600'
+      className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-10 min-w-0 rounded-lg mx-0.5 transition-colors ${
+        active
+          ? 'bg-[#DBEAFE] text-[#1E40AF]'
+          : 'text-slate-400 hover:bg-[#EFF6FF] hover:text-[#1E40AF]'
       }`}
     >
-      <Icon className="h-5 w-5 shrink-0" />
-      <span className="text-[10px] font-bold truncate max-w-full px-0.5">{label}</span>
+      <Icon className={`h-4.5 w-4.5 shrink-0 ${active ? 'text-[#1E40AF]' : ''}`} />
+      <span className="text-[10px] font-medium truncate max-w-full px-0.5">{label}</span>
     </button>
   );
 }

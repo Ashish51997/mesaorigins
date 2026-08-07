@@ -1,8 +1,8 @@
 /**
- * SalesScreens.tsx — Sales Executive. Home · Inquiries · Quotations · Orders ·
+ * SalesScreens.tsx — Sales Executive. Home · Enquiry Desk · Orders ·
  * Customers · Complaints.
  *
- * Inquiries/Quotations/Orders/Customers/Complaints are backed by the real API
+ * Enquiry Desk (enquiries + quotations), Orders, Customers, Complaints use the API
  * (Postgres, tenant-scoped) via TanStack Query hooks (src/lib/queries/*). A
  * complaint links to a dispatched batch and auto-opens a CAPA that must be
  * worked and closed before the complaint can be resolved. Home stays on the
@@ -20,6 +20,7 @@ import { EmptyState } from '../EmptyState';
 import { TraceLink } from '../TraceLink';
 import { DataTable, formatTableDate } from '../DataTable';
 import ResponsiveOverlay from '../ui/ResponsiveOverlay';
+import { StatusBadge, type StatusTone } from '../ui/StatusBadge';
 import { ApiError } from '../../lib/apiClient';
 
 import {
@@ -46,36 +47,31 @@ const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : 'Something w
 
 const Loading = () => <div className="text-[12px] text-slate-400 px-1 py-6 text-center">Loading…</div>;
 
-function orderStatusMeta(s: string): { label: string; hint: string; className: string } {
-  const map: Record<string, { label: string; hint: string; className: string }> = {
-    pending: { label: 'Awaiting planning', hint: 'Confirmed — in planning queue', className: 'bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300' },
-    planned: { label: 'Planned', hint: 'Waiting for operator to start', className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300' },
-    in_production: { label: 'In production', hint: 'Running on the line', className: 'bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200' },
-    inspected: { label: 'QC passed', hint: 'Moving to packing', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300' },
-    packed: { label: 'Packed', hint: 'Ready in warehouse', className: 'bg-teal-100 text-teal-800 dark:bg-teal-950/50 dark:text-teal-300' },
-    dispatched: { label: 'Dispatched', hint: 'Sent to the customer', className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+function orderStatusMeta(s: string): { label: string; hint: string; tone: StatusTone } {
+  const map: Record<string, { label: string; hint: string; tone: StatusTone }> = {
+    pending: { label: 'Awaiting planning', hint: 'Confirmed — in planning queue', tone: 'info' },
+    planned: { label: 'Planned', hint: 'Waiting for operator to start', tone: 'info' },
+    in_production: { label: 'In production', hint: 'Running on the line', tone: 'warn' },
+    inspected: { label: 'QC passed', hint: 'Moving to packing', tone: 'success' },
+    packed: { label: 'Packed', hint: 'Ready in warehouse', tone: 'success' },
+    dispatched: { label: 'Dispatched', hint: 'Sent to the customer', tone: 'neutral' },
   };
-  return map[s] ?? { label: s, hint: '', className: 'bg-slate-100 text-slate-700' };
+  return map[s] ?? { label: s, hint: '', tone: 'neutral' };
 }
 
 function OrderStatusBadge({ status }: { status: string }) {
   const m = orderStatusMeta(status);
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${m.className}`} title={m.hint || undefined}>
+    <StatusBadge tone={m.tone} title={m.hint || undefined}>
       {m.label}
-    </span>
+    </StatusBadge>
   );
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
-  const cls =
-    priority === 'high'
-      ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300'
-      : priority === 'medium'
-        ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200'
-        : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+  const tone: StatusTone = priority === 'high' ? 'error' : priority === 'medium' ? 'warn' : 'neutral';
   const label = priority === 'high' ? 'High' : priority === 'medium' ? 'Medium' : 'Low';
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${cls}`}>{label}</span>;
+  return <StatusBadge tone={tone}>{label}</StatusBadge>;
 }
 
 type OrderStatusFilter = 'all' | 'active' | 'pending' | 'in_production' | 'dispatched' | 'high';
@@ -85,63 +81,62 @@ type OrderStatusFilter = 'all' | 'active' | 'pending' | 'in_production' | 'dispa
 
 /* ---------------------------------------------------------------- Inquiries */
 
-const PRIMARY = 'bg-blue-600 hover:bg-blue-700 text-white';
-const PRIMARY_OUTLINE = 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-blue-400 hover:text-blue-600';
-const inqLbl = 'block text-[12px] font-medium text-slate-600 dark:text-slate-300 mb-1.5';
-const inqInp = 'w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-500';
-const req = <span className="text-rose-500"> *</span>;
+const PRIMARY = 'bg-[#1E40AF] hover:bg-[#1E3A8A] text-white';
+const PRIMARY_OUTLINE = 'border border-[#1E40AF] bg-white text-[#1E40AF] hover:bg-[#EFF6FF]';
+const inqLbl = 'block text-[13px] font-medium text-slate-600 mb-1.5';
+const inqInp = 'w-full min-h-11 px-3 rounded-lg border border-slate-200 text-[16px] sm:text-sm bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-[#1E40AF]';
+const req = <span className="text-rose-600" aria-hidden>*</span>;
 
 type InquiryStatusFilter = 'all' | 'open' | 'pending_quote' | 'quotation' | 'converted';
 
-function inquiryStatusMeta(status: string): { label: string; className: string; bucket: Exclude<InquiryStatusFilter, 'all' | 'open'> | 'open' } {
+function inquiryStatusMeta(status: string): {
+  label: string;
+  tone: 'info' | 'warn' | 'success' | 'neutral';
+  bucket: Exclude<InquiryStatusFilter, 'all' | 'open'> | 'open';
+} {
   if (status === 'ordered') {
-    return { label: 'Converted', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300', bucket: 'converted' };
+    return { label: 'Converted', tone: 'success', bucket: 'converted' };
   }
   if (status === 'quotation') {
-    return { label: 'Quotation sent', className: 'bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300', bucket: 'quotation' };
+    return { label: 'Quotation sent', tone: 'info', bucket: 'quotation' };
   }
   if (status === 'approved') {
-    return { label: 'Needs quoting', className: 'bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200', bucket: 'pending_quote' };
+    return { label: 'Pending quote', tone: 'warn', bucket: 'pending_quote' };
   }
-  // submitted / new
-  return { label: 'New inquiry', className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', bucket: 'pending_quote' };
+  return { label: 'New enquiry', tone: 'neutral', bucket: 'pending_quote' };
 }
 
 function InquiryStatusBadge({ status }: { status: string }) {
   const m = inquiryStatusMeta(status);
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${m.className}`}>
-      {m.label}
-    </span>
-  );
+  return <StatusBadge tone={m.tone}>{m.label}</StatusBadge>;
 }
 
 const SALES_TABS: { id: string; label: string }[] = [
-  { id: 'inquiries', label: 'Inquiries' },
-  { id: 'quotations', label: 'Quotations' },
+  { id: 'enquiry_desk', label: 'Enquiry Desk' },
   { id: 'orders', label: 'Orders' },
-  { id: 'sales_customers', label: 'Customers' },
   { id: 'sales_complaints', label: 'Complaints' },
 ];
 
 function SalesPipelineTabs({ active, onOpen }: { active: string; onOpen: (m: string) => void }) {
+  const normalized = active === 'inquiries' || active === 'quotations' ? 'enquiry_desk' : active;
   return (
     <nav
-      className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800 -mx-1 px-1"
+      className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 -mx-1 px-1 min-h-0 h-10"
       aria-label="Sales"
+ 
     >
       {SALES_TABS.map((t) => {
-        const on = t.id === active;
+        const on = t.id === normalized;
         return (
           <button
             key={t.id}
             type="button"
             onClick={() => onOpen(t.id)}
             className={[
-              'shrink-0 px-3 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors',
+              'shrink-0 min-h-9 px-3 py-1.5 text-[13px] font-medium border-b-2 -mb-px transition-colors',
               on
-                ? 'border-blue-600 text-blue-600 dark:border-slate-200 dark:text-slate-100'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
+                ? 'border-[#1E40AF] text-[#1E40AF]'
+                : 'border-transparent text-slate-500 hover:text-slate-800',
             ].join(' ')}
           >
             {t.label}
@@ -152,7 +147,64 @@ function SalesPipelineTabs({ active, onOpen }: { active: string; onOpen: (m: str
   );
 }
 
-export function Inquiries(p: SalesData) {
+type SalesPanelProps = SalesData & { embedded?: boolean };
+
+/** Merged Inquiries + Quotations workspace (sidebar: Enquiry Desk). */
+export function EnquiryDesk(p: SalesData & { initialTab?: 'enquiries' | 'quotes' }) {
+  const [tab, setTab] = useState<'enquiries' | 'quotes'>(p.initialTab ?? 'enquiries');
+  useEffect(() => {
+    if (p.initialTab) setTab(p.initialTab);
+  }, [p.initialTab]);
+
+  return (
+    <div className="space-y-5" data-testid="enquiry-desk">
+      <SalesPipelineTabs active="enquiry_desk" onOpen={p.onOpen} />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Enquiry Desk</h2>
+          <p className="mt-1 text-[14px] text-slate-600">
+            Log customer enquiries and send quotations from one place.
+          </p>
+        </div>
+        <div
+          className="inline-flex w-full rounded-lg border border-slate-200 bg-slate-100 p-1 sm:w-auto"
+          role="tablist"
+          aria-label="Enquiry Desk sections"
+        >
+          {(
+            [
+              { id: 'enquiries' as const, label: 'Enquiries' },
+              { id: 'quotes' as const, label: 'Ready to quote' },
+            ]
+          ).map((t) => {
+            const on = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => setTab(t.id)}
+                className={`min-h-9 flex-1 rounded-md px-3 text-[13px] font-medium transition-colors sm:flex-none ${
+                  on
+                    ? 'bg-white text-[#1E40AF] border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {tab === 'enquiries' ? <Inquiries {...p} embedded /> : <Quotations {...p} embedded />}
+    </div>
+  );
+}
+
+export function Inquiries(p: SalesPanelProps) {
   const customersQ = useCustomers();
   const inquiriesQ = useInquiries();
   const createInquiry = useCreateInquiry();
@@ -239,8 +291,9 @@ export function Inquiries(p: SalesData) {
 
   return (
     <div className="space-y-4">
-      <SalesPipelineTabs active="inquiries" onOpen={p.onOpen} />
+      {!p.embedded && <SalesPipelineTabs active="enquiry_desk" onOpen={p.onOpen} />}
 
+      {!p.embedded && (
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Inquiries</h2>
@@ -249,27 +302,43 @@ export function Inquiries(p: SalesData) {
         <button
           type="button"
           onClick={() => setPanelOpen(true)}
-          className={`inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-sm font-medium shadow-sm ${PRIMARY}`}
+          className={`inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-sm font-medium ${PRIMARY}`}
         >
           <Plus className="w-4 h-4" /> Log inquiry
         </button>
       </div>
+      )}
+
+      {p.embedded && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setPanelOpen(true)}
+            className={`inline-flex min-h-9 items-center gap-1.5 px-3.5 rounded-lg text-sm font-medium ${PRIMARY}`}
+          >
+            <Plus className="w-4 h-4" /> Log inquiry
+          </button>
+        </div>
+      )}
 
       {/* Summary strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Open inquiries', value: stats.open, hint: 'Not yet converted' },
-          { label: 'Pending quote', value: stats.pendingQuote, hint: 'Needs a rate' },
-          { label: 'Quotation sent', value: stats.quotation, hint: 'Awaiting confirm' },
-          { label: 'Converted', value: stats.converted, hint: 'Became orders' },
+          { label: 'Open enquiries', value: stats.open, hint: 'Not yet converted', accent: '#1E40AF' },
+          { label: 'Pending quote', value: stats.pendingQuote, hint: 'Needs a rate', accent: '#F59E0B' },
+          { label: 'Quotation sent', value: stats.quotation, hint: 'Awaiting confirm', accent: '#0284C7' },
+          { label: 'Converted', value: stats.converted, hint: 'Became orders', accent: '#10B981' },
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-3"
           >
-            <div className="text-[12px] font-medium text-slate-500 dark:text-slate-400">{s.label}</div>
-            <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900 dark:text-white tracking-tight">{s.value}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">{s.hint}</div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.accent }} aria-hidden />
+              <div className="text-[12px] font-medium text-slate-600">{s.label}</div>
+            </div>
+            <div className="mt-1 text-[28px] font-extrabold tabular-nums text-slate-900 tracking-tight leading-tight">{s.value}</div>
+            <div className="text-[12px] text-slate-500 mt-0.5">{s.hint}</div>
           </div>
         ))}
       </div>
@@ -282,7 +351,7 @@ export function Inquiries(p: SalesData) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search product or customer"
-            className="w-full h-10 pl-9 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="w-full min-h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-[16px] sm:text-sm bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E40AF] focus:border-[#1E40AF]"
           />
         </label>
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Status filter">
@@ -294,10 +363,10 @@ export function Inquiries(p: SalesData) {
                 type="button"
                 onClick={() => setStatusFilter(c.id)}
                 className={[
-                  'h-8 px-3 rounded-full text-[12px] font-medium border transition-colors',
+                  'min-h-9 px-3 rounded-lg text-[12px] font-medium border transition-colors',
                   on
-                    ? 'bg-blue-600 text-white border-blue-600 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300',
+                    ? 'bg-[#1E40AF] text-white border-[#1E40AF]'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:text-slate-900',
                 ].join(' ')}
               >
                 {c.label}
@@ -308,21 +377,21 @@ export function Inquiries(p: SalesData) {
       </div>
 
       <DataTable
-        title="Inquiry list"
+        title="Enquiry list"
         loading={inquiriesQ.isLoading}
         rows={filtered}
         rowKey={(i) => i.id}
-        empty={<EmptyState icon={<Inbox className="w-8 h-8" />} title="No inquiries match." hint="Try clearing filters, or log a new inquiry." />}
+        empty={<EmptyState icon={<Inbox className="w-8 h-8" />} title="No enquiries match." hint="Try clearing filters, or log a new enquiry." />}
         columns={[
-          { key: 'inq', header: 'Inquiry', cell: (i) => <TraceLink id={i.inquiryNumber} onTrace={p.onTrace} className="font-medium font-mono text-[12px]" /> },
-          { key: 'product', header: 'Product', cell: (i) => <span className="font-medium">{i.product}</span> },
-          { key: 'customer', header: 'Customer', cell: (i) => nameOf(customers, i.customerId) },
-          { key: 'qty', header: 'Qty', align: 'right', cell: (i) => i.quantity.toLocaleString('en-IN') },
-          { key: 'due', header: 'Delivery', className: 'whitespace-nowrap', cell: (i) => formatTableDate(i.expectedDeliveryDate) },
-          { key: 'status', header: 'Status', cell: (i) => <InquiryStatusBadge status={i.status} /> },
-          { key: 'file', header: 'Attachment', cell: (i) => i.attachment ? (
-            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 inline-flex items-center gap-1 max-w-[140px]"><Paperclip className="w-3 h-3 shrink-0" /><span className="truncate">{i.attachment}</span></span>
-          ) : <span className="text-slate-300">—</span> },
+          { key: 'inq', header: 'Enquiry', mobile: 'title', cell: (i) => <TraceLink id={i.inquiryNumber} onTrace={p.onTrace} className="font-medium font-mono text-[12px] text-[#1E40AF]" /> },
+          { key: 'product', header: 'Product', mobile: 'subtitle', cell: (i) => <span className="font-medium text-slate-800">{i.product}</span> },
+          { key: 'customer', header: 'Customer', mobile: 'meta', cell: (i) => <span className="text-slate-700">{nameOf(customers, i.customerId)}</span> },
+          { key: 'qty', header: 'Qty', align: 'right', mobile: 'meta', cell: (i) => <span className="text-slate-700">{i.quantity.toLocaleString('en-IN')}</span> },
+          { key: 'due', header: 'Delivery', className: 'whitespace-nowrap', mobile: 'meta', cell: (i) => <span className="text-slate-700">{formatTableDate(i.expectedDeliveryDate)}</span> },
+          { key: 'status', header: 'Status', mobile: 'badge', cell: (i) => <InquiryStatusBadge status={i.status} /> },
+          { key: 'file', header: 'Attachment', mobile: 'hide', cell: (i) => i.attachment ? (
+            <span className="text-[12px] font-medium text-slate-700 inline-flex items-center gap-1 max-w-[140px]"><Paperclip className="w-3.5 h-3.5 shrink-0 text-slate-500" /><span className="truncate">{i.attachment}</span></span>
+          ) : <span className="text-slate-400">—</span> },
         ]}
       />
 
@@ -332,7 +401,7 @@ export function Inquiries(p: SalesData) {
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
               {customers.length === 0 && (
                 <div className="text-[12px] text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg px-3 py-2">
-                  Add a customer first (Customers tab) — an enquiry needs a customer.
+                  Add a customer first (Customers in the sidebar) — an enquiry needs a customer.
                 </div>
               )}
 
@@ -402,7 +471,7 @@ export function Inquiries(p: SalesData) {
 
 /* ---------------------------------------------------------------- Quotations */
 
-export function Quotations(p: SalesData) {
+export function Quotations(p: SalesPanelProps) {
   const customers = useCustomers().data ?? [];
   const inquiriesQ = useInquiries();
   const quote = useQuoteInquiry();
@@ -420,6 +489,7 @@ export function Quotations(p: SalesData) {
 
   return (
     <div className="space-y-3">
+      {!p.embedded && <SalesPipelineTabs active="enquiry_desk" onOpen={p.onOpen} />}
       <DataTable
         title="Ready to quote"
         loading={inquiriesQ.isLoading}
@@ -673,7 +743,7 @@ export function Orders(p: SalesData) {
                 type="button"
                 onClick={() => setStatusFilter(c.id)}
                 className={[
-                  'h-8 px-3 rounded-full text-[12px] font-medium border transition-colors',
+                  'h-8 px-3 rounded-lg text-[12px] font-medium border transition-colors',
                   on
                     ? 'bg-blue-600 text-white border-blue-600 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200'
                     : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300',
@@ -727,7 +797,7 @@ export function SalesCustomers(_p: SalesData) {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Customers</h2>
-        <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-sm cursor-pointer shrink-0">
+        <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold cursor-pointer shrink-0">
           <Plus className="w-4 h-4" /> Add customer
         </button>
       </div>
@@ -743,7 +813,9 @@ export function SalesCustomers(_p: SalesData) {
           { key: 'phone', header: 'Phone', cell: (c) => c.phone || '—' },
           { key: 'email', header: 'Email', cell: (c) => c.email || '—' },
           { key: 'status', header: 'Status', align: 'right', cell: (c) => (
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${c.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{c.status === 'active' ? 'Active' : 'Inactive'}</span>
+            <StatusBadge tone={c.status === 'active' ? 'success' : 'neutral'}>
+              {c.status === 'active' ? 'Active' : 'Inactive'}
+            </StatusBadge>
           ) },
         ]}
       />
@@ -795,8 +867,8 @@ function AddCustomerModal({ onClose }: { onClose: () => void }) {
           <ModalField label="Delivery address (optional)" value={f.deliveryAddress} onChange={(v) => set('deliveryAddress', v)} ph="Same as billing if blank" span />
         </div>
         <div className="flex justify-end gap-2 pt-1">
-          <button onClick={onClose} className="min-h-[44px] px-4 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Cancel</button>
-          <button onClick={submit} disabled={!f.name.trim() || createCustomer.isPending} className="min-h-[44px] px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold cursor-pointer inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add customer</button>
+          <button onClick={onClose} className="min-h-[44px] px-4 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Cancel</button>
+          <button onClick={submit} disabled={!f.name.trim() || createCustomer.isPending} className="min-h-[44px] px-5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold cursor-pointer inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Add customer</button>
         </div>
       </div>
     </ResponsiveOverlay>
@@ -806,27 +878,16 @@ function AddCustomerModal({ onClose }: { onClose: () => void }) {
 /* ------------------------------------------------ Complaints + CAPA (API-backed) */
 
 const sevChip = (s: string) => (
-  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
-    s === 'high'
-      ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300'
-      : s === 'medium'
-        ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200'
-        : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-  }`}
-  >
+  <StatusBadge tone={s === 'high' ? 'error' : s === 'medium' ? 'warn' : 'neutral'}>
     {s === 'high' ? 'High' : s === 'medium' ? 'Medium' : 'Low'}
-  </span>
+  </StatusBadge>
 );
 
 const capaBadge = (status?: string) => {
-  const cls: Record<string, string> = {
-    open: 'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300',
-    in_progress: 'bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200',
-    closed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
-  };
-  const lab: Record<string, string> = { open: 'CAPA open', in_progress: 'CAPA in progress', closed: 'CAPA closed' };
   const s = status ?? 'open';
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${cls[s] ?? 'bg-slate-100 text-slate-700'}`}>{lab[s] ?? s}</span>;
+  const tone: StatusTone = s === 'closed' ? 'success' : s === 'in_progress' ? 'warn' : 'error';
+  const lab: Record<string, string> = { open: 'CAPA open', in_progress: 'CAPA in progress', closed: 'CAPA closed' };
+  return <StatusBadge tone={tone}>{lab[s] ?? s}</StatusBadge>;
 };
 
 type ComplaintFilter = 'all' | 'open' | 'high' | 'capa_open' | 'resolved';
@@ -926,7 +987,7 @@ export function SalesComplaints(p: SalesData) {
         <button
           type="button"
           onClick={() => setPanelOpen(true)}
-          className={`inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-sm font-medium shadow-sm ${PRIMARY}`}
+          className={`inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-sm font-medium ${PRIMARY}`}
         >
           <Plus className="w-4 h-4" /> Log complaint
         </button>
@@ -966,7 +1027,7 @@ export function SalesComplaints(p: SalesData) {
                 type="button"
                 onClick={() => setFilter(c.id)}
                 className={[
-                  'h-8 px-3 rounded-full text-[12px] font-medium border transition-colors',
+                  'h-8 px-3 rounded-lg text-[12px] font-medium border transition-colors',
                   on
                     ? 'bg-blue-600 text-white border-blue-600 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200'
                     : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300',

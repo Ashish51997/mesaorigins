@@ -104,7 +104,7 @@ function DispatchModal({ order, onClose }: { order: ApiReadyOrder; onClose: () =
             <Field label="Driver name" value={driver} onChange={setDriver} ph="Driver" />
             <Field label="ETA date" value={eta} onChange={setEta} ph="YYYY-MM-DD" />
           </div>
-          <button onClick={submit} disabled={!valid || !canDispatch || create.isPending} title={canDispatch ? undefined : 'No access — ask your administrator'} className="w-full h-14 rounded-xl bg-indigo-600 text-white font-bold text-base hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1">
+          <button onClick={submit} disabled={!valid || !canDispatch || create.isPending} title={canDispatch ? undefined : 'No access — ask your administrator'} className="w-full h-14 rounded-lg bg-indigo-600 text-white font-bold text-base hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1">
             <Truck className="w-5 h-5" /> {canDispatch ? 'Dispatch & raise invoice' : 'No access to dispatch'}
           </button>
       </div>

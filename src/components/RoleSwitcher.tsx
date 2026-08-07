@@ -17,7 +17,7 @@ export function RoleSwitcher({ current, currentEmail, onSelectEmployee }: {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 md:bottom-5 md:right-5 z-50 inline-flex items-center gap-2 px-4 h-12 rounded-full bg-indigo-600 text-white font-bold text-xs shadow-lg hover:bg-indigo-700 no-print"
+        className="fixed bottom-24 right-4 lg:bottom-5 lg:right-5 z-50 inline-flex items-center gap-2 px-4 h-12 min-h-11 rounded-lg bg-sky-600 text-white font-medium text-xs hover:bg-sky-500 no-print"
         title="Switch employee"
       >
         <Users2 className="w-4 h-4" /> {current}
@@ -31,11 +31,11 @@ export function RoleSwitcher({ current, currentEmail, onSelectEmployee }: {
               <button
                 key={e.id}
                 onClick={() => { onSelectEmployee(e.email, e.role, e.name); setOpen(false); }}
-                className={`w-full text-left rounded-lg border p-2.5 transition-all ${activeE ? 'border-indigo-500 ring-1 ring-indigo-300 bg-indigo-50/40' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'}`}
+                className={`w-full text-left rounded-lg border p-2.5 transition-colors ${activeE ? 'border-sky-600 bg-sky-50' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'}`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[13px] text-slate-800 dark:text-slate-100">{e.name}</span>
-                  {activeE && <Check className="w-4 h-4 text-indigo-600" />}
+                  <span className="font-semibold text-[13px] text-slate-800 dark:text-slate-100">{e.name}</span>
+                  {activeE && <Check className="w-4 h-4 text-sky-600" />}
                 </div>
                 <div className="mt-0.5 text-[11px] text-slate-500">{e.role} · {e.employeeCode} · {e.department}</div>
               </button>

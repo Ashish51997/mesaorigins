@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MesaDesk — Pitch Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #1E40AF;
+      --primary-soft: #DBEAFE;
+      --slate-900: #0F172A;
+      --slate-800: #1E293B;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748B;
+      --slate-400: #94A3B8;
+      --slate-200: #E2E8F0;
+      --slate-100: #F1F5F9;
+      --slate-50: #F8FAFC;
+      --white: #FFFFFF;
+      --success: #10B981;
+      --success-bg: #D1FAE5;
+      --success-text: #065F46;
+      --warning: #F59E0B;
+      --warning-bg: #FEF3C7;
+      --warning-text: #92400E;
+      --error: #EF4444;
+      --error-bg: #FEE2E2;
+      --error-text: #991B1B;
+      --radius-card: 12px;
+      --radius-control: 8px;
+      --radius-badge: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--slate-900);
+      color: var(--slate-900);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .deck {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      background: var(--slate-50);
+      padding: 48px 64px 56px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .slide.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .slide.dark {
+      background: var(--slate-900);
+      color: var(--white);
+    }
+
+    .slide.dark .eyebrow { color: #93C5FD; }
+    .slide.dark .muted { color: var(--slate-400); }
+    .slide.dark .card {
+      background: var(--slate-800);
+      border-color: var(--slate-700);
+    }
+
+    .chrome {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 36px;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+    }
+
+    .brand-text h1 {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--slate-900);
+      line-height: 1.1;
+    }
+
+    .slide.dark .brand-text h1 { color: var(--white); }
+
+    .brand-text p {
+      font-size: 11px;
+      font-weight: 300;
+      color: var(--slate-500);
+      margin-top: 2px;
+    }
+
+    .slide.dark .brand-text p { color: var(--slate-400); }
+
+    .slide-num {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--slate-400);
+      letter-spacing: 0.04em;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .title {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1.15;
+      color: var(--slate-900);
+      max-width: 18ch;
+      margin-bottom: 16px;
+    }
+
+    .slide.dark .title { color: var(--white); }
+
+    .title.wide { max-width: 28ch; }
+    .title.hero {
+      font-size: 48px;
+      max-width: 14ch;
+      margin-bottom: 20px;
+    }
+
+    .lede {
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1.5;
+      color: var(--slate-600);
+      max-width: 42ch;
+    }
+
+    .slide.dark .lede { color: var(--slate-300); }
+
+    .muted { color: var(--slate-500); font-size: 14px; line-height: 1.5; }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      width: 100%;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      width: 100%;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      width: 100%;
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius-card);
+      padding: 20px;
+    }
+
+    .card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--slate-900);
+      margin-bottom: 8px;
+    }
+
+    .slide.dark .card h3 { color: var(--white); }
+
+    .card p, .card li {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--slate-600);
+    }
+
+    .slide.dark .card p,
+    .slide.dark .card li { color: var(--slate-300); }
+
+    .card ul { list-style: none; }
+    .card li { padding: 4px 0; padding-left: 14px; position: relative; }
+    .card li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 11px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    .icon-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-control);
+      background: var(--primary-soft);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .stat {
+      text-align: left;
+    }
+
+    .stat .value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.2;
+    }
+
+    .stat .label {
+      font-size: 13px;
+      color: var(--slate-500);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .flow-step {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius-badge);
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--slate-700);
+    }
+
+    .flow-step strong {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--primary);
+      margin-bottom: 2px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .flow-arrow {
+      color: var(--slate-400);
+      font-size: 16px;
+      font-weight: 300;
+    }
+
+    .role-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .role-chip {
+      background: var(--primary-soft);
+      color: var(--primary);
+      border-radius: var(--radius-badge);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .tier {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .tier .price {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .tier.featured {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .tier.featured h3 { color: var(--primary); }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 40px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .checklist li {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 15px;
+      line-height: 1.45;
+      color: var(--slate-700);
+    }
+
+    .checklist .mark {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      background: var(--success-bg);
+      color: var(--success-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    .nav {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: 20px;
+      padding: 8px 12px;
+      z-index: 50;
+      box-shadow: none;
+    }
+
+    .nav button {
+      appearance: none;
+      border: none;
+      background: var(--slate-100);
+      color: var(--slate-700);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav button:hover { background: var(--primary-soft); color: var(--primary); }
+    .nav button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .nav button:disabled { opacity: 0.35; cursor: default; }
+
+    .nav .progress {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--slate-500);
+      min-width: 48px;
+      text-align: center;
+    }
+
+    .dots {
+      display: flex;
+      gap: 4px;
+      padding: 0 4px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--slate-200);
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .dot.active { background: var(--primary); width: 16px; border-radius: 3px; }
+
+    .hint {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      font-size: 11px;
+      color: var(--slate-400);
+      z-index: 40;
+      background: rgba(248, 250, 252, 0.9);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--slate-200);
+    }
+
+    .closing-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 28px;
+      background: var(--primary);
+      color: var(--white);
+      padding: 14px 24px;
+      border-radius: var(--radius-control);
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    .problem-x {
+      color: var(--error);
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .two-col-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 24px;
+      margin-top: 8px;
+    }
+
+    .two-col-list li {
+      font-size: 15px;
+      color: var(--slate-700);
+      line-height: 1.4;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .module-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 900px) {
+      .slide { padding: 32px 24px 72px; }
+      .title { font-size: 28px; }
+      .title.hero { font-size: 32px; }
+      .grid-2, .grid-3, .grid-4, .split, .two-col-list {
+        grid-template-columns: 1fr;
+      }
+      .flow-arrow { display: none; }
+      .hint { display: none; }
+    }
+
+    @media print {
+      .nav, .hint { display: none !important; }
+      .slide {
+        position: relative;
+        display: flex !important;
+        opacity: 1 !important;
+        page-break-after: always;
+        height: 100vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hint">← → to navigate · F for fullscreen</div>
+
+  <div class="deck" id="deck">
+
+    <!-- 1. Title -->
+    <section class="slide dark active" data-title="Title">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+            <path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="url(#gA)"/>
+            <path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="url(#gB)"/>
+            <path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="url(#gC)"/>
+            <defs>
+              <linearGradient id="gA" x1="31.19" y1="10.7" x2="4" y2="10.7" gradientUnits="userSpaceOnUse"><stop stop-color="#1F74FF"/><stop offset="1" stop-color="#0044FF"/></linearGradient>
+              <linearGradient id="gB" x1="27.38" y1="29" x2="27.38" y2="15.4" gradientUnits="userSpaceOnUse"><stop stop-color="#287CFF"/><stop offset="1" stop-color="#0538BD"/></linearGradient>
+              <linearGradient id="gC" x1="7.81" y1="29" x2="7.81" y2="15.4" gradientUnits="userSpaceOnUse"><stop stop-color="#287CFF"/><stop offset="1" stop-color="#0538BD"/></linearGradient>
+            </defs>
+          </svg>
+          <div class="brand-text">
+            <h1>MesaDesk</h1>
+            <p>One Platform. Every Operation.</p>
+          </div>
+        </div>
+        <span class="slide-num">01 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">Investor &amp; partner pitch</p>
+        <h2 class="title hero">The operating system for the polymer plant.</h2>
+        <p class="lede">From customer enquiry to dispatched, fully-traceable product — usable by an operator on the floor and an owner on their phone.</p>
+        <p class="muted" style="margin-top:28px;">Multi-tenant manufacturing SaaS · Sales → Planning → Production → Quality → Stores → Dispatch · ISO 9001-grade batch passport</p>
+      </div>
+    </section>
+
+    <!-- 2. Problem -->
+    <section class="slide" data-title="Problem">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><use href="#logo"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">02 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">The problem</p>
+        <h2 class="title wide">Plants still run on paper, spreadsheets, and phone calls.</h2>
+        <div class="grid-2" style="margin-top:28px;">
+          <div class="card">
+            <div class="icon-badge">01</div>
+            <h3>Paper shift logbooks</h3>
+            <p>Operators fill formats by hand. Data is siloed, illegible, and lost — useless when a customer or auditor asks what happened on Line 2 last Tuesday.</p>
+          </div>
+          <div class="card">
+            <div class="icon-badge">02</div>
+            <h3>No single source of truth</h3>
+            <p>Enquiries, quotes, plans, stock, and dispatches live in Excel and WhatsApp. Nobody shares the same picture of the plant.</p>
+          </div>
+          <div class="card">
+            <div class="icon-badge">03</div>
+            <h3>Traceability takes days — or fails</h3>
+            <p>When a batch complaint lands, linking it to shift, machine, operator, material, and QA result is slow or impossible. ISO audits suffer; trust erodes.</p>
+          </div>
+          <div class="card">
+            <div class="icon-badge">04</div>
+            <h3>Owners fly blind</h3>
+            <p>Managing Directors lack a live view of capacity, quality, stock, and dispatch. Decisions wait on end-of-day reports that are already stale.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Who we serve -->
+    <section class="slide" data-title="Market">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0"/><path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="#1F74FF"/><path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="#0538BD"/><path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="#0538BD"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">03 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">Who we serve</p>
+        <h2 class="title wide">SME plastics &amp; polymer extrusion manufacturers.</h2>
+        <p class="lede" style="margin-bottom:28px;">Pipes, profiles, coils, films — single- or few-plant units that outgrew paper but cannot justify a bloated enterprise ERP.</p>
+        <div class="grid-3">
+          <div class="card stat">
+            <div class="value">10+</div>
+            <div class="label">Role-specific workspaces from MD to machine operator</div>
+          </div>
+          <div class="card stat">
+            <div class="value">Order → Gate</div>
+            <div class="label">One connected value chain instead of six disconnected tools</div>
+          </div>
+          <div class="card stat">
+            <div class="value">Seconds</div>
+            <div class="label">Target time to trace any lot both directions — complaint to root cause</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Solution -->
+    <section class="slide" data-title="Solution">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0"/><path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="#1F74FF"/><path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="#0538BD"/><path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="#0538BD"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">04 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">The solution</p>
+        <h2 class="title wide">One platform. Every operation.</h2>
+        <div class="split" style="margin-top:24px;">
+          <div>
+            <p class="lede" style="margin-bottom:24px;">MesaDesk digitises the full order-to-dispatch value chain with ISO 9001-grade traceability — sold as multi-tenant SaaS to many manufacturers, each with isolated data, users, and billing.</p>
+            <ul class="checklist">
+              <li><span class="mark">✓</span> Replace paper and Excel with one connected system</li>
+              <li><span class="mark">✓</span> Guarantee batch passport: raw material → shift → QA → pallet → invoice</li>
+              <li><span class="mark">✓</span> Enforce quality gates and closed-loop CAPA</li>
+              <li><span class="mark">✓</span> Touch-first, role-focused workspaces for the shop floor</li>
+            </ul>
+          </div>
+          <div class="card">
+            <p class="module-label">Built for the plant</p>
+            <h3>Not another generic ERP</h3>
+            <p style="margin-top:8px;">Purpose-built for extrusion: machine logbooks, micron tolerances, formulations, gate passes, and complaint-to-CAPA — not bolted-on modules from a finance suite.</p>
+            <div class="role-row">
+              <span class="role-chip">Shop-floor PWA</span>
+              <span class="role-chip">Multilingual</span>
+              <span class="role-chip">Tablet-first</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Value chain -->
+    <section class="slide" data-title="Value chain">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0"/><path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="#1F74FF"/><path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="#0538BD"/><path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="#0538BD"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">05 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">How it works</p>
+        <h2 class="title wide">Enquiry in. Traceable dispatch out.</h2>
+        <div class="flow" style="margin-top:28px;">
+          <div class="flow-step"><strong>Sales</strong>Enquiry · Quote · Order</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step"><strong>Planning</strong>Machine · Shift · BOM</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step"><strong>Production</strong>Logbook · Rolls</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step"><strong>Quality</strong>Pass · Hold · Fail</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step"><strong>Stores</strong>RM · FG ledger</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step"><strong>Dispatch</strong>Gate pass · Ship</div>
+        </div>
+        <div class="card" style="margin-top:24px;">
+          <h3>Closed loop when something goes wrong</h3>
+          <p style="margin-top:6px;">Customer complaint → SLA clock → 8D CAPA → formulation or process lock. Traceability spans every step in both directions via the Batch Passport.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Product modules -->
+    <section class="slide" data-title="Product">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0"/><path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="#1F74FF"/><path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="#0538BD"/><path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="#0538BD"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">06 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">Product</p>
+        <h2 class="title">Modules that hand off — not silos.</h2>
+        <div class="grid-4" style="margin-top:24px;">
+          <div class="card"><p class="module-label">Commercial</p><h3>Sales &amp; CRM</h3><p>Customers, RFQs, quotations, orders, priority, complaints intake.</p></div>
+          <div class="card"><p class="module-label">Operations</p><h3>Planning &amp; PPC</h3><p>Capacity, machine allocation, shifts, formulations, material checks.</p></div>
+          <div class="card"><p class="module-label">Shop floor</p><h3>Logbooks</h3><p>Configurable templates, hourly readings, rolls, scrap, yield.</p></div>
+          <div class="card"><p class="module-label">Assurance</p><h3>Quality</h3><p>In-line &amp; incoming inspection, holds, disposal, calibration.</p></div>
+          <div class="card"><p class="module-label">Warehouse</p><h3>Inventory</h3><p>RM receive/issue, FG put-away, regrind, live ledger.</p></div>
+          <div class="card"><p class="module-label">Logistics</p><h3>Dispatch</h3><p>Pallets, gate passes, vehicles, invoices, e-Waybill-ready.</p></div>
+          <div class="card"><p class="module-label">Reliability</p><h3>Maintenance</h3><p>Breakdowns, PM schedule, downtime, machine history.</p></div>
+          <div class="card"><p class="module-label">Oversight</p><h3>Reports &amp; Admin</h3><p>Live KPIs, Batch Passport, RBAC, audit trail.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Personas -->
+    <section class="slide" data-title="Roles">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0"/><path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="#1F74FF"/><path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="#0538BD"/><path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="#0538BD"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">07 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">Experience</p>
+        <h2 class="title wide">Every role gets a focused workspace.</h2>
+        <p class="lede" style="margin-bottom:24px;">Feature-catalog RBAC: role defaults plus per-person grants and time-boxed delegation. High-stakes actions are permission-gated.</p>
+        <ul class="two-col-list">
+          <li><strong style="color:var(--primary);min-width:7.5rem;">Owner / MD</strong> Live plant, quality, stock &amp; dispatch overview</li>
+          <li><strong style="color:var(--primary);min-width:7.5rem;">Sales</strong> Enquiries, quotes, orders, complaints</li>
+          <li><strong style="color:var(--primary);min-width:7.5rem;">Planner</strong> Capacity, schedules, formulations</li>
+          <li><strong style="color:var(--primary);min-width:7.5rem;">Operator</strong> Touch logbook, hourly params, breakdowns</li>
+          <li><strong style="color:var(--primary);min-width:7.5rem;">QA</strong> Inspect, pass/hold/reject, disposal</li>
+          <li><strong style="color:var(--primary);min-width:7.5rem;">Stores</strong> Receive, issue, FG put-away</li>
+          <li><strong style="color:var(--primary);min-width:7.5rem;">Dispatch</strong> Load, gate pass, ship</li>
+          <li><strong style="color:var(--primary);min-width:7.5rem;">Admin</strong> People, roles, access, audit</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 8. Traceability -->
+    <section class="slide" data-title="Traceability">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0"/><path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="#1F74FF"/><path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="#0538BD"/><path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="#0538BD"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">08 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">Differentiation</p>
+        <h2 class="title wide">Batch Passport — ISO discipline by design.</h2>
+        <div class="grid-3" style="margin-top:28px;">
+          <div class="card">
+            <div class="icon-badge">↔</div>
+            <h3>Forward &amp; reverse trace</h3>
+            <p>Any finished lot → shift, machine, operator, raw-material batch, QA result. Any complaint → batch → root cause.</p>
+          </div>
+          <div class="card">
+            <div class="icon-badge">ISO</div>
+            <h3>Controlled documents</h3>
+            <p>Logbook templates with doc/rev numbers, mandatory QA gates, calibration register, append-only audit events.</p>
+          </div>
+          <div class="card">
+            <div class="icon-badge">8D</div>
+            <h3>Closed-loop CAPA</h3>
+            <p>SLA clocks by severity. Complaints do not close until CAPA closes with root cause recorded.</p>
+          </div>
+        </div>
+        <p class="muted" style="margin-top:20px;">Business rule: a roll may not be dispatched unless it passed QA and was put away as finished stock.</p>
+      </div>
+    </section>
+
+    <!-- 9. Platform -->
+    <section class="slide" data-title="Platform">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0"/><path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="#1F74FF"/><path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="#0538BD"/><path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="#0538BD"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">09 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">Architecture</p>
+        <h2 class="title wide">Multi-tenant SaaS, built to sell.</h2>
+        <div class="grid-2" style="margin-top:24px;">
+          <div class="card">
+            <h3>Tenant isolation as an invariant</h3>
+            <ul>
+              <li>Pooled Postgres with Row-Level Security</li>
+              <li>Server-derived tenant context — never client-supplied</li>
+              <li>Enterprise silo option for data residency</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Right-sized stack</h3>
+            <ul>
+              <li>React SPA · Express modular monolith</li>
+              <li>Firebase identity · Stripe billing</li>
+              <li>Entitlements: modules, seats, machines</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Plant-ready delivery</h3>
+            <ul>
+              <li>PWA / tablet for operators</li>
+              <li>Offline-aware shop-floor flows</li>
+              <li>PDF: logbooks, gate passes, labels</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Onboarding path</h3>
+            <ul>
+              <li>Self-serve signup &amp; baseline seed</li>
+              <li>Invite team by role</li>
+              <li>Excel → ERP migration hub</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. Business model -->
+    <section class="slide" data-title="Business model">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0"/><path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="#1F74FF"/><path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="#0538BD"/><path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="#0538BD"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">10 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">Commercial model</p>
+        <h2 class="title">Per-plant subscription. Clear tiers.</h2>
+        <div class="grid-3" style="margin-top:28px;">
+          <div class="card tier">
+            <h3>Starter</h3>
+            <p class="price">Core value chain</p>
+            <p>Sales through dispatch essentials. Ideal for first digitisation of a single plant.</p>
+          </div>
+          <div class="card tier featured">
+            <h3>Growth</h3>
+            <p class="price">Most manufacturers</p>
+            <p>Adds quality depth, maintenance, BI dashboards, and richer entitlements for seats and machines.</p>
+          </div>
+          <div class="card tier">
+            <h3>Enterprise</h3>
+            <p class="price">Isolation &amp; scale</p>
+            <p>Dedicated data silo / residency, SSO, priority support, custom domains.</p>
+          </div>
+        </div>
+        <p class="muted" style="margin-top:20px;">Billed per organization + seats. Plan maps to enabled modules and hard limits — over-limit is blocked gracefully, not broken.</p>
+      </div>
+    </section>
+
+    <!-- 11. Roadmap -->
+    <section class="slide" data-title="Roadmap">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0"/><path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="#1F74FF"/><path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="#0538BD"/><path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="#0538BD"/></svg>
+          <div class="brand-text"><h1>MesaDesk</h1><p>One Platform. Every Operation.</p></div>
+        </div>
+        <span class="slide-num">11 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">Roadmap</p>
+        <h2 class="title">From working product to production SaaS.</h2>
+        <div class="grid-2" style="margin-top:24px;">
+          <div class="card">
+            <p class="module-label">Shipped / in progress</p>
+            <h3>Rich product surface</h3>
+            <ul>
+              <li>End-to-end role dashboards &amp; flows</li>
+              <li>Access &amp; feature-catalog RBAC</li>
+              <li>Multi-tenant foundation (RLS + guards)</li>
+              <li>Logbook templates &amp; shop-floor UX</li>
+            </ul>
+          </div>
+          <div class="card">
+            <p class="module-label">Next</p>
+            <h3>Pilot → scale</h3>
+            <ul>
+              <li>Phase 1: Sales + Planning on real tenants</li>
+              <li>Phase 2: Production + Quality + Batch Passport</li>
+              <li>Phase 3: Stores + Dispatch</li>
+              <li>Phase 4: Maintenance + Admin + BI</li>
+            </ul>
+          </div>
+        </div>
+        <p class="muted" style="margin-top:16px;">MVP ordering is front-office first — prove enquiry→plan on a pilot plant, then deepen the floor.</p>
+      </div>
+    </section>
+
+    <!-- 12. Close -->
+    <section class="slide dark" data-title="Close">
+      <div class="chrome">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+            <path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill="url(#gA2)"/>
+            <path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill="url(#gB2)"/>
+            <path d="M4 15.4049L4 25.1926C4 27.2954 5.70466 29.0001 7.80747 29.0001C9.91028 29.0001 11.6149 27.2954 11.6149 25.1926L11.6149 17.5801C11.6149 17.5801 11.5877 16.1526 11.7509 15.9487C12.0229 15.6089 12.5668 15.4049 12.5668 15.4049L4 15.4049Z" fill="url(#gC2)"/>
+            <defs>
+              <linearGradient id="gA2" x1="31.19" y1="10.7" x2="4" y2="10.7" gradientUnits="userSpaceOnUse"><stop stop-color="#1F74FF"/><stop offset="1" stop-color="#0044FF"/></linearGradient>
+              <linearGradient id="gB2" x1="27.38" y1="29" x2="27.38" y2="15.4" gradientUnits="userSpaceOnUse"><stop stop-color="#287CFF"/><stop offset="1" stop-color="#0538BD"/></linearGradient>
+              <linearGradient id="gC2" x1="7.81" y1="29" x2="7.81" y2="15.4" gradientUnits="userSpaceOnUse"><stop stop-color="#287CFF"/><stop offset="1" stop-color="#0538BD"/></linearGradient>
+            </defs>
+          </svg>
+          <div class="brand-text">
+            <h1>MesaDesk</h1>
+            <p>One Platform. Every Operation.</p>
+          </div>
+        </div>
+        <span class="slide-num">12 / 12</span>
+      </div>
+      <div class="content">
+        <p class="eyebrow">The ask</p>
+        <h2 class="title hero">Digitise the plant. Trace every lot. Scale the SaaS.</h2>
+        <p class="lede">Partner with us to put MesaDesk on the first pilot plant — prove order-to-dispatch on real data, then expand module by module across the polymer mid-market.</p>
+        <div style="margin-top:32px;display:flex;flex-wrap:wrap;gap:24px;">
+          <div>
+            <div class="stat"><div class="value" style="color:#93C5FD;">Pilot</div><div class="label" style="color:var(--slate-400);">First live tenant · Sales + Planning</div></div>
+          </div>
+          <div>
+            <div class="stat"><div class="value" style="color:#93C5FD;">Prove</div><div class="label" style="color:var(--slate-400);">Traceability in seconds · paper retired</div></div>
+          </div>
+          <div>
+            <div class="stat"><div class="value" style="color:#93C5FD;">Scale</div><div class="label" style="color:var(--slate-400);">Multi-plant · multi-tenant MRR</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <nav class="nav" aria-label="Slide navigation">
+    <button type="button" id="prev" aria-label="Previous slide">←</button>
+    <div class="dots" id="dots" role="tablist" aria-label="Slides"></div>
+    <span class="progress" id="progress">1 / 12</span>
+    <button type="button" id="next" aria-label="Next slide">→</button>
+  </nav>
+
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      const prevBtn = document.getElementById("prev");
+      const nextBtn = document.getElementById("next");
+      const progress = document.getElementById("progress");
+      const dotsEl = document.getElementById("dots");
+      let index = 0;
+
+      slides.forEach((_, i) => {
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "dot" + (i === 0 ? " active" : "");
+        dot.setAttribute("aria-label", "Go to slide " + (i + 1));
+        dot.addEventListener("click", () => go(i));
+        dotsEl.appendChild(dot);
+      });
+
+      function go(i) {
+        index = Math.max(0, Math.min(slides.length - 1, i));
+        slides.forEach((s, n) => s.classList.toggle("active", n === index));
+        dotsEl.querySelectorAll(".dot").forEach((d, n) => d.classList.toggle("active", n === index));
+        progress.textContent = (index + 1) + " / " + slides.length;
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === slides.length - 1;
+        document.title = "MesaDesk — " + (slides[index].dataset.title || "Pitch Deck");
+      }
+
+      prevBtn.addEventListener("click", () => go(index - 1));
+      nextBtn.addEventListener("click", () => go(index + 1));
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+          e.preventDefault();
+          go(index + 1);
+        } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+          e.preventDefault();
+          go(index - 1);
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          go(0);
+        } else if (e.key === "End") {
+          e.preventDefault();
+          go(slides.length - 1);
+        } else if (e.key === "f" || e.key === "F") {
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+          else document.exitFullscreen?.();
+        }
+      });
+
+      let touchX = null;
+      document.addEventListener("touchstart", (e) => { touchX = e.changedTouches[0].screenX; }, { passive: true });
+      document.addEventListener("touchend", (e) => {
+        if (touchX == null) return;
+        const dx = e.changedTouches[0].screenX - touchX;
+        if (Math.abs(dx) > 50) go(index + (dx < 0 ? 1 : -1));
+        touchX = null;
+      }, { passive: true });
+
+      go(0);
+    })();
+  </script>
+</body>
+</html>

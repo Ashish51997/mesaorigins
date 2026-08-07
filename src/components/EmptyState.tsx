@@ -19,7 +19,7 @@ export function EmptyState({ icon, title, hint, action }: {
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-4 px-4 h-11 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700"
+          className="mt-4 px-4 h-11 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
         >
           {action.label}
         </button>

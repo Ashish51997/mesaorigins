@@ -220,8 +220,8 @@ export function DataTable<T>({
           <div className="flex items-center gap-2.5 min-w-0">
             {title && (
               <>
-                <span className="h-4 w-1 rounded-full bg-blue-600 dark:bg-slate-300 shrink-0" aria-hidden />
-                <h3 className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 truncate normal-case tracking-normal">
+                <span className="h-4 w-1 rounded-sm bg-[#1E40AF] shrink-0" aria-hidden />
+                <h3 className="text-[13px] font-semibold text-slate-800 truncate normal-case tracking-normal">
                   {title}
                 </h3>
               </>
@@ -248,14 +248,14 @@ export function DataTable<T>({
         <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-[13px] border-collapse">
               <thead className="sticky top-0 z-[1]">
-                <tr className="bg-slate-50/95 dark:bg-slate-950/90 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+                <tr className="border-b border-slate-200">
                   {columns.map((col, ci) => (
                     <th
                       key={col.key}
                       scope="col"
                       className={[
                         pad,
-                        'text-[11px] font-medium text-slate-500 dark:text-slate-400',
+                        'md-th text-[12px] font-semibold',
                         'whitespace-nowrap select-none normal-case tracking-normal',
                         alignCls[col.align ?? 'left'],
                         col.headerClassName ?? '',
@@ -275,12 +275,9 @@ export function DataTable<T>({
                     key={rowKey(row)}
                     onClick={clickable ? () => onRowClick?.(row) : undefined}
                     className={[
-                      'group border-b border-slate-100 dark:border-slate-800/80 last:border-b-0',
-                      'transition-colors duration-100',
-                      ri % 2 === 1 ? 'bg-slate-50/60 dark:bg-slate-950/40' : 'bg-white dark:bg-slate-900',
-                      clickable
-                        ? 'cursor-pointer hover:bg-blue-600/[0.04] dark:hover:bg-slate-800'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                      'group border-b border-slate-200 last:border-b-0',
+                      ri % 2 === 1 ? 'md-tr-odd' : 'md-tr-even',
+                      clickable ? 'cursor-pointer md-tr-hover' : 'md-tr-hover',
                     ].join(' ')}
                   >
                     {columns.map((col, ci) => (
@@ -288,17 +285,17 @@ export function DataTable<T>({
                         key={col.key}
                         className={[
                           pad,
-                          'align-middle text-slate-700 dark:text-slate-200 relative',
+                          'align-middle relative text-[13px] text-slate-700',
                           alignCls[col.align ?? 'left'],
                           col.className ?? '',
-                          ci === 0 ? 'pl-4 sm:pl-5 font-medium text-slate-800 dark:text-slate-100' : '',
+                          ci === 0 ? 'pl-4 sm:pl-5 font-medium text-slate-800' : '',
                           ci === columns.length - 1 ? 'pr-4 sm:pr-5' : '',
                           col.align === 'right' ? 'tabular-nums font-mono text-[12px]' : '',
                         ].join(' ')}
                       >
                         {clickable && ci === 0 && (
                           <span
-                            className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity dark:bg-slate-300"
+                            className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-[#1E40AF] opacity-0 group-hover:opacity-100 transition-opacity"
                             aria-hidden
                           />
                         )}

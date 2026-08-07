@@ -52,15 +52,15 @@ export default function ResponsiveOverlay({
         <button type="button" className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]" aria-label="Close" onClick={onClose} />
         <div
           className={[
-            'relative z-10 h-full w-full max-w-lg bg-white dark:bg-slate-900 shadow-xl border-l border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden',
+            'relative z-10 h-full w-full max-w-lg bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden',
             wide ? 'max-w-xl' : '',
             panelClassName,
           ].join(' ')}
         >
           {header && (
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white truncate">{title}</h2>
-              <button type="button" onClick={onClose} className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{title}</h2>
+              <button type="button" onClick={onClose} className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -80,16 +80,16 @@ export default function ResponsiveOverlay({
     >
       <div
         className={[
-          'relative my-auto w-full rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-700',
+          'relative my-auto w-full rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700',
           wide ? 'max-w-2xl' : 'max-w-md',
           panelClassName,
         ].join(' ')}
         onClick={(e) => e.stopPropagation()}
       >
         {header && (
-          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white truncate">{title}</h2>
-            <button type="button" onClick={onClose} className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{title}</h2>
+            <button type="button" onClick={onClose} className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">
               <X className="h-4 w-4" />
             </button>
           </div>

@@ -120,10 +120,10 @@ describe('LogbookModule (operator)', () => {
     expect(await screen.findByText(/No extruder scheduled/i)).toBeTruthy();
   });
 
-  it('opens the logbook for the scheduled plan and renders the sheet + fill panel', async () => {
+  it('opens the logbook for the scheduled plan and renders guided preview + wizard', async () => {
     setupApi();
     const { container } = renderModule('operator');
-    expect(await screen.findByText(/Fill panel/i)).toBeTruthy();
+    expect(await screen.findByText(/Guided entry/i)).toBeTruthy();
     expect(container.querySelector('.sheet-wrap')).toBeTruthy();
     await waitFor(() => expect(post).toHaveBeenCalledWith('/logbooks', { productionPlanId: PLAN_ID }));
   });
@@ -133,7 +133,7 @@ describe('LogbookModule (operator)', () => {
     setupApi();
     const { container } = renderModule('operator');
     expect(await screen.findByTestId('mobile-log-entry')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: /Header/i })).toBeTruthy();
+    expect(screen.getAllByText(/Header/i).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Fill panel/i)).toBeNull();
     expect(screen.queryByText(/Guided entry/i)).toBeNull();
     expect(screen.queryByText(/^Guided$/)).toBeNull();
@@ -146,6 +146,8 @@ describe('LogbookModule (operator)', () => {
   it('typing in the fill panel reflects live on the sheet (two-way sync)', async () => {
     setupApi();
     const { container } = renderModule('operator');
+    await screen.findByText(/Guided entry/i);
+    fireEvent.click(screen.getByRole('button', { name: /^Sheet$/i }));
     await screen.findByText(/Fill panel/i);
     fireEvent.change(panelInput('Machine No'), { target: { value: 'M77' } });
     const withValue = Array.from(container.querySelectorAll('input')).filter((el) => (el as HTMLInputElement).value === 'M77');
@@ -155,6 +157,8 @@ describe('LogbookModule (operator)', () => {
   it('submitting saves progress without locking (empty fields allowed)', async () => {
     setupApi();
     renderModule('operator');
+    await screen.findByText(/Guided entry/i);
+    fireEvent.click(screen.getByRole('button', { name: /^Sheet$/i }));
     await screen.findByText(/Fill panel/i);
     await waitFor(() => expect(panelInput('Machine No').value).toBe('M08')); // wait for the logbook to load
     post.mockClear();
@@ -166,6 +170,8 @@ describe('LogbookModule (operator)', () => {
   it('closing without required fields shows empty-field errors', async () => {
     setupApi();
     renderModule('operator');
+    await screen.findByText(/Guided entry/i);
+    fireEvent.click(screen.getByRole('button', { name: /^Sheet$/i }));
     await screen.findByText(/Fill panel/i);
     await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
     post.mockClear();
@@ -185,6 +191,8 @@ describe('LogbookModule (operator)', () => {
       dieZoneTemps: Object.fromEntries(template.dieZones.map((z) => [z, z === zone ? '1' : ''])),
     }));
     renderModule('operator');
+    await screen.findByText(/Guided entry/i);
+    fireEvent.click(screen.getByRole('button', { name: /^Sheet$/i }));
     await screen.findByText(/Fill panel/i);
     await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
     post.mockClear();
@@ -202,6 +210,8 @@ describe('LogbookModule (operator)', () => {
       supervisorSignature: 'Suresh',
     }));
     renderModule('operator');
+    await screen.findByText(/Guided entry/i);
+    fireEvent.click(screen.getByRole('button', { name: /^Sheet$/i }));
     await screen.findByText(/Fill panel/i);
     await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
     fireEvent.click(screen.getByText('Close'));
@@ -212,6 +222,8 @@ describe('LogbookModule (operator)', () => {
   it('uses a date picker for the Date field and strips letters from numeric fields', async () => {
     setupApi();
     renderModule('operator');
+    await screen.findByText(/Guided entry/i);
+    fireEvent.click(screen.getByRole('button', { name: /^Sheet$/i }));
     await screen.findByText(/Fill panel/i);
     await waitFor(() => expect(panelInput('Machine No').value).toBe('M08'));
     const dateInput = panelInput('Date');
@@ -227,10 +239,8 @@ describe('LogbookModule (operator)', () => {
   it('guided mode shows the one-field-at-a-time wizard covering every section', async () => {
     setupApi();
     renderModule('operator');
-    await screen.findByText(/Fill panel/i);
-    fireEvent.click(screen.getByText('Guided'));
-    expect(screen.getByText(/Guided entry/i)).toBeTruthy();
-    expect(screen.getByText(/Step 1 \//i)).toBeTruthy();
+    expect(await screen.findByText(/Guided entry/i)).toBeTruthy();
+    expect(screen.getByTitle('Jump to step')).toBeTruthy();
     const jump = screen.getByTitle('Jump to step') as HTMLSelectElement;
     const steps = Array.from(jump.options).map((o) => o.textContent ?? '');
     for (const s of ['Coil weights', 'Hourly inspection', 'Finished rolls', 'Traceability', 'Production report', 'Sign-off']) {
@@ -241,6 +251,8 @@ describe('LogbookModule (operator)', () => {
   it('focusing a sheet cell highlights the matching panel input', async () => {
     setupApi();
     const { container } = renderModule('operator');
+    await screen.findByText(/Guided entry/i);
+    fireEvent.click(screen.getByRole('button', { name: /^Sheet$/i }));
     await screen.findByText(/Fill panel/i);
     await waitFor(() => expect(panelInput('Machine No').value).toBe('M08')); // logbook loaded
     fireEvent.focus(container.querySelectorAll('.idrow input')[0] as HTMLInputElement);

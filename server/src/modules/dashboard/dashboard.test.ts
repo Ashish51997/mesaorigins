@@ -22,3 +22,26 @@ describe('dashboard summary', () => {
     expect(r.status).toBe(200);
   });
 });
+
+describe('management overview', () => {
+  it('returns the MD overview shape for Managing Director', async () => {
+    const r = await request(app).get('/api/management/overview').set('x-dev-user', 'EMP-001');
+    expect(r.status).toBe(200);
+    expect(r.body.context).toMatchObject({ shift: expect.stringMatching(/^[DN]$/), asOf: expect.any(String) });
+    expect(r.body.kpis).toHaveProperty('productionKg');
+    expect(r.body.kpis).toHaveProperty('scrapRatePct');
+    expect(r.body.kpis).toHaveProperty('onTimeDeliveryPct');
+    expect(r.body.kpis).toHaveProperty('complaints');
+    expect(Array.isArray(r.body.productionSeries)).toBe(true);
+    expect(r.body.productionSeries).toHaveLength(7);
+    expect(r.body.queues).toHaveProperty('qa');
+    expect(r.body.queues).toHaveProperty('dispatch');
+    expect(Array.isArray(r.body.alerts)).toBe(true);
+    expect(Array.isArray(r.body.feedbackOpen)).toBe(true);
+  });
+
+  it('forbids operators without management_dashboard', async () => {
+    const r = await request(app).get('/api/management/overview').set('x-dev-user', 'EMP-007');
+    expect(r.status).toBe(403);
+  });
+});

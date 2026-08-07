@@ -58,7 +58,14 @@ async function resolveScreens(membership: MembershipRow): Promise<{ isAdmin: boo
     });
     if (perms.role) {
       isAdmin = perms.role.isAdmin;
-      screens = Array.isArray(perms.role.screens) ? (perms.role.screens as string[]) : [];
+      // System role presets stay in sync with ROLE_DEFAULT_SCREENS so code
+      // changes (new MD screens, etc.) apply without a manual reseed. Custom
+      // (non-system) roles keep whatever the admin stored.
+      if (perms.role.isSystem && ROLE_DEFAULT_SCREENS[perms.role.name]) {
+        screens = [...ROLE_DEFAULT_SCREENS[perms.role.name]];
+      } else {
+        screens = Array.isArray(perms.role.screens) ? (perms.role.screens as string[]) : [];
+      }
     }
     const set = new Set(screens);
     for (const g of perms.grants) { if (g.state === 'on') set.add(g.screen); else set.delete(g.screen); }

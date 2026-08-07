@@ -5,13 +5,15 @@
  */
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowLeft, ChevronDown, Eye, FileSpreadsheet, Plus, Trash2, Copy } from 'lucide-react';
+import { ChevronDown, Eye, FileSpreadsheet, Plus, Trash2, Copy } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/apiClient';
 import { pushToast } from './Notify';
 import { EmptyState } from './EmptyState';
 import { DataTable } from './DataTable';
 import MachineLogBookSheet, { type LogbookHandlers } from './MachineLogBookSheet';
+import PageHeader from './ui/PageHeader';
+import { StatusBadge } from './ui/StatusBadge';
 import type { LogbookTemplate, MachineLogbook } from '../types';
 
 interface ApiTemplate extends LogbookTemplate { _count?: { productionPlans: number; logbooks: number } }
@@ -128,8 +130,8 @@ export default function TemplateBuilder() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Logbook Templates</h2>
-        <button onClick={() => setEditor({ mode: 'new', template: null })} className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold"><Plus className="w-4 h-4" /> New template</button>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Logbook Templates</h2>
+        <button onClick={() => setEditor({ mode: 'new', template: null })} className="inline-flex items-center gap-1.5 min-h-11 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium"><Plus className="w-4 h-4" /> New template</button>
       </div>
       <DataTable
         title="Templates"
@@ -141,7 +143,9 @@ export default function TemplateBuilder() {
           { key: 'name', header: 'Product', cell: (t) => <span className="font-bold">{t.productName}</span> },
           { key: 'doc', header: 'Doc / Rev', className: 'font-mono whitespace-nowrap', cell: (t) => `${t.docNo} Rev ${t.revNo}` },
           { key: 'layout', header: 'Layout', cell: (t) => (
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(t.layout ?? 'coil') === 'pipe' ? 'bg-amber-100 text-amber-800' : 'bg-cyan-100 text-cyan-800'}`}>{(t.layout ?? 'coil') === 'pipe' ? 'Pipe/Nos' : 'Coil/Roll'}</span>
+            <StatusBadge tone={(t.layout ?? 'coil') === 'pipe' ? 'warn' : 'info'}>
+              {(t.layout ?? 'coil') === 'pipe' ? 'Pipe/Nos' : 'Coil/Roll'}
+            </StatusBadge>
           ) },
           { key: 'shore', header: 'Shore', cell: (t) => t.hardnessType ?? 'A' },
           { key: 'plans', header: 'Plans', align: 'right', cell: (t) => t._count?.productionPlans ?? 0 },
@@ -168,7 +172,7 @@ function TemplateEditor({ template, cloneOf, onClose }: { template: ApiTemplate 
   const t = template;
   const [f, setF] = useState({
     productName: t?.productName ?? '', docNo: t?.docNo ?? 'QR/MFG/013', revNo: t?.revNo ?? '', revDate: t?.revDate ?? '',
-    brandName: t?.brandName ?? 'MASS POLYMERS', location: t?.location ?? 'BENGALURU',
+    brandName: t?.brandName ?? 'MesaDesk', location: t?.location ?? 'BENGALURU',
     layout: (t?.layout ?? 'coil') as 'pipe' | 'coil', hardnessType: (t?.hardnessType ?? 'A') as 'A' | 'D',
     productionUnit: (t?.productionUnit ?? 'roll') as 'nos' | 'roll', packingNote: t?.packingNote ?? '',
     shifts: CSV(t?.shifts) || 'D, N', supervisors: CSV(t?.supervisors), dieZones: CSV(t?.dieZones) || 'Die 6, Die 5',
@@ -198,7 +202,7 @@ function TemplateEditor({ template, cloneOf, onClose }: { template: ApiTemplate 
       docNo: f.docNo.trim() || 'QR/MFG/013',
       revNo: f.revNo.trim() || '01',
       revDate: f.revDate.trim(),
-      brandName: f.brandName.trim() || 'MASS POLYMERS',
+      brandName: f.brandName.trim() || 'MesaDesk',
       location: f.location.trim() || 'BENGALURU',
       title: t?.title ?? 'MACHINE LOG BOOK',
       productName: f.productName.trim() || 'Product name',
@@ -267,22 +271,18 @@ function TemplateEditor({ template, cloneOf, onClose }: { template: ApiTemplate 
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <button onClick={onClose} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
-            <ArrowLeft className="w-4 h-4" /> Back
-          </button>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-            {isEdit ? 'Edit template' : cloneOf ? 'Clone template' : 'New template'}
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onClose} className="min-h-[42px] px-4 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300">Cancel</button>
-          <button onClick={submit} disabled={!f.productName.trim() || save.isPending} className="min-h-[42px] px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold inline-flex items-center gap-1.5">
-            <FileSpreadsheet className="w-4 h-4" /> {isEdit ? 'Save template' : 'Create template'}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={isEdit ? 'Edit template' : cloneOf ? 'Clone template' : 'New template'}
+        onBack={onClose}
+        actions={
+          <>
+            <button onClick={onClose} className="min-h-11 px-4 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300">Cancel</button>
+            <button onClick={submit} disabled={!f.productName.trim() || save.isPending} className="min-h-11 px-5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-medium inline-flex items-center gap-1.5">
+              <FileSpreadsheet className="w-4 h-4" /> {isEdit ? 'Save template' : 'Create template'}
+            </button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-10 gap-4 items-start">
         {/* Preview — 7/10 (below editor on small screens) */}
@@ -290,7 +290,7 @@ function TemplateEditor({ template, cloneOf, onClose }: { template: ApiTemplate 
           <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-indigo-700">
             <Eye className="w-3.5 h-3.5" /> Logbook preview
           </div>
-          <div className="w-full overflow-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white xl:sticky xl:top-2 xl:max-h-[calc(100vh-9rem)]">
+          <div className="w-full overflow-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white xl:sticky xl:top-2 xl:max-h-[calc(100vh-9rem)]">
             <MachineLogBookSheet
               logbook={previewLogbook}
               template={draftTemplate}
@@ -306,7 +306,7 @@ function TemplateEditor({ template, cloneOf, onClose }: { template: ApiTemplate 
 
         {/* Editor — 3/10 (first on small screens) */}
         <div className="xl:col-span-3 min-w-0 order-1 xl:order-2">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 space-y-2 xl:sticky xl:top-2 xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2 xl:sticky xl:top-2 xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto">
             <div className="px-1 pb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Template editor</div>
 
             <EditorSection title="1. Product & layout" hint="What this logbook is for">

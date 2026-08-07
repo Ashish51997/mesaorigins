@@ -1,115 +1,125 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;800&family=Roboto+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 /* =============================================================================
-   MASS POLYMER — UI STYLE GUIDELINE (see UI_STYLE_GUIDE.md)
-   Clean modern SaaS. Airy, light, lots of whitespace. Soft blue glow at the top
-   fading to white. Poppins SemiBold headings/metrics, Inter body.
-   Primary #2563EB. Hairline borders #E7EAF0. Soft shadows only. Round everything.
-   Tokens live here; the whole app inherits them through Tailwind class overrides.
+   MesaDesk — design system tokens
+   Manufacturing operations dashboard. Roboto throughout. Primary #1E40AF.
+   Flat cards (12px radius, no shadow). Light sidebar. Light-first.
+   Tokens cascade through Tailwind remaps; indigo/blue utilities → primary.
    ========================================================================== */
 
 :root {
-  --bg-app: #f5f7fa;          /* grey-tinted section */
-  --bg-app-darker: #ffffff;   /* sidebar / rail */
-  --bg-card: #ffffff;         /* cards, pure white */
-  --bg-card-darker: #f5f7fa;  /* secondary panels */
-  --bg-input: #f2f4f8;        /* soft input grey */
-  --bg-input-bg: #ffffff;
-  --border-color: #e7eaf0;        /* hairline */
-  --border-color-muted: #eef1f6;  /* softer hairline */
-  --text-primary: #0b0b0f;    /* ink */
-  --text-secondary: #5b6472;  /* body */
-  --text-muted: #8a93a3;      /* muted labels */
-  --accent-color: #2563eb;    /* primary blue */
-  --accent-hover: #1d4ed8;
-  --accent-bg: #dbeafe;       /* soft blue tint */
-  --accent-bg-light: #eff6ff;
-  --accent-bg-muted: #eff6ff;
-  --success-bg: #22c55e;      /* delta up / good */
-  --success-text: #15803d;
-  --success-bg-muted: #e7f8ef;
-  --error-bg: #fb5768;        /* delta down / bad */
-  --error-text: #e11d48;
-  --error-bg-muted: #fff0f2;
-  --warn-bg: #fb8c5a;         /* coral accent / warn */
-  --warn-text: #c2410c;
-  --warn-bg-muted: #feede3;
-  --shadow-custom: 0 8px 24px rgba(16, 24, 40, 0.08);  /* the one soft shadow */
-  --button-primary-bg: #2563eb;
-  --button-primary-text: #ffffff;
-  --button-primary-hover: #1d4ed8;
-  /* Named accents for icon tiles */
-  --tile-violet: #8b5cf6;
-  --tile-cyan: #38bdf8;
-  --tile-coral: #fb8c5a;
+  --font-sans: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --bg-app: #F8FAFC;
+  --bg-app-darker: #FFFFFF; /* sidebar */
+  --bg-card: #FFFFFF;
+  --bg-card-darker: #F1F5F9;
+  --bg-input: #F1F5F9;
+  --bg-input-bg: #FFFFFF;
+  --border-color: #E2E8F0;
+  --border-color-muted: #E2E8F0;
+  --border-sidebar: #E2E8F0;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-placeholder: #94A3B8;
+  --accent-color: #1E40AF;
+  --accent-hover: #1E3A8A;
+  --accent-bg: #DBEAFE;
+  --accent-bg-light: #EFF6FF;
+  --accent-bg-muted: #DBEAFE;
+  --accent-info-text: #1E40AF;
+  --success-bg: #10B981;
+  --success-text: #065F46;
+  --success-bg-muted: #D1FAE5;
+  --error-bg: #EF4444;
+  --error-text: #991B1B;
+  --error-bg-muted: #FEE2E2;
+  --warn-bg: #F59E0B;
+  --warn-text: #92400E;
+  --warn-bg-muted: #FEF3C7;
+  --shadow-custom: none;
+  --button-primary-bg: #1E40AF;
+  --button-primary-text: #FFFFFF;
+  --button-primary-hover: #1E3A8A;
+  --focus-ring: #1E40AF;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-badge: 6px;
+  --tile-violet: #1E40AF;
+  --tile-cyan: #1E40AF;
+  --tile-coral: #F59E0B;
 }
 
 .dark {
-  --bg-app: #0a0e1a;          /* deep indigo-navy */
-  --bg-app-darker: #070b14;
-  --bg-card: #111629;         /* card */
-  --bg-card-darker: #1a2036;
-  --bg-input: #1a2036;
-  --bg-input-bg: #0d1220;
-  --border-color: #232a42;
-  --border-color-muted: #1c2338;
-  --text-primary: #f6f7fb;
-  --text-secondary: #b7c0d4;
-  --text-muted: #7f8aa3;
-  --accent-color: #60a5fa;    /* lighter blue for dark */
-  --accent-hover: #93c5fd;
-  --accent-bg: rgba(37, 99, 235, 0.22);
-  --accent-bg-light: #141a2e;
-  --accent-bg-muted: #161d34;
-  --success-bg: #34d399;
-  --success-text: #34d399;
-  --success-bg-muted: rgba(52, 211, 153, 0.14);
-  --error-bg: #fb7185;
-  --error-text: #fb7185;
-  --error-bg-muted: rgba(251, 113, 133, 0.14);
-  --warn-bg: #fb923c;
-  --warn-text: #fdba74;
-  --warn-bg-muted: rgba(251, 146, 60, 0.14);
-  --shadow-custom: 0 8px 24px rgba(0, 0, 0, 0.36);
-  --button-primary-bg: #3b82f6;
-  --button-primary-text: #ffffff;
-  --button-primary-hover: #60a5fa;
-  --tile-violet: #a78bfa;
-  --tile-cyan: #7dd3fc;
-  --tile-coral: #fdba74;
+  --bg-app: #0F172A;
+  --bg-app-darker: #020617;
+  --bg-card: #1E293B;
+  --bg-card-darker: #334155;
+  --bg-input: #334155;
+  --bg-input-bg: #1E293B;
+  --border-color: #334155;
+  --border-color-muted: #475569;
+  --border-sidebar: #475569;
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
+  --text-placeholder: #64748B;
+  --accent-color: #38BDF8;
+  --accent-hover: #7DD3FC;
+  --accent-bg: rgba(30, 64, 175, 0.22);
+  --accent-bg-light: #1E293B;
+  --accent-bg-muted: rgba(30, 64, 175, 0.18);
+  --accent-info-text: #93C5FD;
+  --success-bg: #34D399;
+  --success-text: #6EE7B7;
+  --success-bg-muted: rgba(16, 185, 129, 0.18);
+  --error-bg: #F87171;
+  --error-text: #FCA5A5;
+  --error-bg-muted: rgba(239, 68, 68, 0.18);
+  --warn-bg: #FBBF24;
+  --warn-text: #FCD34D;
+  --warn-bg-muted: rgba(245, 158, 11, 0.18);
+  --shadow-custom: none;
+  --button-primary-bg: #1E40AF;
+  --button-primary-text: #FFFFFF;
+  --button-primary-hover: #0EA5E9;
+  --tile-violet: #38BDF8;
+  --tile-cyan: #38BDF8;
+  --tile-coral: #FBBF24;
 }
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-display: "Poppins", "Inter", sans-serif;
+  --font-display: "Roboto", system-ui, sans-serif;
 
-  /* Round everything: bump the radius scale so rounded-xl≈20, rounded-2xl≈24 */
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  --radius-2xl: 24px;
-  --radius-3xl: 30px;
+  /* MesaDesk radii: control 8, card 12 — do not inflate */
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-3xl: 12px;
 
-  /* Map neutral scales to our dynamic theme variables */
-  --color-slate-50: var(--bg-app);
-  --color-slate-100: var(--bg-input);
-  --color-slate-200: var(--border-color);
-  --color-slate-300: var(--text-muted);
-  --color-slate-400: var(--text-muted);
-  --color-slate-500: var(--text-muted);
-  --color-slate-600: var(--text-secondary);
-  --color-slate-700: var(--text-secondary);
-  --color-slate-800: var(--text-primary);
-  --color-slate-900: var(--text-primary);
-  --color-slate-950: var(--bg-app-darker);
+  /* True slate scale for MesaDesk */
+  --color-slate-50: #F8FAFC;
+  --color-slate-100: #F1F5F9;
+  --color-slate-200: #E2E8F0;
+  --color-slate-300: #CBD5E1;
+  --color-slate-400: #94A3B8;
+  --color-slate-500: #64748B;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1E293B;
+  --color-slate-900: #0F172A;
+  --color-slate-950: #020617;
 
   --color-gray-50: var(--bg-app);
   --color-gray-100: var(--bg-input);
   --color-gray-200: var(--border-color);
   --color-gray-300: var(--text-muted);
-  --color-gray-400: var(--text-muted);
+  --color-gray-400: var(--text-placeholder);
   --color-gray-500: var(--text-muted);
   --color-gray-600: var(--text-secondary);
   --color-gray-700: var(--text-secondary);
@@ -121,7 +131,7 @@
   --color-zinc-100: var(--bg-input);
   --color-zinc-200: var(--border-color);
   --color-zinc-300: var(--text-muted);
-  --color-zinc-400: var(--text-muted);
+  --color-zinc-400: var(--text-placeholder);
   --color-zinc-500: var(--text-muted);
   --color-zinc-600: var(--text-secondary);
   --color-zinc-700: var(--text-secondary);
@@ -129,13 +139,12 @@
   --color-zinc-900: var(--text-primary);
   --color-zinc-950: var(--bg-app-darker);
 
-  /* Card backgrounds (standard bg-white) */
   --color-white: var(--bg-card);
 
-  /* Primary brand — indigo AND blue both resolve to #4438E0 */
+  /* Primary brand — indigo/blue/sky all map to MesaDesk primary */
   --color-indigo-50: var(--accent-bg-light);
   --color-indigo-100: var(--accent-bg);
-  --color-indigo-200: var(--border-color);
+  --color-indigo-200: var(--accent-bg-muted);
   --color-indigo-300: var(--accent-color);
   --color-indigo-400: var(--accent-color);
   --color-indigo-500: var(--accent-color);
@@ -147,7 +156,7 @@
 
   --color-blue-50: var(--accent-bg-light);
   --color-blue-100: var(--accent-bg);
-  --color-blue-200: var(--border-color);
+  --color-blue-200: var(--accent-bg-muted);
   --color-blue-300: var(--accent-color);
   --color-blue-400: var(--accent-color);
   --color-blue-500: var(--accent-color);
@@ -157,7 +166,17 @@
   --color-blue-900: var(--text-primary);
   --color-blue-950: var(--bg-app);
 
-  /* Success (green delta) */
+  --color-sky-50: var(--accent-bg-light);
+  --color-sky-100: var(--accent-bg);
+  --color-sky-200: var(--accent-bg-muted);
+  --color-sky-300: #93C5FD;
+  --color-sky-400: #60A5FA;
+  --color-sky-500: var(--accent-color);
+  --color-sky-600: var(--accent-color);
+  --color-sky-700: var(--accent-hover);
+  --color-sky-800: var(--accent-info-text);
+  --color-sky-900: var(--text-primary);
+
   --color-emerald-50: var(--success-bg-muted);
   --color-emerald-100: var(--success-bg-muted);
   --color-emerald-200: var(--success-bg-muted);
@@ -167,7 +186,6 @@
   --color-emerald-800: var(--success-text);
   --color-emerald-900: var(--success-text);
 
-  /* Error (red delta) */
   --color-rose-50: var(--error-bg-muted);
   --color-rose-100: var(--error-bg-muted);
   --color-rose-200: var(--error-bg-muted);
@@ -177,7 +195,6 @@
   --color-rose-800: var(--error-text);
   --color-rose-900: var(--error-text);
 
-  /* Warn (coral) */
   --color-amber-50: var(--warn-bg-muted);
   --color-amber-100: var(--warn-bg-muted);
   --color-amber-200: var(--warn-bg-muted);
@@ -188,7 +205,7 @@
   --color-amber-900: var(--warn-text);
 }
 
-/* Global body + the signature radial glow ---------------------------------- */
+/* Global body — flat MesaDesk page background */
 html, body {
   background-color: var(--bg-app) !important;
   color: var(--text-secondary) !important;
@@ -197,37 +214,33 @@ html, body {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Radial electric-blue glow at top fading to white, on the app shell + login */
 #applet-root,
 #applet-loading,
 #login-screen-root {
-  background:
-    radial-gradient(1100px 560px at 50% -180px, rgba(68, 90, 255, 0.16), rgba(56, 189, 248, 0.06) 46%, rgba(255, 255, 255, 0) 72%),
-    var(--bg-app) !important;
+  background: var(--bg-app) !important;
 }
-.dark #applet-root,
-.dark #applet-loading,
-.dark #login-screen-root {
-  background:
-    radial-gradient(1100px 560px at 50% -180px, rgba(109, 99, 255, 0.20), rgba(56, 189, 248, 0.06) 46%, rgba(10, 14, 26, 0) 72%),
-    var(--bg-app) !important;
-}
-/* Main content floats over the glow */
+
 main {
   background: transparent !important;
 }
 
-/* Headings + metrics: Poppins SemiBold, a touch of negative tracking (not tight) */
+/* Headings + metrics: Roboto Bold / ExtraBold */
 h1, h2, h3, h4, h5, h6, .font-display, .metric-value {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   letter-spacing: -0.01em;
 }
 
 /* Custom scrollbars */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 9999px; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
 
 /* Header / nav panels */
 header,
@@ -238,76 +251,159 @@ header.bg-slate-50 {
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-aside {
-  background-color: var(--bg-app-darker) !important;
-  border-right: 1px solid var(--border-color) !important;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+/* Light sidebar surface */
+aside.md-sidebar,
+aside[data-md-sidebar] {
+  background-color: #FFFFFF !important;
+  border-right: 1px solid #E2E8F0 !important;
+  color: #475569;
 }
 
-aside .bg-slate-950,
-aside div.border-b,
-aside div.border-t {
+aside.md-sidebar .border-b,
+aside.md-sidebar .border-t,
+aside[data-md-sidebar] .border-b,
+aside[data-md-sidebar] .border-t {
+  border-color: #E2E8F0 !important;
   background-color: transparent !important;
-  border-color: var(--border-color) !important;
 }
 
-/* Sidebar nav items are pills */
-/* Active nav item: subtle primary tint + primary text/icon; the left accent bar is
-   rendered in the JSX. Hover keeps the tint (no change on the active item). */
-aside nav button.bg-indigo-600,
-aside nav button.bg-blue-50 {
-  background-color: var(--accent-bg-muted) !important;
-  color: var(--accent-color) !important;
-  font-weight: 700 !important;
-  border-radius: 12px !important;
+/* Active nav: soft primary on light sidebar */
+aside.md-sidebar nav button.bg-indigo-600,
+aside.md-sidebar nav button.bg-blue-50,
+aside.md-sidebar nav button.bg-sky-50,
+aside[data-md-sidebar] nav button.bg-indigo-600,
+aside[data-md-sidebar] nav button.bg-blue-50,
+aside[data-md-sidebar] nav button.bg-sky-50 {
+  background-color: #DBEAFE !important;
+  color: #1E40AF !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
 }
-aside nav button.bg-indigo-600 svg,
-aside nav button.bg-blue-50 svg {
-  color: var(--accent-color) !important;
+aside.md-sidebar nav button.bg-indigo-600 svg,
+aside.md-sidebar nav button.bg-blue-50 svg,
+aside.md-sidebar nav button.bg-sky-50 svg,
+aside[data-md-sidebar] nav button.bg-indigo-600 svg,
+aside[data-md-sidebar] nav button.bg-blue-50 svg,
+aside[data-md-sidebar] nav button.bg-sky-50 svg {
+  color: #1E40AF !important;
 }
-aside nav button.bg-indigo-600:hover,
-aside nav button.bg-blue-50:hover {
-  background-color: var(--accent-bg-muted) !important;
-  color: var(--accent-color) !important;
+aside.md-sidebar nav button.bg-indigo-600:hover,
+aside.md-sidebar nav button.bg-blue-50:hover,
+aside.md-sidebar nav button.bg-sky-50:hover,
+aside[data-md-sidebar] nav button.bg-indigo-600:hover,
+aside[data-md-sidebar] nav button.bg-blue-50:hover,
+aside[data-md-sidebar] nav button.bg-sky-50:hover {
+  background-color: #BFDBFE !important;
+  color: #1E3A8A !important;
 }
 
-aside nav button {
-  border-radius: 12px !important;
+aside.md-sidebar nav button,
+aside[data-md-sidebar] nav button {
+  border-radius: 8px !important;
   margin: 1px 0 !important;
-  transition: all 0.15s ease-in-out;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  color: #475569;
 }
 
-aside nav button:hover:not(.bg-indigo-600):not(.bg-blue-50) {
-  background-color: var(--bg-input) !important;
-  color: var(--text-primary) !important;
+aside.md-sidebar nav button:hover:not(.bg-indigo-600):not(.bg-blue-50):not(.bg-sky-50),
+aside[data-md-sidebar] nav button:hover:not(.bg-indigo-600):not(.bg-blue-50):not(.bg-sky-50) {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
 }
 
-/* Data tables */
+/* Data tables — keep borders/type; do not force row paint (breaks zebra + badges) */
 table { border-collapse: collapse; }
 th {
-  color: var(--text-muted) !important;
+  color: var(--text-secondary) !important;
   font-weight: 600 !important;
-  background-color: transparent !important;
+  font-size: 12px !important;
 }
-td { border-color: var(--border-color-muted) !important; }
-tr:hover td { background-color: var(--accent-bg-light) !important; }
 
-/* Inputs — soft, rounded, pill-friendly */
+/* Status badges — guaranteed WCAG AA text on tinted backgrounds */
+.md-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-badge);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.md-status-info {
+  background-color: var(--accent-bg) !important;
+  color: var(--accent-info-text) !important;
+  border-color: #BFDBFE !important;
+}
+.md-status-warn {
+  background-color: var(--warn-bg-muted) !important;
+  color: var(--warn-text) !important;
+  border-color: #FDE68A !important;
+}
+.md-status-success {
+  background-color: var(--success-bg-muted) !important;
+  color: var(--success-text) !important;
+  border-color: #A7F3D0 !important;
+}
+.md-status-neutral {
+  background-color: var(--bg-input) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+.md-status-error {
+  background-color: var(--error-bg-muted) !important;
+  color: var(--error-text) !important;
+  border-color: #FECACA !important;
+}
+
+/* Table row surfaces — bypass Tailwind bg remaps that break striping */
+.md-tr-even > td { background-color: #FFFFFF !important; }
+.md-tr-odd > td { background-color: #F8FAFC !important; }
+.md-tr-hover:hover > td { background-color: #EFF6FF !important; }
+.md-th {
+  background-color: #F8FAFC !important;
+  color: #475569 !important;
+}
+
+/* Inputs — 8px radius, focus ring */
 input, select, textarea {
   background-color: var(--bg-input-bg) !important;
   border-color: var(--border-color) !important;
   color: var(--text-primary) !important;
+  border-radius: var(--radius-control) !important;
 }
 input:focus, select:focus, textarea:focus {
   border-color: var(--accent-color) !important;
   outline: none;
-  box-shadow: 0 0 0 3px var(--accent-bg) !important;
+  box-shadow: 0 0 0 2px var(--accent-color) !important;
 }
 option { background-color: var(--bg-card) !important; color: var(--text-primary) !important; }
 
-/* Force card surfaces */
-.bg-white, .bg-slate-50, .bg-gray-50, .bg-zinc-50 {
+/* Light sidebar search */
+aside.md-sidebar input,
+aside[data-md-sidebar] input {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+aside.md-sidebar input::placeholder,
+aside[data-md-sidebar] input::placeholder {
+  color: #94A3B8 !important;
+}
+aside.md-sidebar input:focus,
+aside[data-md-sidebar] input:focus {
+  border-color: #1E40AF !important;
+  box-shadow: 0 0 0 2px #1E40AF !important;
+}
+
+/* Card surfaces — flat white */
+.bg-white {
   background-color: var(--bg-card) !important;
+}
+.bg-slate-50, .bg-gray-50, .bg-zinc-50 {
+  background-color: var(--bg-app) !important;
 }
 
 /* Text roles */
@@ -327,7 +423,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-primary) !important; }
 
 /* Tinted badge/pill backgrounds */
 .bg-indigo-50, .bg-indigo-100, .bg-indigo-200, .bg-blue-50, .bg-blue-100, .bg-blue-200,
-.bg-sky-50, .bg-sky-100, .bg-sky-200 { background-color: var(--accent-bg-muted) !important; }
+.bg-sky-50, .bg-sky-100, .bg-sky-200 { background-color: var(--accent-bg) !important; }
 .bg-emerald-50, .bg-emerald-100, .bg-emerald-200 { background-color: var(--success-bg-muted) !important; }
 .bg-rose-50, .bg-rose-100, .bg-rose-200, .bg-red-50, .bg-red-100, .bg-red-200 { background-color: var(--error-bg-muted) !important; }
 .bg-amber-50, .bg-amber-100, .bg-amber-200, .bg-yellow-50, .bg-yellow-100, .bg-yellow-200 { background-color: var(--warn-bg-muted) !important; }
@@ -338,46 +434,47 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-primary) !important; }
 .border-gray-100, .border-gray-200, .border-zinc-200,
 .divide-slate-100, .divide-slate-200 { border-color: var(--border-color) !important; }
 
-/* Soft shadows only — every shadow utility maps to the one soft shadow */
+/* Flat — neutralize decorative shadows */
 .shadow-3xs, .shadow-2xs, .shadow-xs, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl {
-  box-shadow: var(--shadow-custom) !important;
+  box-shadow: none !important;
 }
 
-/* Primary buttons — filled blue, fully rounded pill */
+/* Primary buttons — 8px radius, not pills */
 .bg-indigo-600:not(aside button),
-.bg-blue-600:not(aside button) {
+.bg-blue-600:not(aside button),
+.bg-sky-600:not(aside button) {
   background-color: var(--button-primary-bg) !important;
   color: var(--button-primary-text) !important;
-  border-radius: 9999px !important;
+  border-radius: var(--radius-control) !important;
 }
 .bg-indigo-600:hover:not(aside button),
-.bg-blue-600:hover:not(aside button) {
+.bg-blue-600:hover:not(aside button),
+.bg-sky-600:hover:not(aside button) {
   background-color: var(--button-primary-hover) !important;
 }
+
 #applet-root { background-color: var(--bg-app); }
 
 /* -----------------------------------------------------------------------------
-   Reusable style-guide components
+   Reusable MesaDesk components
    -------------------------------------------------------------------------- */
 
-/* Rounded-square icon tile (12px radius, single accent color) */
 .tile {
   width: 44px; height: 44px;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.tile-violet { background: color-mix(in srgb, var(--tile-violet) 16%, transparent); color: var(--tile-violet); }
-.tile-cyan   { background: color-mix(in srgb, var(--tile-cyan) 18%, transparent);   color: var(--tile-cyan); }
-.tile-coral  { background: color-mix(in srgb, var(--tile-coral) 18%, transparent);  color: var(--tile-coral); }
+.tile-violet { background: var(--accent-bg); color: var(--accent-color); }
+.tile-cyan   { background: var(--accent-bg); color: var(--accent-color); }
+.tile-coral  { background: var(--warn-bg-muted); color: var(--warn-text); }
 .tile-primary{ background: var(--accent-bg); color: var(--accent-color); }
 
-/* Big Poppins metric */
 .metric-value {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(2rem, 2.4vw, 2.5rem);
-  line-height: 1.05;
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.2;
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
@@ -387,21 +484,30 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-primary) !important; }
   font-weight: 500;
 }
 
-/* Trend delta chip */
 .delta {
   display: inline-flex; align-items: center; gap: 2px;
-  padding: 2px 8px; border-radius: 9999px;
-  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: var(--radius-badge);
+  font-size: 11px; font-weight: 500;
 }
 .delta-up   { color: var(--success-text); background: var(--success-bg-muted); }
 .delta-down { color: var(--error-text);   background: var(--error-bg-muted); }
 
-/* Segmented progress bar: blue → magenta → purple */
 .segmented-bar {
-  height: 10px; border-radius: 9999px; overflow: hidden;
-  display: flex; background: var(--bg-input);
+  height: 10px; border-radius: var(--radius-badge); overflow: hidden;
+  display: flex; background: var(--border-color);
 }
 .segmented-bar > span { height: 100%; display: block; }
-.seg-blue    { background: #2563eb; }
-.seg-magenta { background: #e5449c; }
-.seg-purple  { background: #7c3aed; }
+.seg-blue    { background: #1E40AF; }
+.seg-magenta { background: #F59E0B; }
+.seg-purple  { background: #10B981; }
+
+/* Standard MesaDesk card */
+.md-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-card);
+  padding: 20px;
+}
+@media (max-width: 639px) {
+  .md-card { padding: 16px; }
+}

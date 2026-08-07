@@ -1,5 +1,5 @@
 import express, { type RequestHandler } from 'express';
-import { requirePermission } from '../../middleware/authz';
+import { requirePermission, requireAnyPermission } from '../../middleware/authz';
 import { validateBody } from '../../middleware/validate';
 import { customerCreateSchema, inquiryCreateSchema, quoteSchema, orderConfirmSchema } from './schemas';
 import * as svc from './service';
@@ -23,10 +23,10 @@ salesRouter.post('/customers', requirePermission('screen:sales_customers'), vali
   ah(async (req, res) => { res.status(201); return svc.createCustomer(req.body); }));
 
 // Inquiries
-salesRouter.get('/inquiries', requirePermission('screen:inquiries'), ah(() => svc.listInquiries()));
-salesRouter.post('/inquiries', requirePermission('screen:inquiries'), validateBody(inquiryCreateSchema),
+salesRouter.get('/inquiries', requireAnyPermission('screen:enquiry_desk', 'screen:inquiries'), ah(() => svc.listInquiries()));
+salesRouter.post('/inquiries', requireAnyPermission('screen:enquiry_desk', 'screen:inquiries'), validateBody(inquiryCreateSchema),
   ah(async (req, res) => { res.status(201); return svc.createInquiry(req.body); }));
-salesRouter.post('/inquiries/:id/quote', requirePermission('screen:quotations'), validateBody(quoteSchema),
+salesRouter.post('/inquiries/:id/quote', requireAnyPermission('screen:enquiry_desk', 'screen:quotations'), validateBody(quoteSchema),
   ah((req) => svc.quoteInquiry(req.params.id, req.body)));
 
 // Orders
