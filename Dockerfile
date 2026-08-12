@@ -13,7 +13,10 @@ RUN apt-get update -y \
 FROM base AS dependencies
 COPY package.json package-lock.json ./
 COPY server/prisma/schema.prisma ./server/prisma/schema.prisma
-RUN --mount=type=cache,target=/root/.npm npm ci
+# Cloud Build's standard docker builder may run without BuildKit. Keep this
+# layer compatible with both classic Docker and BuildKit; its worker-local npm
+# cache would not survive across Cloud Build jobs anyway.
+RUN npm ci
 RUN npx prisma generate
 
 
