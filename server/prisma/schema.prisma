@@ -6,8 +6,9 @@
 // 'app.current_tenant')) AND a request-scoped Prisma guard (server/src/db.ts)
 // that sets that GUC and injects organizationId on writes.
 //
-// Global (no tenant, no RLS): Organization, User, Membership — the identity /
-// tenancy plane, queried before a tenant is resolved.
+// Global (no tenant, no RLS): Organization, Service, OrganizationService,
+// LeadFormLink, User and Membership — identity plus the opaque public-token
+// lookup that must resolve a tenant before RLS can be entered.
 //
 // Uniqueness is per-tenant: composite @@unique([organizationId, …]) so Acme's
 // SO-1 and Beta's SO-1 coexist. IDs are cuid for API rows; the seed supplies
@@ -20,7 +21,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // Runtime: the app connects as a NON-SUPERUSER role (app_user) so RLS is
   // enforced — superusers and BYPASSRLS roles ignore row-level security.
   url       = env("DATABASE_URL")
@@ -42,24 +43,132 @@ model Organization {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  memberships           Membership[]
-  roles                 Role[]
-  employeeGrants        EmployeeGrant[]
-  customers             Customer[]
-  inquiries             Inquiry[]
-  salesOrders           SalesOrder[]
-  productionPlans       ProductionPlan[]
-  logbookTemplates      LogbookTemplate[]
-  machineLogbooks       MachineLogbook[]
-  qualityInspections    QualityInspection[]
-  inventoryTransactions InventoryTransaction[]
-  dispatchRecords       DispatchRecord[]
-  complaints            Complaint[]
-  capaRecords           CAPARecord[]
-  formulations          Formulation[]
-  maintenanceTasks      MaintenanceTask[]
-  machines              Machine[]
-  auditEvents           AuditEvent[]
+  memberships            Membership[]
+  roles                  Role[]
+  employeeGrants         EmployeeGrant[]
+  customers              Customer[]
+  inquiries              Inquiry[]
+  salesOrders            SalesOrder[]
+  productionPlans        ProductionPlan[]
+  logbookTemplates       LogbookTemplate[]
+  machineLogbooks        MachineLogbook[]
+  qualityInspections     QualityInspection[]
+  inventoryTransactions  InventoryTransaction[]
+  dispatchRecords        DispatchRecord[]
+  complaints             Complaint[]
+  capaRecords            CAPARecord[]
+  formulations           Formulation[]
+  maintenanceTasks       MaintenanceTask[]
+  machines               Machine[]
+  auditEvents            AuditEvent[]
+  services               OrganizationService[]
+  leadForms              LeadForm[]
+  mesaLeads              MesaLead[]
+  leadSubmissions        LeadSubmission[]
+  leadActivities         LeadActivity[]
+  leadAttachments        LeadAttachment[]
+  leadFormLinks          LeadFormLink[]
+  leadFormQuestions      LeadFormQuestion[]
+  leadPortalLinks        LeadPortalLink[]
+  leadDecisionChallenges LeadDecisionChallenge[]
+  leadQuotes             LeadQuote[]
+  leadQuoteLineItems     LeadQuoteLineItem[]
+  leadQuoteEvents        LeadQuoteEvent[]
+  leadFulfillments       LeadFulfillment[]
+  leadMilestones         LeadMilestone[]
+}
+
+// MesaDesk's global product catalog. Organizations subscribe through the
+// explicit join below so one tenant can use any number of services.
+model Service {
+  id          String   @id
+  name        String
+  description String   @default("")
+  status      String   @default("active") // active | paused | stopped
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizations OrganizationService[]
+}
+
+model OrganizationService {
+  organizationId String
+  serviceId      String
+  status         String   @default("active") // active | suspended
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  service      Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, serviceId])
+  @@index([serviceId])
+}
+
+// Opaque public form tokens live in the global plane so a request can resolve
+// its tenant before the tenant RLS setting exists. Only a SHA-256 digest is
+// stored; the raw bearer token is returned once when a link is created.
+model LeadFormLink {
+  id             String    @id @default(cuid())
+  tokenHash      String    @unique
+  organizationId String
+  formId         String
+  leadId         String?
+  kind           String    @default("generic") // generic | invitation
+  status         String    @default("active") // active | submitted | revoked
+  expiresAt      DateTime?
+  openedAt       DateTime?
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  form         LeadForm         @relation(fields: [formId], references: [id], onDelete: Cascade)
+  lead         MesaLead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  submissions  LeadSubmission[]
+
+  @@index([organizationId])
+  @@index([formId])
+  @@index([leadId])
+}
+
+// A generic questionnaire is shared by many customers, so each resulting lead
+// receives its own opaque journey token. The digest lives in the global plane
+// only to resolve the tenant; all customer-visible data stays behind tenant RLS.
+model LeadPortalLink {
+  id             String    @id @default(cuid())
+  tokenHash      String    @unique
+  organizationId String
+  leadId         String    @unique
+  status         String    @default("active") // active | revoked
+  expiresAt      DateTime?
+  lastOpenedAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         MesaLead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model LeadDecisionChallenge {
+  id             String    @id @default(cuid())
+  organizationId String
+  leadId         String
+  emailHash      String
+  codeHash       String
+  attempts       Int       @default(0)
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         MesaLead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([leadId, expiresAt])
 }
 
 // Global identity. The same person can be a member of multiple organizations,
@@ -139,7 +248,7 @@ model Membership {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  roleId         String?
+  roleId String?
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -275,6 +384,333 @@ model SalesOrder {
   @@index([customerId])
 }
 
+// ============================================================ MesaLeads (tenant)
+
+// Published forms are immutable. Editors create/update drafts and publish only
+// when ready; every submission also retains a full question snapshot.
+model LeadForm {
+  id             String    @id @default(cuid())
+  organizationId String
+  familyKey      String    @default(cuid())
+  name           String
+  description    String    @default("")
+  privacyNotice  String    @default("Your information will be used by this organization to review and respond to your enquiry.")
+  status         String    @default("draft") // draft | published | archived
+  revision       Int       @default(1)
+  publishedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  questions    LeadFormQuestion[]
+  submissions  LeadSubmission[]
+  links        LeadFormLink[]
+
+  @@unique([organizationId, familyKey, revision])
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+model LeadFormQuestion {
+  id             String   @id @default(cuid())
+  organizationId String
+  formId         String
+  key            String
+  type           String // section | short_text | long_text | email | phone | number | date | single_select | multi_select | yes_no | file
+  label          String
+  helpText       String   @default("")
+  placeholder    String   @default("")
+  required       Boolean  @default(false)
+  options        Json     @default("[]")
+  validation     Json     @default("{}")
+  visibilityRule Json?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  form         LeadForm     @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@unique([formId, key])
+  @@index([organizationId])
+  @@index([formId, sortOrder])
+}
+
+model MesaLead {
+  id                    String    @id @default(cuid())
+  organizationId        String
+  reference             String
+  source                String    @default("direct")
+  priority              String    @default("medium") // low | medium | high
+  stage                 String    @default("new")
+  contactName           String    @default("")
+  phone                 String    @default("")
+  email                 String    @default("")
+  companyName           String    @default("")
+  companyAddress        String    @default("")
+  gstNumber             String    @default("")
+  product               String    @default("")
+  requirement           String    @default("")
+  scope                 String    @default("machine_only") // machine_only | machine_mold | mold_only
+  ownerMembershipId     String?
+  machineRecommendation String    @default("")
+  clampTonnage          Float?
+  shotCapacity          Float?
+  moldStatus            String    @default("")
+  moldSupplier          String    @default("")
+  moldQuoteAmount       Float?
+  quotationAmount       Float?
+  quotationStatus       String    @default("not_started")
+  nextFollowUpAt        DateTime?
+  followUpNote          String    @default("")
+  lostReason            String    @default("")
+  orderReference        String    @default("")
+  consentedAt           DateTime?
+  version               Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  submissions        LeadSubmission[]
+  activities         LeadActivity[]
+  attachments        LeadAttachment[]
+  formLinks          LeadFormLink[]
+  portalLink         LeadPortalLink?
+  quotes             LeadQuote[]
+  quoteEvents        LeadQuoteEvent[]
+  fulfillment        LeadFulfillment?
+  milestones         LeadMilestone[]
+  decisionChallenges LeadDecisionChallenge[]
+
+  @@unique([organizationId, reference])
+  @@index([organizationId])
+  @@index([organizationId, stage])
+  @@index([organizationId, nextFollowUpAt])
+}
+
+// Quote content is editable only while draft. Once sent, database triggers in
+// the migration freeze all commercial fields and line items; lifecycle changes
+// are represented by status, decision fields and immutable LeadQuoteEvent rows.
+model LeadQuote {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  leadId               String
+  sourceQuoteId        String?
+  versionNumber        Int
+  status               String    @default("draft") // draft | sent | revision_requested | approved | superseded | withdrawn | expired
+  title                String
+  currency             String    @default("INR")
+  validUntil           DateTime?
+  summary              String    @default("")
+  organizationRemarks  String    @default("")
+  customerRemark       String    @default("")
+  acceptanceText       String    @default("")
+  acceptedByName       String    @default("")
+  acceptedByEmail      String    @default("")
+  terms                Json      @default("[]")
+  subtotal             Decimal   @default(0) @db.Decimal(18, 2)
+  discountTotal        Decimal   @default(0) @db.Decimal(18, 2)
+  taxTotal             Decimal   @default(0) @db.Decimal(18, 2)
+  grandTotal           Decimal   @default(0) @db.Decimal(18, 2)
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  sentAt               DateTime?
+  decidedAt            DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         MesaLead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  sourceQuote  LeadQuote?          @relation("QuoteRevision", fields: [sourceQuoteId], references: [id], onDelete: SetNull)
+  revisions    LeadQuote[]         @relation("QuoteRevision")
+  lineItems    LeadQuoteLineItem[]
+  events       LeadQuoteEvent[]
+
+  @@unique([organizationId, leadId, versionNumber])
+  @@unique([organizationId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([leadId, versionNumber])
+  @@index([leadId, status])
+}
+
+model LeadQuoteLineItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  quoteId        String
+  sortOrder      Int      @default(0)
+  description    String
+  specification  String   @default("")
+  hsnSacCode     String   @default("")
+  quantity       Decimal  @db.Decimal(18, 4)
+  unit           String   @default("nos")
+  unitPrice      Decimal  @db.Decimal(18, 2)
+  discountAmount Decimal  @default(0) @db.Decimal(18, 2)
+  taxRate        Decimal  @default(0) @db.Decimal(7, 4)
+  taxableAmount  Decimal  @db.Decimal(18, 2)
+  taxAmount      Decimal  @db.Decimal(18, 2)
+  total          Decimal  @db.Decimal(18, 2)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quote        LeadQuote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([quoteId, sortOrder])
+}
+
+model LeadQuoteEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  leadId         String
+  quoteId        String
+  type           String // created | updated | sent | revision_requested | approved | superseded | revised
+  actorType      String // organization | customer | system
+  actorUserId    String?
+  actorEmail     String   @default("")
+  remark         String   @default("")
+  metadata       Json     @default("{}")
+  idempotencyKey String?
+  occurredAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         MesaLead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  quote        LeadQuote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId])
+  @@index([leadId, occurredAt])
+  @@index([quoteId, occurredAt])
+}
+
+model LeadFulfillment {
+  id                      String    @id @default(cuid())
+  organizationId          String
+  leadId                  String    @unique
+  status                  String    @default("not_started") // not_started | in_progress | on_hold | completed | cancelled
+  customerSummary         String    @default("")
+  estimatedCompletionDate DateTime?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  createIdempotencyKey    String?
+  requestHash             String    @default("")
+  rowVersion              Int       @default(0)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         MesaLead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  milestones   LeadMilestone[]
+
+  @@unique([organizationId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+model LeadMilestone {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  leadId               String
+  fulfillmentId        String
+  name                 String
+  sortOrder            Int       @default(0)
+  status               String    @default("pending") // pending | in_progress | blocked | completed | cancelled
+  targetDate           DateTime?
+  completedAt          DateTime?
+  customerNote         String    @default("")
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         MesaLead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fulfillment  LeadFulfillment @relation(fields: [fulfillmentId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([fulfillmentId, sortOrder])
+  @@index([leadId])
+}
+
+model LeadSubmission {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  formId              String
+  leadId              String
+  linkId              String
+  clientSubmissionId  String?
+  formRevision        Int
+  respondentName      String   @default("")
+  respondentEmail     String   @default("")
+  respondentPhone     String   @default("")
+  answers             Json
+  questionSnapshot    Json
+  consentTextSnapshot String
+  consentedAt         DateTime
+  status              String   @default("submitted")
+  submittedAt         DateTime @default(now())
+  createdAt           DateTime @default(now())
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  form         LeadForm         @relation(fields: [formId], references: [id])
+  lead         MesaLead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  link         LeadFormLink     @relation(fields: [linkId], references: [id], onDelete: Restrict)
+  attachments  LeadAttachment[]
+
+  @@unique([linkId, clientSubmissionId])
+  @@index([organizationId])
+  @@index([formId])
+  @@index([leadId])
+  @@index([linkId])
+}
+
+model LeadActivity {
+  id             String   @id @default(cuid())
+  organizationId String
+  leadId         String
+  type           String
+  title          String
+  note           String   @default("")
+  metadata       Json     @default("{}")
+  actorUserId    String?
+  actorEmail     String   @default("")
+  occurredAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         MesaLead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([leadId, occurredAt])
+}
+
+// Uploaded bytes are private database records. They are omitted from JSON and
+// available only through the protected, tenant-scoped attachment download.
+model LeadAttachment {
+  id             String   @id @default(cuid())
+  organizationId String
+  leadId         String
+  submissionId   String?
+  questionKey    String?
+  originalName   String
+  storageName    String   @unique
+  mimeType       String
+  sizeBytes      Int
+  bytes          Bytes
+  createdAt      DateTime @default(now())
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         MesaLead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  submission   LeadSubmission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([leadId])
+  @@index([submissionId])
+}
+
 // ============================================================ planning (tenant)
 
 model ProductionPlan {
@@ -336,8 +772,8 @@ model LogbookTemplate {
   rejectionReasons    String[]
   notes               String[]
   layout              String   @default("coil") // "coil" | "pipe"
-  hardnessType        String   @default("A")    // "A" | "D"
-  productionUnit      String   @default("roll")  // "roll" | "nos"
+  hardnessType        String   @default("A") // "A" | "D"
+  productionUnit      String   @default("roll") // "roll" | "nos"
   packingNote         String   @default("")
   pipeSpecs           Json     @default("{}")
   version             Int      @default(0)

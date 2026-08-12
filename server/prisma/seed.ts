@@ -9,7 +9,7 @@
  * filters + de-duplicates the mock data (surfacing its dangling refs and the
  * duplicate sales orders the new per-tenant constraints reject).
  */
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ROLE_DEFAULT_SCREENS, ADMIN_ROLES } from '../src/lib/permissions';
 import { hashPassword } from '../src/lib/password';
 import {
@@ -95,10 +95,47 @@ const FORMULATIONS = [
     components: [{ name: 'SPVC resin', pct: 82, lotId: 'SVP·SPVC·2207·05' }, { name: 'CaCO3 filler', pct: 12, lotId: 'KM·CACO3·1907·02' }, { name: 'Stabilizer', pct: 6, lotId: 'AA·STB·1507·09' }] },
 ];
 
+const IMM_FORM_ID = 'mesaleads-form-imm';
+const IMM_QUESTIONS: Array<{
+  key: string;
+  type: string;
+  label: string;
+  helpText?: string;
+  required?: boolean;
+  options?: string[];
+  visibilityRule?: Prisma.InputJsonValue;
+}> = [
+  { key: 'customer_details', type: 'section', label: 'Customer details' },
+  { key: 'customer_name', type: 'short_text', label: 'Customer name', required: true },
+  { key: 'contact_number', type: 'phone', label: 'Contact number', required: true },
+  { key: 'email', type: 'email', label: 'Email address' },
+  { key: 'company_name', type: 'short_text', label: 'Company name', required: true },
+  { key: 'company_address', type: 'long_text', label: 'Company address' },
+  { key: 'gstin', type: 'short_text', label: 'GSTIN' },
+  { key: 'product_requirements', type: 'section', label: 'Product requirements' },
+  { key: 'product_details', type: 'long_text', label: 'Product or item details', required: true },
+  { key: 'polymer_material', type: 'short_text', label: 'Polymer or material and grade', required: true },
+  { key: 'shot_weight', type: 'number', label: 'Product shot weight (grams)', required: true, helpText: 'Enter the complete moulded shot weight including runners.' },
+  { key: 'product_dimensions', type: 'short_text', label: 'Product dimensions' },
+  { key: 'target_output', type: 'number', label: 'Target production output per day' },
+  { key: 'desired_timeline', type: 'date', label: 'Desired commissioning date' },
+  { key: 'sample_upload', type: 'file', label: 'Drawing, sample or product photos', helpText: 'Upload a JPG, PNG or PDF up to 5 MB.' },
+  { key: 'requirement_scope', type: 'single_select', label: 'Requirement scope', required: true, options: ['machine_only', 'machine_mold', 'mold_only'] },
+  { key: 'mold_requirement', type: 'single_select', label: 'Mold requirement', required: true, options: ['existing_mold', 'new_mold'], visibilityRule: { questionKey: 'requirement_scope', operator: 'not_equals', value: 'machine_only' } },
+  { key: 'mold_details', type: 'long_text', label: 'Mold dimensions, weight, cavities and drawing details', required: true, visibilityRule: { questionKey: 'requirement_scope', operator: 'not_equals', value: 'machine_only' } },
+  { key: 'site_requirements', type: 'section', label: 'Factory and utilities' },
+  { key: 'three_phase_power', type: 'yes_no', label: 'Is three-phase power available?', required: true },
+  { key: 'factory_location', type: 'long_text', label: 'Factory location and available floor area', required: true },
+  { key: 'connected_power', type: 'number', label: 'Total connected power (kW)' },
+  { key: 'auxiliaries', type: 'multi_select', label: 'Required auxiliaries', options: ['Grinder', 'Hopper dryer', 'Material loader', 'MTC', 'Chiller', 'Other'] },
+  { key: 'additional_notes', type: 'long_text', label: 'Additional requirements or notes' },
+];
+
 const ALL_TABLES = [
-  'Organization', 'User', 'Membership', 'Role', 'EmployeeGrant', 'Customer', 'Inquiry', 'SalesOrder', 'ProductionPlan', 'LogbookTemplate',
+  'Organization', 'Service', 'OrganizationService', 'User', 'Membership', 'Role', 'EmployeeGrant', 'Customer', 'Inquiry', 'SalesOrder', 'ProductionPlan', 'LogbookTemplate',
   'MachineLogbook', 'QualityInspection', 'InventoryTransaction', 'DispatchRecord', 'Complaint',
   'CAPARecord', 'Formulation', 'MaintenanceTask', 'Machine', 'AuditEvent',
+  'LeadForm', 'LeadFormQuestion', 'LeadFormLink', 'MesaLead', 'LeadSubmission', 'LeadActivity', 'LeadAttachment',
   'Account', 'Session', 'VerificationToken',
 ];
 
@@ -106,11 +143,24 @@ async function main(): Promise<void> {
   console.log('[seed] clearing tables (TRUNCATE, RLS-immune)…');
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${ALL_TABLES.map((t) => `"${t}"`).join(', ')} RESTART IDENTITY CASCADE`);
 
+  await prisma.service.createMany({
+    data: [
+      { id: 'mesaops', name: 'MesaOps', description: 'Manufacturing operations, planning, quality, inventory and dispatch.', status: 'active', sortOrder: 10 },
+      { id: 'mesaleads', name: 'MesaLeads', description: 'Lead management and sales pipeline workspace.', status: 'active', sortOrder: 20 },
+    ],
+  });
+
   console.log('[seed] provisioning demo organization…');
   const org = await prisma.organization.create({
     data: { id: DEMO_ORG_ID, name: 'Mesadesk (Demo Plant)', slug: 'demo', status: 'active', plan: 'enterprise', subscriptionStatus: 'active' },
   });
   const O = org.id;
+  await prisma.organizationService.createMany({
+    data: [
+      { organizationId: O, serviceId: 'mesaops' },
+      { organizationId: O, serviceId: 'mesaleads' },
+    ],
+  });
 
   const defaultPasswordHash = await hashPassword(SEED_PASSWORD);
   const productOwnerHash = await hashPassword(PRODUCT_OWNER_PASSWORD);
@@ -180,6 +230,30 @@ async function main(): Promise<void> {
     await tx.complaint.createMany({ data: withOrg(keptComplaints) });
     await tx.cAPARecord.createMany({ data: withOrg(initialCapaRecords) });
     await tx.formulation.createMany({ data: FORMULATIONS.map((f) => ({ ...f, organizationId: O })) });
+    await tx.leadForm.create({
+      data: {
+        id: IMM_FORM_ID,
+        organizationId: O,
+        familyKey: 'imm-requirement-questionnaire',
+        name: 'IMM Requirement Questionnaire',
+        description: 'Collect the product, mould, machine, factory and utility details needed to qualify an injection moulding enquiry.',
+        status: 'draft',
+      },
+    });
+    await tx.leadFormQuestion.createMany({
+      data: IMM_QUESTIONS.map((question, sortOrder) => ({
+        organizationId: O,
+        formId: IMM_FORM_ID,
+        key: question.key,
+        type: question.type,
+        label: question.label,
+        helpText: question.helpText ?? '',
+        required: question.required ?? false,
+        options: question.options ?? [],
+        ...(question.visibilityRule ? { visibilityRule: question.visibilityRule } : {}),
+        sortOrder,
+      })),
+    });
     await tx.maintenanceTask.createMany({
       data: MAINTENANCE.map((t) => ({ organizationId: O, machineId: machineIdByCode.get(t.machineCode)!, taskName: t.taskName, type: t.type, dueDate: t.dueDate, frequency: t.frequency, status: t.status, cost: t.cost })),
     });

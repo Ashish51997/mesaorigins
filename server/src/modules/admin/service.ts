@@ -1,4 +1,4 @@
-import { prisma, tenantTx, basePrisma } from '../../db';
+import { prisma, tenantTx } from '../../db';
 import { tenantContext } from '../../lib/tenantContext';
 import { audit } from '../../lib/audit';
 import { ApiError } from '../../middleware/error';
@@ -41,8 +41,14 @@ export async function createEmployee(input: EmployeeCreate) {
     if (!role || role.organizationId !== c.organizationId) throw new ApiError(422, 'bad_role', 'Unknown role.');
 
     const email = input.email.trim().toLowerCase();
-    // A person (global User) may belong to several orgs; reuse by email.
-    const user = await tx.user.upsert({ where: { email }, update: { name: input.name.trim() }, create: { email, name: input.name.trim() } });
+    // A person (global User) may belong to several organizations. Reuse the
+    // identity by email without letting this organization's directory edit
+    // overwrite the global name used by their other memberships.
+    const user = await tx.user.upsert({
+      where: { email },
+      update: {},
+      create: { email, name: input.name.trim() },
+    });
 
     const dupe = await tx.membership.findFirst({ where: { organizationId: c.organizationId, userId: user.id } });
     if (dupe) throw new ApiError(409, 'already_member', 'That person is already an employee of this organization.');
@@ -85,19 +91,40 @@ export async function updateEmployee(id: string, patch: EmployeeUpdate) {
 /** Set or replace the login password for an employee (User.passwordHash). */
 export async function setEmployeePassword(membershipId: string, input: PasswordSet) {
   const c = ctx();
-  const membership = await prisma.membership.findFirst({
-    where: { id: membershipId, organizationId: c.organizationId },
-  });
-  if (!membership) throw new ApiError(404, 'not_found', 'Employee not found.');
   const passwordHash = await hashPassword(input.password);
-  await basePrisma.user.update({
-    where: { id: membership.userId },
-    data: { passwordHash },
+  return tenantTx(async (tx) => {
+    const membership = await tx.membership.findFirst({
+      where: { id: membershipId, organizationId: c.organizationId },
+    });
+    if (!membership) throw new ApiError(404, 'not_found', 'Employee not found.');
+
+    // Serialize password changes with any operation that reuses this global
+    // identity. The membership is rechecked inside this same transaction, and
+    // the parent-row lock prevents a concurrent FK-backed membership insert
+    // from slipping between the global membership count and password update.
+    const lockedUsers = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "User" WHERE "id" = ${membership.userId} FOR UPDATE
+    `;
+    if (lockedUsers.length !== 1) throw new ApiError(404, 'not_found', 'Employee identity not found.');
+
+    const membershipCount = await tx.membership.count({ where: { userId: membership.userId } });
+    if (membershipCount > 1) {
+      throw new ApiError(
+        409,
+        'shared_identity_password',
+        'This sign-in identity belongs to multiple organizations. Its password cannot be changed from an organization directory.',
+      );
+    }
+
+    await tx.user.update({ where: { id: membership.userId }, data: { passwordHash } });
+    await audit(tx, {
+      action: 'employee.password_set',
+      entity: 'User',
+      entityId: membership.userId,
+      after: { set: true, membershipId },
+    });
+    return { ok: true };
   });
-  await tenantTx(async (tx) => {
-    await audit(tx, { action: 'employee.password_set', entity: 'User', entityId: membership.userId, after: { set: true } });
-  });
-  return { ok: true };
 }
 
 /* ---------------------------------------------------------------- roles */

@@ -1,28 +1,89 @@
-# Local Postgres for the Mass Polimer ERP backend.
-#   docker compose up -d      → starts Postgres on localhost:5432
-#   DATABASE_URL in .env should point at it (see .env.example)
-# Docker not installed? Any Postgres 14+ works — just set DATABASE_URL.
+name: mesadesk
+
+x-database-environment: &database-environment
+  DATABASE_URL: postgresql://app_user:app_user@postgres:5432/${MESADESK_POSTGRES_DB:-masspolimer}?schema=public
+  DIRECT_DATABASE_URL: postgresql://${MESADESK_POSTGRES_USER:-masspolimer}:${MESADESK_POSTGRES_PASSWORD:-masspolimer}@postgres:5432/${MESADESK_POSTGRES_DB:-masspolimer}?schema=public
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: masspolimer-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: masspolimer
-      POSTGRES_PASSWORD: masspolimer
-      POSTGRES_DB: masspolimer
+      POSTGRES_USER: ${MESADESK_POSTGRES_USER:-masspolimer}
+      POSTGRES_PASSWORD: ${MESADESK_POSTGRES_PASSWORD:-masspolimer}
+      POSTGRES_DB: ${MESADESK_POSTGRES_DB:-masspolimer}
     ports:
-      - "5432:5432"
+      - "${MESADESK_POSTGRES_PORT:-5432}:5432"
     volumes:
       - masspolimer-pgdata:/var/lib/postgresql/data
-      # Creates the least-privilege app_user role on first init so RLS enforces
-      # (the app connects as app_user; migrations/seed use the owner).
+      # Creates the least-privilege app_user role before Prisma creates tables.
       - ./server/prisma/setup-roles.sql:/docker-entrypoint-initdb.d/10-setup-roles.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U masspolimer"]
+      test: ["CMD-SHELL", "pg_isready -U ${MESADESK_POSTGRES_USER:-masspolimer} -d ${MESADESK_POSTGRES_DB:-masspolimer}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 12
+    stop_grace_period: 30s
+
+  migrate:
+    image: mesadesk-migration:local
+    build:
+      context: .
+      target: migration
+    restart: "no"
+    environment:
+      <<: *database-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npx", "prisma", "migrate", "deploy"]
+
+  app:
+    image: mesadesk-app:local
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    init: true
+    environment:
+      <<: *database-environment
+      NODE_ENV: production
+      PORT: 3000
+      APP_URL: http://localhost:${MESADESK_APP_PORT:-3000}
+      DEV_AUTH: ${MESADESK_DEV_AUTH:-0}
+      SEED_USER_PASSWORD: ${MESADESK_SEED_PASSWORD:-mesadesk123}
+      DATA_FILE_PATH: /app/storage/data.json
+    ports:
+      - "${MESADESK_APP_PORT:-3000}:3000"
+    volumes:
+      - mesadesk-legacy-data:/app/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 6
+    stop_grace_period: 15s
+
+  # Explicit because the current seed truncates and recreates all demo data.
+  # Run with: docker compose --profile tools run --rm seed
+  seed:
+    profiles: ["tools"]
+    image: mesadesk-migration:local
+    build:
+      context: .
+      target: migration
+    environment:
+      <<: *database-environment
+      SEED_USER_PASSWORD: ${MESADESK_SEED_PASSWORD:-mesadesk123}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["npm", "run", "db:seed"]
 
 volumes:
   masspolimer-pgdata:
+  mesadesk-legacy-data:

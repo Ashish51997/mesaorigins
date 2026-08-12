@@ -24,7 +24,9 @@ import {
   initialCapaRecords,
 } from '../../../src/mockData';
 
-const DATA_FILE_PATH = path.join(process.cwd(), 'data.json');
+// Containers keep this bridge on a named volume; local npm development keeps
+// the historical repository-root path unless explicitly overridden.
+const DATA_FILE_PATH = process.env.DATA_FILE_PATH || path.join(process.cwd(), 'data.json');
 
 const initialRecipes = [
   { id: 'bom-1', productName: 'Grade-A Heavy Gauge Compounding', standardYieldPortion: 98.5, items: [
