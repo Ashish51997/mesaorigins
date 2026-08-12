@@ -4,13 +4,19 @@ import { authSecretConfigured } from '../../auth/config';
 import { ApiError } from '../../middleware/error';
 import { bootstrapOrganization, listOrganizations, listServiceCatalog, setOrganizationServices, setServiceStatus } from './service';
 import { bootstrapOrgSchema, organizationServicesSchema, serviceStatusSchema } from './schemas';
-import { allowedOnboardingEmails, canAccessOnboarding } from './service';
+import { allowedPlatformAdminEmails, canAccessPlatformAdmin } from '../../lib/platformAdmin';
 
 export const onboardingRouter = Router();
 
 function requireOnboardingAccess(req: import('express').Request): void {
   if (!authSecretConfigured()) throw new ApiError(503, 'auth_not_configured', 'AUTH_SECRET is not set (min 32 characters).');
-  if (!canAccessOnboarding(req.user?.email, Boolean(req.user?.isAdmin))) {
+  // Platform administration is an identity-level entitlement. A person may
+  // belong to several tenants, so authorize when any active membership is an
+  // administrator instead of trusting whichever tenant the UI last selected.
+  const hasAdminMembership = req.user?.organizations.some((organization) => (
+    organization.membershipStatus === 'active' && organization.isAdmin
+  )) ?? false;
+  if (!canAccessPlatformAdmin(req.user?.email, hasAdminMembership)) {
     throw new ApiError(403, 'forbidden', 'You are not allowed to onboard organizations.');
   }
 }
@@ -18,7 +24,7 @@ function requireOnboardingAccess(req: import('express').Request): void {
 onboardingRouter.get('/onboarding/access', async (req, res, next) => {
   try {
     requireOnboardingAccess(req);
-    res.json({ allowed: true, allowedEmails: allowedOnboardingEmails(), user: req.user });
+    res.json({ allowed: true, allowedEmails: allowedPlatformAdminEmails(), user: req.user });
   } catch (err) {
     next(err);
   }

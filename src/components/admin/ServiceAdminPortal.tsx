@@ -19,7 +19,7 @@ import {
   Users,
 } from 'lucide-react';
 import { api } from '../../lib/apiClient';
-import { setDevUser } from '../../lib/apiIdentity';
+import { setDevUser, setOrganizationId } from '../../lib/apiIdentity';
 import Logo from '../Logo';
 import OrganizationOnboardingPanel, {
   OrganizationsDirectory,
@@ -53,6 +53,9 @@ const ADMIN_SESSION_KEY = 'mesadesk_admin_session';
 const SERVICE_STATE_KEY = 'mesadesk_service_states';
 const DEFAULT_SERVICE_STATES: ServiceStates = { mesaops: 'running', mesaleads: 'running' };
 const ADMIN_ONBOARDING_IDENTITY = 'aroul303@gmail.com';
+
+type AdminAuthMode = 'production' | 'dev';
+type AdminAuthState = 'checking' | 'signedOut' | 'authenticated';
 
 const SERVICES: ServiceDefinition[] = [
   {
@@ -120,19 +123,45 @@ function MetricCard({ icon, label, value, detail }: { icon: ReactNode; label: st
   );
 }
 
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
-  const [userId, setUserId] = useState('');
+async function responseJson(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function responseErrorMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== 'object') return fallback;
+  const error = (payload as { error?: unknown }).error;
+  if (!error || typeof error !== 'object') return fallback;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' && message.trim() ? message : fallback;
+}
+
+function AdminLogin({
+  mode,
+  onLogin,
+}: {
+  mode: AdminAuthMode;
+  onLogin: (identifier: string, password: string) => Promise<void>;
+}) {
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (userId.trim() !== 'admin' || password !== 'admin') {
-      setError('User ID or password is incorrect.');
-      return;
+    setError('');
+    setBusy(true);
+    try {
+      await onLogin(identifier.trim(), password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign-in failed. Please try again.');
+    } finally {
+      setBusy(false);
     }
-    window.sessionStorage.setItem(ADMIN_SESSION_KEY, 'active');
-    onLogin();
   };
 
   return (
@@ -181,17 +210,22 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
                 <LockKeyhole className="h-5 w-5" />
               </div>
               <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-slate-900">Admin sign in</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Use your MesaDesk administrator credentials to open the service console.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                {mode === 'production'
+                  ? 'Use your MesaDesk administrator email and password to open the service console.'
+                  : 'Use the isolated local-development administrator credentials.'}
+              </p>
               <form className="mt-7 space-y-4" onSubmit={submit}>
                 <label className="block">
-                  <span className="text-[13px] font-semibold text-slate-700">User ID</span>
+                  <span className="text-[13px] font-semibold text-slate-700">{mode === 'production' ? 'Email address' : 'User ID'}</span>
                   <input
-                    value={userId}
-                    onChange={(event) => { setUserId(event.target.value); setError(''); }}
+                    type={mode === 'production' ? 'email' : 'text'}
+                    value={identifier}
+                    onChange={(event) => { setIdentifier(event.target.value); setError(''); }}
                     autoComplete="username"
                     autoFocus
                     required
-                    placeholder="Enter user ID"
+                    placeholder={mode === 'production' ? 'admin@yourcompany.com' : 'Enter user ID'}
                     className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-base text-slate-900 outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 sm:text-sm"
                   />
                 </label>
@@ -210,12 +244,13 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
                 {error && (
                   <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700">{error}</div>
                 )}
-                <button type="submit" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:ring-offset-2">
-                  Open control center <ArrowUpRight className="h-4 w-4" />
+                <button type="submit" disabled={busy} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                  {busy ? 'Signing in…' : 'Open control center'} {!busy && <ArrowUpRight className="h-4 w-4" />}
                 </button>
               </form>
               <div className="mt-6 flex items-center gap-2 border-t border-slate-100 pt-5 text-xs text-slate-400">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" /> Temporary local administrator access
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                {mode === 'production' ? 'Protected by server-verified administrator access' : 'Temporary local administrator access'}
               </div>
             </div>
           </section>
@@ -226,13 +261,8 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
 }
 
 export default function ServiceAdminPortal() {
-  const [authenticated, setAuthenticated] = useState(() => {
-    const active = window.sessionStorage.getItem(ADMIN_SESSION_KEY) === 'active';
-    // The local admin route uses the seeded product-owner identity for protected
-    // onboarding API calls. Production continues to rely on its session cookie.
-    setDevUser(active ? ADMIN_ONBOARDING_IDENTITY : '');
-    return active;
-  });
+  const [authState, setAuthState] = useState<AdminAuthState>('checking');
+  const [authMode, setAuthMode] = useState<AdminAuthMode>('production');
   const [serviceStates, setServiceStates] = useState<ServiceStates>(readServiceStates);
   const [restarting, setRestarting] = useState<ServiceId | null>(null);
   const [changingService, setChangingService] = useState<ServiceId | null>(null);
@@ -241,6 +271,59 @@ export default function ServiceAdminPortal() {
   const [activities, setActivities] = useState<ActivityEntry[]>([
     { id: 1, message: 'Control center ready', detail: 'Service registry loaded', time: 'Just now' },
   ]);
+  const authenticated = authState === 'authenticated';
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const restoreAdminSession = async () => {
+      // An organization selector or development identity from another MesaDesk
+      // workspace must never influence the platform-admin authorization check.
+      setOrganizationId('');
+      setDevUser('');
+
+      let mode: AdminAuthMode = 'production';
+      try {
+        const healthResponse = await fetch('/api/health', { credentials: 'include' });
+        const health = await responseJson(healthResponse) as { auth?: unknown } | null;
+        if (healthResponse.ok && health?.auth === 'dev') mode = 'dev';
+      } catch {
+        // Fail closed into production authentication when the mode cannot be
+        // discovered. The protected access endpoint remains authoritative.
+      }
+
+      if (cancelled) return;
+      setAuthMode(mode);
+
+      if (mode === 'dev') {
+        if (window.sessionStorage.getItem(ADMIN_SESSION_KEY) !== 'active') {
+          setAuthState('signedOut');
+          return;
+        }
+        // Session cookies take precedence over x-dev-user in the API. Clear a
+        // stale organization session before restoring the isolated dev admin.
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => undefined);
+        setDevUser(ADMIN_ONBOARDING_IDENTITY);
+      } else {
+        window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      }
+
+      try {
+        const access = await api.get<{ allowed: boolean }>('/onboarding/access');
+        if (!access.allowed) throw new Error('Platform administrator access is required.');
+        if (!cancelled) setAuthState('authenticated');
+      } catch {
+        if (mode === 'dev') {
+          window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+          setDevUser('');
+        }
+        if (!cancelled) setAuthState('signedOut');
+      }
+    };
+
+    void restoreAdminSession();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     document.title = authenticated ? 'Service Control Center · MesaDesk' : 'Admin Sign In · MesaDesk';
@@ -328,10 +411,59 @@ export default function ServiceAdminPortal() {
     }
   };
 
-  const logout = () => {
-    window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  const login = async (identifier: string, password: string) => {
+    setOrganizationId('');
+
+    if (authMode === 'dev') {
+      if (identifier !== 'admin' || password !== 'admin') {
+        throw new Error('User ID or password is incorrect.');
+      }
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => undefined);
+      setDevUser(ADMIN_ONBOARDING_IDENTITY);
+      try {
+        const access = await api.get<{ allowed: boolean }>('/onboarding/access');
+        if (!access.allowed) throw new Error('Platform administrator access is required.');
+        window.sessionStorage.setItem(ADMIN_SESSION_KEY, 'active');
+        setAuthState('authenticated');
+        return;
+      } catch (err) {
+        setDevUser('');
+        window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+        throw err;
+      }
+    }
+
     setDevUser('');
-    setAuthenticated(false);
+    const response = await fetch('/api/auth/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: identifier.toLowerCase(), password }),
+    });
+    const payload = await responseJson(response);
+    if (!response.ok) {
+      throw new Error(responseErrorMessage(payload, 'Sign-in failed. Please check your email and password.'));
+    }
+
+    try {
+      const access = await api.get<{ allowed: boolean }>('/onboarding/access');
+      if (!access.allowed) throw new Error('Platform administrator access is required.');
+      setAuthState('authenticated');
+    } catch (err) {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => undefined);
+      throw err;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } finally {
+      window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      setOrganizationId('');
+      setDevUser('');
+      setAuthState('signedOut');
+    }
   };
 
   const organizationCreated = (created: CreatedOrganization) => {
@@ -346,10 +478,17 @@ export default function ServiceAdminPortal() {
     );
   };
 
-  if (!authenticated) return <AdminLogin onLogin={() => {
-    setDevUser(ADMIN_ONBOARDING_IDENTITY);
-    setAuthenticated(true);
-  }} />;
+  if (authState === 'checking') {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 font-sans">
+        <div role="status" className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+          <RefreshCw className="h-5 w-5 animate-spin text-sky-600" /> Verifying administrator session…
+        </div>
+      </main>
+    );
+  }
+
+  if (!authenticated) return <AdminLogin mode={authMode} onLogin={login} />;
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-700">
