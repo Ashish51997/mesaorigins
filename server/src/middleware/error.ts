@@ -27,6 +27,15 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
   const code = (err as { code?: string })?.code;
+  const type = (err as { type?: string })?.type;
+  if (type === 'entity.too.large') {
+    res.status(413).json({ error: { code: 'payload_too_large', message: 'Request body is too large.' } });
+    return;
+  }
+  if (type === 'entity.parse.failed') {
+    res.status(400).json({ error: { code: 'invalid_json', message: 'Request body is not valid JSON.' } });
+    return;
+  }
   if (code === 'P2025') {
     res.status(404).json({ error: { code: 'not_found', message: 'Record not found.' } });
     return;

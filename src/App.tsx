@@ -66,7 +66,7 @@ import Logo from './components/Logo';
 import MobileBottomNav from './components/MobileBottomNav';
 import { setCurrentEmployee, useRoleRules, useGrants, useDelegations, checkFor, can, grantState } from './lib/accessStore';
 import { employeeForRole } from './lib/userStore';
-import { setDevUser } from './lib/apiIdentity';
+import { setDevUser, setOrganizationId } from './lib/apiIdentity';
 import { api } from './lib/apiClient';
 import { groupNav } from './lib/navGroups';
 import { roleInfo, homeForRole, normalizeRole } from './lib/roles';
@@ -119,6 +119,21 @@ type ModuleType =
   | 'machines'
   | 'acl'
   | 'users';
+
+type LegacyDataState = {
+  customers?: Customer[];
+  inquiries?: Inquiry[];
+  salesOrders?: SalesOrder[];
+  productionPlans?: ProductionPlan[];
+  templates?: LogbookTemplate[];
+  machineLogbooks?: MachineLogbook[];
+  inspections?: QualityInspection[];
+  packingRecords?: PackingRecord[];
+  inventory?: InventoryTransaction[];
+  dispatches?: DispatchRecord[];
+  complaints?: CustomerComplaint[];
+  capas?: CAPARecord[];
+};
 
 export default function App() {
   const onboardingRoute = typeof window !== 'undefined' && (
@@ -199,6 +214,7 @@ export default function App() {
   const [capas, setCapas] = useState<CAPARecord[]>(initialCapaRecords);
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [serviceAccessError, setServiceAccessError] = useState<'unauthenticated' | 'forbidden' | null>(null);
   const [user, setUser] = useState<{
     uid: string;
     email: string;
@@ -285,25 +301,15 @@ export default function App() {
   const handleSignOut = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-      const csrfRes = await fetch('/auth/csrf', { credentials: 'include' });
-      if (csrfRes.ok) {
-        const { csrfToken } = (await csrfRes.json()) as { csrfToken?: string };
-        if (csrfToken) {
-          await fetch('/auth/signout', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ csrfToken, callbackUrl: '/' }),
-          });
-        }
-      }
     } catch (err) {
       console.error('Error signing out:', err);
     }
     setDevUser('');
+    setOrganizationId('');
     setIdentityEmail('');
     setUser(null);
     localStorage.removeItem('erp_session');
+    if (window.location.pathname.startsWith('/mesaops')) window.location.assign('/');
   };
 
   // Restore any Auth.js cookie session on boot.
@@ -348,11 +354,11 @@ export default function App() {
     }
 
     let cancelled = false;
+    setServiceAccessError(null);
     setIsLoaded(false);
-    fetch('/api/data', { credentials: 'include' })
+    api.get<LegacyDataState>('/data')
       .then(async (res) => {
-        if (!res.ok) throw new Error(`GET /api/data → ${res.status}`);
-        return res.json();
+        return res;
       })
       .then((data) => {
         if (cancelled) return;
@@ -374,7 +380,10 @@ export default function App() {
         setIsLoaded(true);
       })
       .catch((err) => {
-        console.error('Error fetching backend ERP state, using mock fallback:', err);
+        console.error('Error fetching backend ERP state:', err);
+        const status = typeof err === 'object' && err && 'status' in err ? Number(err.status) : 0;
+        if (!cancelled && status === 401) setServiceAccessError('unauthenticated');
+        if (!cancelled && status === 403) setServiceAccessError('forbidden');
         if (!cancelled) setIsLoaded(true);
       });
     return () => { cancelled = true; };
@@ -405,12 +414,7 @@ export default function App() {
 
     const saveState = async () => {
       try {
-        await fetch('/api/data', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(changed),
-        });
+        await api.post('/data', changed);
         lastSavedState.current = currentState;
       } catch (err) {
         console.error('Failed to sync ERP state to backend:', err);
@@ -649,6 +653,19 @@ export default function App() {
         <div className="space-y-1 text-center">
           <h3 className="font-extrabold text-slate-900 text-base">MesaDesk</h3>
           {/* <p className="text-xs text-slate-500 font-medium">One Platform. Every Operation.</p> */}
+        </div>
+      </div>
+    );
+  }
+
+  if (serviceAccessError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 font-sans">
+        <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 text-center sm:p-8">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><LockKeyhole className="h-6 w-6" /></div>
+          <h1 className="mt-5 text-xl font-extrabold text-slate-900">{serviceAccessError === 'unauthenticated' ? 'Session expired' : 'MesaOps is not assigned'}</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">{serviceAccessError === 'unauthenticated' ? 'Sign in again to continue to your organization services.' : 'MesaOps is not active for this organization. Return to your service list or ask a MesaDesk administrator for access.'}</p>
+          <a href="/" className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">Return to sign in</a>
         </div>
       </div>
     );

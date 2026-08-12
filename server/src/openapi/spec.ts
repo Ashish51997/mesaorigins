@@ -121,12 +121,22 @@ function operationFor(route: DiscoveredRoute, doc: RouteDoc): JsonSchema {
     schema: { type: 'string' },
   }));
 
-  if (!doc.public) {
+  for (const [name, headerDescription] of Object.entries(doc.headers ?? {})) {
     parameters.push({
-      name: 'x-dev-org',
+      name,
       in: 'header',
       required: false,
-      description: 'Development only: pick the organization by id or slug when the identity has more than one membership.',
+      description: headerDescription,
+      schema: { type: 'string' },
+    });
+  }
+
+  if (!doc.public) {
+    parameters.push({
+      name: 'x-org',
+      in: 'header',
+      required: false,
+      description: 'Select one of the authenticated user\'s non-inactive organization memberships by id or slug. Foreign selections fail closed.',
       schema: { type: 'string' },
     });
   }
@@ -261,7 +271,7 @@ export function buildOpenApiSpec(routes: DiscoveredRoute[]): JsonSchema {
           in: 'header',
           name: 'x-dev-user',
           description:
-            'Development only, active while `DEV_AUTH` is on. Pass an employee code or email to act as that member; omit it to fall back to a seeded Administrator. Pair with `x-dev-org` to choose the organization. Never enable this in production.',
+            'Development only, active while `DEV_AUTH` is on. Pass an employee code or email to act as that member; omit it to fall back to a seeded Administrator. Pair with `x-org` (`x-dev-org` remains a compatibility alias) to choose the organization. Never enable this in production.',
         },
       },
       schemas: { Error: ERROR_SCHEMA, ...reachableSchemas(paths, buildModelSchemas()) },

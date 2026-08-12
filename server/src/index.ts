@@ -15,6 +15,15 @@ async function start(): Promise<void> {
 
   mountApi(app); // express.json + /api routes + legacy /api/data
 
+  // The customer page URL contains a bearer token. Prevent browsers, caches
+  // and search engines from propagating or retaining it.
+  app.use('/mesaleads/q', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    next();
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'custom' });
     app.use(vite.middlewares);

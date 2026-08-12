@@ -1,28 +1,20 @@
 import type { Request, Response, RequestHandler } from 'express';
 import { basePrisma } from '../db';
-import { ROLE_DEFAULT_SCREENS, ADMIN_ROLES } from '../lib/permissions';
 import { authSecretConfigured, sessionCookieName } from '../auth/config';
+import {
+  buildAuthenticatedUserContext,
+  type AuthenticatedUserContext,
+} from '../lib/authContext';
 
 /**
  * Identity middleware — tenant-aware.
  *
  * - Auth.js database session cookie → resolve User + Membership.
- * - Else if DEV_AUTH ≠ 0 → Phase-1 stub via `x-dev-user` / Administrator fallback.
+ * - Else if DEV_AUTH = 1 → Phase-1 stub via `x-dev-user` / Administrator fallback.
  * - Else → 401.
  */
 
-export interface AuthedUser {
-  userId: string;
-  email: string;
-  name: string;
-  membershipId: string;
-  employeeCode: string;
-  organizationId: string;
-  organizationName: string;
-  role: string;
-  isAdmin: boolean;
-  screens: string[];
-}
+export type AuthedUser = AuthenticatedUserContext;
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -33,65 +25,26 @@ declare global {
   }
 }
 
-const isDevAuth = (): boolean => process.env.DEV_AUTH !== '0';
+const isDevAuth = (): boolean => process.env.DEV_AUTH === '1';
 
-type MembershipRow = NonNullable<Awaited<ReturnType<typeof loadMembershipById>>>;
+function organizationHint(req: Request): string {
+  // x-org is the production organization selector. Keep x-dev-org as a local
+  // compatibility alias for the development identity picker.
+  return (req.header('x-org') || req.header('x-dev-org') || '').trim();
+}
 
-async function loadMembershipById(id: string) {
-  return basePrisma.membership.findUnique({
-    where: { id },
-    include: { user: true, organization: true },
+function rejectMissingContext(res: Response, hasOrganizationHint: boolean): void {
+  res.status(403).json({
+    error: hasOrganizationHint
+      ? {
+          code: 'organization_not_available',
+          message: 'The selected organization is not available for this account.',
+        }
+      : {
+          code: 'no_membership',
+          message: 'No active organization membership for this account.',
+        },
   });
-}
-
-async function resolveScreens(membership: MembershipRow): Promise<{ isAdmin: boolean; screens: string[] }> {
-  let isAdmin = ADMIN_ROLES.has(membership.role);
-  let screens: string[] = ROLE_DEFAULT_SCREENS[membership.role] ?? [];
-  try {
-    const perms = await basePrisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT set_config('app.current_tenant', ${membership.organizationId}, true)`;
-      const role = membership.roleId
-        ? await tx.role.findUnique({ where: { id: membership.roleId } })
-        : await tx.role.findFirst({ where: { name: membership.role } });
-      const grants = await tx.employeeGrant.findMany({ where: { membershipId: membership.id } });
-      return { role, grants };
-    });
-    if (perms.role) {
-      isAdmin = perms.role.isAdmin;
-      // System role presets stay in sync with ROLE_DEFAULT_SCREENS so code
-      // changes (new MD screens, etc.) apply without a manual reseed. Custom
-      // (non-system) roles keep whatever the admin stored.
-      if (perms.role.isSystem && ROLE_DEFAULT_SCREENS[perms.role.name]) {
-        screens = [...ROLE_DEFAULT_SCREENS[perms.role.name]];
-      } else {
-        screens = Array.isArray(perms.role.screens) ? (perms.role.screens as string[]) : [];
-      }
-    }
-    const set = new Set(screens);
-    for (const g of perms.grants) { if (g.state === 'on') set.add(g.screen); else set.delete(g.screen); }
-    screens = [...set];
-  } catch { /* hardcoded fallback */ }
-  return { isAdmin, screens };
-}
-
-function attachUser(req: Request, membership: MembershipRow, access: { isAdmin: boolean; screens: string[] }): void {
-  req.user = {
-    userId: membership.userId,
-    email: membership.user.email,
-    name: membership.user.name,
-    membershipId: membership.id,
-    employeeCode: membership.employeeCode,
-    organizationId: membership.organizationId,
-    organizationName: membership.organization.name,
-    role: membership.role,
-    isAdmin: access.isAdmin,
-    screens: access.screens,
-  };
-}
-
-function orgFilterFromHeader(req: Request) {
-  const orgHint = (req.header('x-dev-org') || req.header('x-org') || '').trim();
-  return orgHint ? { organization: { OR: [{ id: orgHint }, { slug: orgHint }] } } : {};
 }
 
 function readCookie(header: string, name: string): string {
@@ -125,65 +78,65 @@ async function authenticateSession(req: Request, res: Response): Promise<boolean
     return false;
   }
 
-  const user = dbSession.user;
-  const orgFilter = orgFilterFromHeader(req);
-  const membership = await basePrisma.membership.findFirst({
-    where: {
-      AND: [
-        { userId: user.id },
-        { status: { not: 'inactive' } },
-        orgFilter,
-      ],
-    },
-    include: { user: true, organization: true },
-    orderBy: { createdAt: 'asc' },
-  });
-
-  if (!membership) {
-    res.status(403).json({
-      error: {
-        code: 'no_membership',
-        message: 'No active organization membership for this account.',
-      },
-    });
+  const selectedOrganization = organizationHint(req);
+  const context = await buildAuthenticatedUserContext(dbSession.user.id, selectedOrganization);
+  if (!context) {
+    rejectMissingContext(res, Boolean(selectedOrganization));
     return false;
   }
 
-  const access = await resolveScreens(membership);
-  attachUser(req, membership, access);
+  req.user = context;
   return true;
 }
 
 async function authenticateDev(req: Request, res: Response): Promise<boolean> {
   const hint = (req.header('x-dev-user') || '').trim();
-  const orgFilter = orgFilterFromHeader(req);
+  const selectedOrganization = organizationHint(req);
+  const orgFilter = selectedOrganization
+    ? { organization: { OR: [{ id: selectedOrganization }, { slug: selectedOrganization }] } }
+    : {};
 
   let membership = hint
     ? await basePrisma.membership.findFirst({
-        where: { AND: [{ OR: [{ employeeCode: hint }, { user: { email: hint.toLowerCase() } }] }, orgFilter] },
+        where: {
+          AND: [
+            { OR: [{ employeeCode: hint }, { user: { email: hint.toLowerCase() } }] },
+            { status: { not: 'inactive' } },
+            orgFilter,
+          ],
+        },
         include: { user: true, organization: true },
       })
     : null;
 
-  if (!membership) {
+  // When the caller supplied an identity, never fall back to an unrelated
+  // administrator merely because the requested organization did not match.
+  if (!membership && !hint) {
     membership = await basePrisma.membership.findFirst({
-      where: { AND: [{ role: 'Administrator' }, orgFilter] },
+      where: { AND: [{ role: 'Administrator' }, { status: { not: 'inactive' } }, orgFilter] },
       include: { user: true, organization: true },
     });
   }
 
   if (!membership) {
-    res.status(401).json({ error: { code: 'no_user', message: 'No membership resolved — seed the database first.' } });
+    if (hint && selectedOrganization) {
+      rejectMissingContext(res, true);
+    } else {
+      res.status(401).json({ error: { code: 'no_user', message: 'No membership resolved — seed the database first.' } });
+    }
     return false;
   }
 
-  if (membership.status === 'inactive') {
-    res.status(403).json({ error: { code: 'inactive', message: 'This employee is deactivated.' } });
+  const context = await buildAuthenticatedUserContext(
+    membership.userId,
+    selectedOrganization || (hint && !hint.includes('@') ? membership.organizationId : ''),
+  );
+  if (!context) {
+    rejectMissingContext(res, Boolean(selectedOrganization));
     return false;
   }
 
-  const access = await resolveScreens(membership);
-  attachUser(req, membership, access);
+  req.user = context;
   return true;
 }
 
@@ -209,7 +162,7 @@ export const authenticate: RequestHandler = async (req, res, next) => {
         code: 'unauthenticated',
         message: authSecretConfigured()
           ? 'Sign-in required. Use Google or email/password, then retry with session cookie.'
-          : 'Auth is required (DEV_AUTH=0) but AUTH_SECRET is missing.',
+          : 'Auth is required but AUTH_SECRET is missing. Set DEV_AUTH=1 only for isolated local development.',
       },
     });
   } catch (err) {

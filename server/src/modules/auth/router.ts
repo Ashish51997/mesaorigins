@@ -1,7 +1,8 @@
-import { Router } from 'express';
+import { createHash } from 'node:crypto';
+import { Router, type Response } from 'express';
 import { z } from 'zod';
 import { basePrisma } from '../../db';
-import { ROLE_DEFAULT_SCREENS, ADMIN_ROLES } from '../../lib/permissions';
+import { buildAuthenticatedUserContext } from '../../lib/authContext';
 import {
   clearSessionCookie,
   newSessionToken,
@@ -11,50 +12,54 @@ import {
 import { SESSION_MAX_AGE_SEC, authSecretConfigured, sessionCookieName } from '../../auth/config';
 
 const bodySchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
+  email: z.string().trim().email().max(254),
+  password: z.string().min(1).max(128),
+}).strict();
 
 export const authRouter = Router();
 
-async function membershipPayload(membership: {
-  id: string;
-  userId: string;
-  employeeCode: string;
-  organizationId: string;
-  role: string;
-  roleId: string | null;
-  user: { email: string; name: string };
-  organization: { name: string };
-}) {
-  let isAdmin = ADMIN_ROLES.has(membership.role);
-  let screens: string[] = ROLE_DEFAULT_SCREENS[membership.role] ?? [];
-  try {
-    const perms = await basePrisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT set_config('app.current_tenant', ${membership.organizationId}, true)`;
-      const role = membership.roleId
-        ? await tx.role.findUnique({ where: { id: membership.roleId } })
-        : await tx.role.findFirst({ where: { name: membership.role } });
-      return { role };
-    });
-    if (perms.role) {
-      isAdmin = perms.role.isAdmin;
-      screens = Array.isArray(perms.role.screens) ? (perms.role.screens as string[]) : [];
-    }
-  } catch { /* defaults */ }
+const LOGIN_WINDOW_MS = 15 * 60 * 1_000;
+const LOGIN_BUCKET_LIMIT = 10_000;
+const LOGIN_IP_LIMIT = 100;
+const LOGIN_ACCOUNT_LIMIT = 20;
+const LOGIN_IP_ACCOUNT_LIMIT = 8;
+// Cost-12 sentinel keeps unknown-account and wrong-password responses on the
+// same bcrypt path, reducing account-enumeration timing differences.
+const DUMMY_PASSWORD_HASH = '$2b$12$2njTds5JAzc3ojuQbCicreug0JV/V8/a.vHVjS8QqfVD9.wHXDhHe';
+type LoginBucket = { count: number; resetAt: number };
+const loginAttempts = new Map<string, LoginBucket>();
 
-  return {
-    userId: membership.userId,
-    email: membership.user.email,
-    name: membership.user.name,
-    membershipId: membership.id,
-    employeeCode: membership.employeeCode,
-    organizationId: membership.organizationId,
-    organizationName: membership.organization.name,
-    role: membership.role,
-    isAdmin,
-    screens,
-  };
+function accountKey(email: string): string {
+  return createHash('sha256').update(email).digest('hex');
+}
+
+function consumeLoginBucket(key: string, limit: number, now: number): number | null {
+  let bucket = loginAttempts.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    if (!bucket && loginAttempts.size >= LOGIN_BUCKET_LIMIT) {
+      const oldest = loginAttempts.keys().next().value as string | undefined;
+      if (oldest) loginAttempts.delete(oldest);
+    }
+    bucket = { count: 0, resetAt: now + LOGIN_WINDOW_MS };
+  }
+
+  if (bucket.count >= limit) {
+    loginAttempts.set(key, bucket);
+    return bucket.resetAt;
+  }
+  bucket.count += 1;
+  loginAttempts.set(key, bucket);
+  return null;
+}
+
+function rejectRateLimited(res: Response, resetAt: number): void {
+  res.setHeader('Retry-After', String(Math.max(1, Math.ceil((resetAt - Date.now()) / 1_000))));
+  res.status(429).json({
+    error: {
+      code: 'rate_limited',
+      message: 'Too many sign-in attempts. Please wait and try again.',
+    },
+  });
 }
 
 /**
@@ -63,6 +68,7 @@ async function membershipPayload(membership: {
  */
 authRouter.post('/auth/login', async (req, res, next) => {
   try {
+    res.setHeader('Cache-Control', 'no-store');
     if (!authSecretConfigured()) {
       res.status(503).json({
         error: {
@@ -70,6 +76,14 @@ authRouter.post('/auth/login', async (req, res, next) => {
           message: 'AUTH_SECRET is not set (min 32 characters).',
         },
       });
+      return;
+    }
+
+    const now = Date.now();
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const ipResetAt = consumeLoginBucket(`ip:${ip}`, LOGIN_IP_LIMIT, now);
+    if (ipResetAt) {
+      rejectRateLimited(res, ipResetAt);
       return;
     }
 
@@ -81,38 +95,38 @@ authRouter.post('/auth/login', async (req, res, next) => {
       return;
     }
 
-    const email = parsed.data.email.trim().toLowerCase();
+    const email = parsed.data.email.toLowerCase();
+    const hashedAccount = accountKey(email);
+    const accountResetAt = consumeLoginBucket(`account:${hashedAccount}`, LOGIN_ACCOUNT_LIMIT, now);
+    const pairResetAt = consumeLoginBucket(`pair:${ip}:${hashedAccount}`, LOGIN_IP_ACCOUNT_LIMIT, now);
+    const resetAt = accountResetAt ?? pairResetAt;
+    if (resetAt) {
+      rejectRateLimited(res, resetAt);
+      return;
+    }
+
     const user = await basePrisma.user.findUnique({ where: { email } });
-    if (!user?.passwordHash) {
+    const ok = await verifyPassword(parsed.data.password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+    if (!user?.passwordHash || !ok) {
       res.status(401).json({
         error: { code: 'invalid_credentials', message: 'Invalid email or password.' },
       });
       return;
     }
 
-    const ok = await verifyPassword(parsed.data.password, user.passwordHash);
-    if (!ok) {
-      res.status(401).json({
-        error: { code: 'invalid_credentials', message: 'Invalid email or password.' },
-      });
-      return;
-    }
-
-    const membership = await basePrisma.membership.findFirst({
-      where: {
-        userId: user.id,
-        status: { not: 'inactive' },
-      },
-      include: { user: true, organization: true },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    if (!membership) {
+    const selectedOrganization = (req.header('x-org') || '').trim();
+    const context = await buildAuthenticatedUserContext(user.id, selectedOrganization);
+    if (!context) {
       res.status(403).json({
-        error: {
-          code: 'no_membership',
-          message: 'This email is not on the People directory. Ask an administrator to add it.',
-        },
+        error: selectedOrganization
+          ? {
+              code: 'organization_not_available',
+              message: 'The selected organization is not available for this account.',
+            }
+          : {
+              code: 'no_membership',
+              message: 'This email is not on the People directory. Ask an administrator to add it.',
+            },
       });
       return;
     }
@@ -123,8 +137,10 @@ authRouter.post('/auth/login', async (req, res, next) => {
       data: { sessionToken, userId: user.id, expires },
     });
     setSessionCookie(res, sessionToken, expires);
+    loginAttempts.delete(`account:${hashedAccount}`);
+    loginAttempts.delete(`pair:${ip}:${hashedAccount}`);
 
-    res.json({ user: await membershipPayload(membership) });
+    res.json({ user: context });
   } catch (err) {
     next(err);
   }
@@ -139,9 +155,69 @@ function readCookie(header: string, name: string): string {
   return '';
 }
 
+/**
+ * Restore only a real Auth.js database session.
+ *
+ * This intentionally lives on the public auth router instead of using the
+ * general `authenticate` middleware: that middleware may resolve DEV_AUTH's
+ * local fallback identity when no cookie exists, which must never turn a fresh
+ * landing-page visit into an authenticated organization session.
+ */
+authRouter.get('/auth/session-context', async (req, res, next) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Vary', 'Cookie, x-org');
+
+    const sessionToken = authSecretConfigured()
+      ? readCookie(req.headers.cookie || '', sessionCookieName())
+      : '';
+    if (!sessionToken) {
+      res.json({ user: null });
+      return;
+    }
+
+    const session = await basePrisma.session.findUnique({
+      where: { sessionToken },
+      select: { userId: true, expires: true },
+    });
+    if (!session || session.expires < new Date()) {
+      if (session) {
+        await basePrisma.session.deleteMany({ where: { sessionToken } });
+      }
+      clearSessionCookie(res);
+      res.status(401).json({
+        error: { code: 'invalid_token', message: 'Session is invalid or expired.' },
+      });
+      return;
+    }
+
+    const selectedOrganization = (req.header('x-org') || '').trim();
+    const context = await buildAuthenticatedUserContext(session.userId, selectedOrganization);
+    if (!context) {
+      res.status(403).json({
+        error: selectedOrganization
+          ? {
+              code: 'organization_not_available',
+              message: 'The selected organization is not available for this account.',
+            }
+          : {
+              code: 'no_membership',
+              message: 'No active organization membership for this account.',
+            },
+      });
+      return;
+    }
+
+    res.json({ user: context });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /** Clear Auth.js session cookie and delete the Session row. */
 authRouter.post('/auth/logout', async (req, res, next) => {
   try {
+    res.setHeader('Cache-Control', 'no-store');
     const token = readCookie(req.headers.cookie || '', sessionCookieName());
     if (token) {
       await basePrisma.session.deleteMany({ where: { sessionToken: token } });

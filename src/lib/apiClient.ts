@@ -1,4 +1,4 @@
-import { getDevUser } from './apiIdentity';
+import { getDevUser, getOrganizationId } from './apiIdentity';
 
 const BASE = '/api';
 
@@ -20,6 +20,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   // Phase-1 / local demo: x-dev-user (employee code or email).
   const dev = getDevUser();
   if (dev) headers['x-dev-user'] = dev;
+  const organizationId = getOrganizationId();
+  if (organizationId) headers['x-org'] = organizationId;
 
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 

@@ -1,0 +1,21 @@
+# Hot-reload override. The base file remains production-like so the exact image
+# destined for Cloud Run can be tested locally.
+services:
+  app:
+    image: mesadesk-app:dev
+    build:
+      context: .
+      target: development
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DEV_AUTH: "1"
+      DISABLE_HMR: "false"
+    volumes:
+      - .:/app
+      - mesadesk-node-modules:/app/node_modules
+      - mesadesk-legacy-data:/app/storage
+    command: ["npm", "run", "dev"]
+
+volumes:
+  mesadesk-node-modules:
