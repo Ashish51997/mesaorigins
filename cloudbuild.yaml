@@ -57,7 +57,7 @@ steps:
           postgres:16-alpine
 
         for attempt in $$(seq 1 60); do
-          if docker exec "$${database}" pg_isready -U postgres -d postgres >/dev/null 2>&1; then break; fi
+          if docker exec "$${database}" pg_isready -h 127.0.0.1 -U postgres -d postgres >/dev/null 2>&1; then break; fi
           if [[ "$${attempt}" == 60 ]]; then docker logs "$${database}"; exit 1; fi
           sleep 1
         done

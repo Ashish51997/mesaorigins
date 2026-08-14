@@ -72,6 +72,23 @@ create_database_if_missing() {
   fi
 }
 
+wait_for_postgres_tcp() {
+  local ready=0
+  local attempt
+  for attempt in $(seq 1 60); do
+    if psql_as_postgres -qAtc 'SELECT 1' >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
+    sleep 1
+  done
+  [[ "${ready}" == "1" ]] || {
+    echo 'PostgreSQL did not accept the parity gate TCP login within 60 seconds.' >&2
+    docker logs "${database_container}" >&2 || true
+    exit 1
+  }
+}
+
 run_setup_roles() {
   local database="$1"
   psql_as_owner "${database}" < "${setup_roles_file}"
@@ -86,6 +103,9 @@ run_quality_image() {
     -e MIGRATION_CUTOFF="${migration_cutoff}" \
     "${quality_image}" "$@"
 }
+
+echo '==> Wait for the exact PostgreSQL TCP login used by the parity gate'
+wait_for_postgres_tcp
 
 echo '==> Bootstrap ordinary Cloud SQL-parity migration owner'
 psql_as_postgres <<'SQL'
