@@ -103,6 +103,19 @@ else
   fi
 fi
 
+# Cloud SQL assigns new built-in users the managed cloudsqlsuperuser database
+# role by default. The application identity must not retain that effective
+# membership. Remove every database-role assignment through the Cloud SQL Admin
+# API for both new and existing instances; protected Cloud SQL role state cannot
+# be made safe by the release migration's SQL alone.
+echo "==> Revoke default Cloud SQL database roles from $DB_APP"
+gcloud sql users assign-roles "$DB_APP" \
+  --instance="$INSTANCE" \
+  --project="$PROJECT_ID" \
+  --type=BUILT_IN \
+  --database-roles= \
+  --revoke-existing-roles
+
 # An existing instance may predate this provisioner. Never invent or print a
 # replacement connection string: accept an operator-supplied value only when a
 # required database secret is missing, and stream it directly to Secret Manager.

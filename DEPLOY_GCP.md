@@ -45,6 +45,32 @@ chmod +x scripts/gcp/*.sh
 New databases use a dedicated-core tier, regional HA, 30 retained backups,
 seven days of transaction logs, PITR and deletion protection.
 
+Cloud SQL automatically grants a newly created built-in PostgreSQL user the
+managed `cloudsqlsuperuser` database role. The provisioner therefore runs this
+Cloud SQL Admin API operation for `app_user` on both new and existing
+instances:
+
+```bash
+gcloud sql users assign-roles app_user \
+  --instance="$INSTANCE" \
+  --project="$PROJECT_ID" \
+  --type=BUILT_IN \
+  --database-roles= \
+  --revoke-existing-roles
+```
+
+The empty role list plus `--revoke-existing-roles` removes all existing
+database-role assignments, including the default `cloudsqlsuperuser`
+membership. This step is deliberately fail-closed: a missing `app_user` or
+insufficient Cloud SQL user-management permission stops provisioning.
+
+Cloud SQL does not expose a full PostgreSQL superuser. Its managed privilege
+boundary prevents the migration owner from changing protected `SUPERUSER`,
+`REPLICATION` or `BYPASSRLS` attributes as if it were a native superuser. Run
+the provisioner before the first release, and rerun it for an older instance,
+so the Admin API removes managed role membership before the SQL migration guard
+validates the runtime identity.
+
 For an existing instance, explicitly apply the production durability upgrade:
 
 ```bash
@@ -101,9 +127,13 @@ Configure the repository trigger to execute as
 `mesadesk-build@PROJECT_ID.iam.gserviceaccount.com`. Do not reuse the runtime
 identity as a Cloud Build trigger identity.
 
-The release migration job applies `setup-roles.sql` idempotently before the
-read-only preflight and migration chain, so a first release cannot accidentally
-create tables without runtime grants. `scripts/gcp/migrate.sh` remains a manual
+The release migration requires `app_user` to have no Cloud SQL database-role
+assignments. It then applies `setup-roles.sql` idempotently before the read-only
+preflight and migration chain. That SQL can normalize permitted login and role
+attributes, apply runtime grants and fail closed on unsafe protected attributes
+or effective `cloudsqlsuperuser` membership; it cannot substitute for the Admin
+API revocation above. This prevents a first release from accidentally creating
+tables without runtime grants. `scripts/gcp/migrate.sh` remains a manual
 operator/recovery path. Do not set `SEED=1` against production.
 
 ## 3. Public origin and proxy trust
@@ -148,9 +178,10 @@ the complete quality gate is green.
 4. Builds and pushes immutable application and migration images tagged with the
    Cloud Build ID.
 5. Verifies Cloud SQL durability controls and creates an on-demand backup.
-6. Reasserts the least-privilege runtime role, then runs the read-only MesaERP
-   preflight and `prisma migrate deploy` in a single-task, zero-retry Cloud Run
-   Job using the owner connection.
+6. Normalizes permitted runtime-role attributes, verifies that protected role
+   attributes and effective memberships are least-privilege, then runs the
+   read-only MesaERP preflight and `prisma migrate deploy` in a single-task,
+   zero-retry Cloud Run Job using the owner connection.
 7. Deploys a revision with no traffic and a unique candidate URL.
 8. Smoke-tests candidate readiness, OpenAPI and the SPA.
    It also verifies security headers, rejects development identity headers,
@@ -237,6 +268,6 @@ an incident-reviewed recovery procedure.
 | Candidate `/api/ready` is 503 | Read candidate logs and inspect configuration, runtime DB role and migration counts. Do not promote it. |
 | `APP_URL` validation fails | Supply the exact public HTTPS origin with `_APP_URL`; do not use an internal or HTTP address. |
 | Secret version cannot be resolved | Create/enable a version, then rerun. Do not replace numeric pinning with `latest`. |
-| Runtime role is unsafe | Correct `mesadesk-database-url` to use `app_user` and reapply `setup-roles.sql`. |
+| Runtime role is unsafe | Correct `mesadesk-database-url` to use `app_user`, rerun `scripts/gcp/provision.sh` so the Cloud SQL Admin API revokes its default database roles, and rerun the release. `setup-roles.sql` verifies protected attributes and effective `cloudsqlsuperuser` membership but cannot repair that managed state. |
 | Artifact push is denied | Grant the trigger's actual build service account Artifact Registry writer access. |
 | Migration job cannot connect | Verify its Cloud SQL attachment and the owner socket URL in `mesadesk-direct-database-url`. |

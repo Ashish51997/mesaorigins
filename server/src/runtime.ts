@@ -130,11 +130,26 @@ type AppliedMigration = {
   rolledBackAt: Date | null;
 };
 
-type RuntimeDatabaseRole = {
+export type RuntimeDatabaseRole = {
   roleName: string;
+  canLogin: boolean;
   isSuperuser: boolean;
+  canCreateDatabase: boolean;
+  canCreateRole: boolean;
+  canReplicate: boolean;
   bypassesRls: boolean;
+  hasCloudSqlSuperuser: boolean;
 };
+
+export function isLeastPrivilegeRuntimeRole(role: RuntimeDatabaseRole): boolean {
+  return role.canLogin
+    && !role.isSuperuser
+    && !role.canCreateDatabase
+    && !role.canCreateRole
+    && !role.canReplicate
+    && !role.bypassesRls
+    && !role.hasCloudSqlSuperuser;
+}
 
 async function databaseState(): Promise<{
   pending: string[];
@@ -154,8 +169,20 @@ async function databaseState(): Promise<{
     basePrisma.$queryRaw<RuntimeDatabaseRole[]>`
       SELECT
         current_user AS "roleName",
+        "rolcanlogin" AS "canLogin",
         "rolsuper" AS "isSuperuser",
-        "rolbypassrls" AS "bypassesRls"
+        "rolcreatedb" AS "canCreateDatabase",
+        "rolcreaterole" AS "canCreateRole",
+        "rolreplication" AS "canReplicate",
+        "rolbypassrls" AS "bypassesRls",
+        CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM "pg_roles" AS "cloudSqlRole"
+            WHERE "cloudSqlRole"."rolname" = 'cloudsqlsuperuser'
+          ) THEN pg_has_role(current_user, 'cloudsqlsuperuser', 'MEMBER')
+          ELSE false
+        END AS "hasCloudSqlSuperuser"
       FROM "pg_roles"
       WHERE "rolname" = current_user
     `,
@@ -184,8 +211,9 @@ export const readinessHandler: RequestHandler = async (_req, res) => {
   try {
     const database = await withTimeout(databaseState(), 4_000);
     const outboxWorker = integrationOutboxWorkerHealth();
+    const leastPrivilegeRole = isLeastPrivilegeRuntimeRole(database.role);
     const unsafeProductionRole = process.env.NODE_ENV === 'production'
-      && (database.role.isSuperuser || database.role.bypassesRls);
+      && !leastPrivilegeRole;
     const ready = configurationErrors.length === 0
       && !unsafeProductionRole
       && database.pending.length === 0
@@ -197,7 +225,7 @@ export const readinessHandler: RequestHandler = async (_req, res) => {
         configuration: { ok: configurationErrors.length === 0, errors: configurationErrors },
         database: {
           ok: !unsafeProductionRole,
-          leastPrivilegeRole: !database.role.isSuperuser && !database.role.bypassesRls,
+          leastPrivilegeRole,
         },
         migrations: {
           ok: database.pending.length === 0 && database.unfinished === 0,

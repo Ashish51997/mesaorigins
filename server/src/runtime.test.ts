@@ -2,11 +2,43 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { buildApp } from './app';
-import { productionConfigErrors, securityHeaders } from './runtime';
+import {
+  isLeastPrivilegeRuntimeRole,
+  productionConfigErrors,
+  securityHeaders,
+  type RuntimeDatabaseRole,
+} from './runtime';
 
 const KEY = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 describe('production runtime controls', () => {
+  const leastPrivilegeRole: RuntimeDatabaseRole = {
+    roleName: 'app_user',
+    canLogin: true,
+    isSuperuser: false,
+    canCreateDatabase: false,
+    canCreateRole: false,
+    canReplicate: false,
+    bypassesRls: false,
+    hasCloudSqlSuperuser: false,
+  };
+
+  it('accepts a login-only runtime database role', () => {
+    expect(isLeastPrivilegeRuntimeRole(leastPrivilegeRole)).toBe(true);
+  });
+
+  it.each([
+    ['cannot login', { canLogin: false }],
+    ['is a superuser', { isSuperuser: true }],
+    ['can create databases', { canCreateDatabase: true }],
+    ['can create roles', { canCreateRole: true }],
+    ['can replicate', { canReplicate: true }],
+    ['can bypass row-level security', { bypassesRls: true }],
+    ['inherits cloudsqlsuperuser', { hasCloudSqlSuperuser: true }],
+  ] satisfies Array<[string, Partial<RuntimeDatabaseRole>]>)('rejects a runtime role that %s', (_label, unsafeAttributes) => {
+    expect(isLeastPrivilegeRuntimeRole({ ...leastPrivilegeRole, ...unsafeAttributes })).toBe(false);
+  });
+
   it('accepts the complete fail-closed production configuration', () => {
     expect(productionConfigErrors({
       NODE_ENV: 'production',
