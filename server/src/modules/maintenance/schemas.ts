@@ -11,6 +11,7 @@ export const maintenanceCreateSchema = z.object({
 export type MaintenanceCreate = z.infer<typeof maintenanceCreateSchema>;
 
 export const machineCreateSchema = z.object({
+  plantCode: z.string().trim().min(1).max(40).regex(/^[A-Za-z0-9._-]+$/).default('PRIMARY'),
   code: z.string().trim().min(1, 'Machine code is required').max(16, 'Code is too long'),
   line: z.string().trim().min(1, 'Line / description is required').max(120),
   family: z.string().trim().min(1, 'Family is required').max(40).default('PVC'),

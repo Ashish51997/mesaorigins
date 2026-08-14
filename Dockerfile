@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:20-bookworm-slim AS base
+FROM node:22-bookworm-slim AS base
 WORKDIR /app
 
 RUN apt-get update -y \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && apt-get install -y --no-install-recommends openssl ca-certificates tini \
   && rm -rf /var/lib/apt/lists/*
 
 
@@ -29,6 +29,14 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 
+# Reproducible CI target. Cloud Build runs this image against a disposable
+# PostgreSQL container, applies every migration, seeds demo fixtures, and then
+# executes the complete lint/test/build gate.
+FROM dependencies AS quality
+COPY . .
+RUN npx prisma generate
+
+
 # Compile the Vite SPA and bundled Express server.
 FROM dependencies AS build
 COPY . .
@@ -36,12 +44,12 @@ RUN npx prisma generate
 RUN npm run build
 
 
-# Keep migration and seed tooling out of the production runtime image while
-# still making those commands available as one-shot Compose services.
+# Keep migration, role-bootstrap and seed tooling out of the production runtime
+# image while still making those commands available as one-shot services.
 FROM dependencies AS migration
 ENV NODE_ENV=production
 COPY . .
-CMD ["npx", "prisma", "migrate", "deploy"]
+CMD ["npm", "run", "release:migrate"]
 
 
 # Prune development-only packages after the application has been built.
@@ -58,17 +66,13 @@ COPY package.json package-lock.json ./
 COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server/prisma/schema.prisma ./server/prisma/schema.prisma
-COPY firebase-applet-config.json ./firebase-applet-config.json
-
-# The legacy JSON bridge still serves domains that have not moved to Postgres.
-# The directory becomes a named volume in Compose and must be writable by the
-# non-root runtime user.
-RUN mkdir -p /app/storage && chown node:node /app/storage
-
+COPY --from=build /app/server/prisma/migrations ./server/prisma/migrations
 EXPOSE 8080
 USER node
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/usr/bin/tini", "--"]
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 \
-  CMD ["node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+  CMD ["node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/api/ready').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
 
-CMD ["node", "dist/server.cjs"]
+CMD ["node", "dist/server/server.mjs"]

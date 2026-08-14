@@ -11,7 +11,7 @@ export const bootstrapOrgSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Use lowercase letters, numbers, and hyphens only'),
   adminName: z.string().trim().min(2, 'Admin name is required'),
   adminEmail: z.string().trim().email('A valid email is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(12, 'Password must be at least 12 characters').max(128),
   serviceIds: serviceIdsSchema.default(['mesaops']),
 });
 

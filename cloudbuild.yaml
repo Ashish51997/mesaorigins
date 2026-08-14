@@ -1,71 +1,280 @@
-# Build + push Mesadesk image, then deploy to Cloud Run.
-# Usage (Cloud Build):
-#   gcloud builds submit --config cloudbuild.yaml \
-#     --substitutions=_REGION=asia-south1,_SERVICE=mesadesk,_INSTANCE=mesadesk-pg
+# Production release pipeline for MesaDesk.
 #
-# Tag uses $BUILD_ID (always set). $SHORT_SHA is empty on plain `builds submit`
-# unless the source is a triggered git build.
+# The release is intentionally ordered as:
+#   disposable full-stack quality gate -> immutable images -> verified backup
+#   -> role bootstrap + additive migration job -> no-traffic candidate -> candidate smoke
+#   -> traffic promotion -> stable-URL smoke -> latest tag.
 #
-# Required secrets in Secret Manager (same project):
+# Required Secret Manager secrets (numeric enabled versions are resolved and
+# pinned onto each revision/job; `latest` is never mounted at runtime):
 #   mesadesk-database-url
-#   mesadesk-auth-secret          (Auth.js AUTH_SECRET, ≥32 chars)
-#   mesadesk-onboarding-emails    (comma-separated product-owner emails)
-#   mesadesk-firebase-sa          (optional / legacy)
+#   mesadesk-direct-database-url
+#   mesadesk-auth-secret
+#   mesadesk-onboarding-emails
+#   mesadesk-vendor-bank-key
+#   mesadesk-erp-ops-handoff-key
+#   mesadesk-ops-statutory-key
+#   mesadesk-erp-external-evidence-key
 
 substitutions:
   _REGION: asia-south1
   _SERVICE: mesadesk
   _REPO: mesadesk
   _INSTANCE: mesadesk-pg
+  # Leave empty to reuse the existing service's stable Cloud Run URL. A first
+  # deployment must supply the intended public/custom HTTPS origin explicitly.
+  _APP_URL: ''
+  _TRUST_PROXY_HOPS: '1'
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+timeout: 3600s
 
 steps:
-  - id: build
+  - id: quality-gate
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        network="mesadesk-qa-$BUILD_ID"
+        database="mesadesk-qa-db-$BUILD_ID"
+        quality_image="mesadesk-quality:$BUILD_ID"
+        cleanup() {
+          docker rm -f "$${database}" >/dev/null 2>&1 || true
+          docker network rm "$${network}" >/dev/null 2>&1 || true
+        }
+        trap cleanup EXIT
+
+        docker network create "$${network}"
+        docker build --target quality -t "$${quality_image}" .
+        docker run -d --name "$${database}" --network "$${network}" \
+          -e POSTGRES_USER=masspolimer \
+          -e POSTGRES_PASSWORD=masspolimer \
+          -e POSTGRES_DB=masspolimer \
+          -v /workspace/server/prisma/setup-roles.sql:/docker-entrypoint-initdb.d/10-setup-roles.sql:ro \
+          postgres:16-alpine
+
+        for attempt in $$(seq 1 60); do
+          if docker exec "$${database}" pg_isready -U masspolimer -d masspolimer >/dev/null 2>&1; then break; fi
+          if [[ "$${attempt}" == 60 ]]; then docker logs "$${database}"; exit 1; fi
+          sleep 1
+        done
+
+        docker run --rm --network "$${network}" \
+          -e DATABASE_URL="postgresql://app_user:app_user@$${database}:5432/masspolimer?schema=public" \
+          -e DIRECT_DATABASE_URL="postgresql://masspolimer:masspolimer@$${database}:5432/masspolimer?schema=public" \
+          -e RUN_MESAERP_DB_INTEGRATION=1 \
+          -e NODE_ENV=test -e DEV_AUTH=1 -e APP_URL=http://localhost:8080 \
+          -e AUTH_SECRET=cloud-build-quality-auth-secret-20260814 \
+          -e SEED_USER_PASSWORD=cloud-build-only-password \
+          -e MESADESK_VENDOR_BANK_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+          -e MESADESK_ERP_OPS_HANDOFF_HMAC_KEY=AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE= \
+          -e MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI= \
+          -e MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY=AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM= \
+          "$${quality_image}" bash -ceu '
+            npx prisma migrate deploy
+            npm run db:seed
+            npm run lint
+            npm run lint:server
+            npm audit --omit=dev
+            npm audit
+            npm run test:unit
+            npm run test:server
+            cp docs/openapi.json /tmp/openapi.committed.json
+            npm run docs:openapi
+            cmp /tmp/openapi.committed.json docs/openapi.json
+            npm run build
+            test -f dist/client/index.html
+            test -f dist/server/server.mjs
+            test ! -e dist/server/server.mjs.map
+            test ! -e dist/client/server.mjs
+          '
+
+  - id: build-release-images
     name: gcr.io/cloud-builders/docker
     args:
       - build
-      - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
-      - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+      - --target=production
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
       - .
 
-  - id: push-sha
+  - id: build-migration-image
     name: gcr.io/cloud-builders/docker
     args:
-      - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
+      - build
+      - --target=migration
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}-migration:$BUILD_ID
+      - .
 
-  - id: push-latest
+  - id: push-release-image
     name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+    args: [push, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID']
 
-  - id: deploy
+  - id: push-migration-image
+    name: gcr.io/cloud-builders/docker
+    args: [push, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}-migration:$BUILD_ID']
+
+  - id: database-safety-gate
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - ${_SERVICE}
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --port=8080
-      - --cpu=1
-      - --memory=1Gi
-      - --min-instances=0
-      - --max-instances=5
-      - --timeout=300
-      - --service-account=mesadesk-run@$PROJECT_ID.iam.gserviceaccount.com
-      - --set-env-vars=NODE_ENV=production,DEV_AUTH=0
-      - --set-secrets=DATABASE_URL=mesadesk-database-url:latest,AUTH_SECRET=mesadesk-auth-secret:latest,ONBOARDING_ALLOWED_EMAILS=mesadesk-onboarding-emails:latest
-      - --add-cloudsql-instances=$PROJECT_ID:${_REGION}:${_INSTANCE}
+      - -ceu
+      - |
+        gcloud sql instances describe '${_INSTANCE}' --project='$PROJECT_ID' --format=json > /tmp/sql-instance.json
+        python3 - <<'PY'
+        import json
+        instance = json.load(open('/tmp/sql-instance.json'))
+        settings = instance.get('settings', {})
+        backup = settings.get('backupConfiguration', {})
+        failures = []
+        if settings.get('availabilityType') != 'REGIONAL': failures.append('regional HA is not enabled')
+        if not backup.get('enabled'): failures.append('automated backups are disabled')
+        if not backup.get('pointInTimeRecoveryEnabled'): failures.append('point-in-time recovery is disabled')
+        if not (settings.get('deletionProtectionEnabled') or instance.get('deletionProtectionEnabled')):
+            failures.append('deletion protection is disabled')
+        if failures:
+            raise SystemExit('Cloud SQL production safety gate failed: ' + '; '.join(failures))
+        PY
+        gcloud sql backups create --instance='${_INSTANCE}' --project='$PROJECT_ID' --description="pre-release-$BUILD_ID"
+
+  - id: migrate
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        secret_version() {
+          version="$$(gcloud secrets versions list "$$1" --project='$PROJECT_ID' --filter='state=ENABLED' --sort-by='~createTime' --limit=1 --format='value(name)')"
+          version="$${version##*/}"
+          [[ "$${version}" =~ ^[0-9]+$ ]] || { echo "No enabled numeric version for secret $$1" >&2; exit 1; }
+          printf '%s' "$${version}"
+        }
+        direct_version="$$(secret_version mesadesk-direct-database-url)"
+        migration_job='${_SERVICE}-migrate'
+        gcloud run jobs deploy "$${migration_job}" \
+          --project='$PROJECT_ID' --region='${_REGION}' \
+          --image='${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}-migration:$BUILD_ID' \
+          --service-account='mesadesk-migrate@$PROJECT_ID.iam.gserviceaccount.com' \
+          --set-env-vars=NODE_ENV=production \
+          --set-secrets="DIRECT_DATABASE_URL=mesadesk-direct-database-url:$${direct_version},DATABASE_URL=mesadesk-direct-database-url:$${direct_version}" \
+          --set-cloudsql-instances='$PROJECT_ID:${_REGION}:${_INSTANCE}' \
+          --tasks=1 --max-retries=0 --task-timeout=30m
+        gcloud run jobs execute "$${migration_job}" --project='$PROJECT_ID' --region='${_REGION}' --wait
+
+  - id: deploy-candidate
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        mkdir -p /workspace/.release
+        app_url='${_APP_URL}'
+        if [[ -z "$${app_url}" ]]; then
+          app_url="$$(gcloud run services describe '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --format='value(status.url)' 2>/dev/null || true)"
+        fi
+        [[ "$${app_url}" =~ ^https://[^/]+/?$ ]] || {
+          echo 'Supply _APP_URL=https://public-origin for the first deployment.' >&2
+          exit 1
+        }
+        app_url="$${app_url%/}"
+        printf '%s' "$${app_url}" > /workspace/.release/app-url
+
+        previous_revision="$$(gcloud run services describe '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --format='value(status.traffic[percent=100].revisionName)' 2>/dev/null | head -1 || true)"
+        printf '%s' "$${previous_revision}" > /workspace/.release/previous-revision
+
+        secret_version() {
+          version="$$(gcloud secrets versions list "$$1" --project='$PROJECT_ID' --filter='state=ENABLED' --sort-by='~createTime' --limit=1 --format='value(name)')"
+          version="$${version##*/}"
+          [[ "$${version}" =~ ^[0-9]+$ ]] || { echo "No enabled numeric version for secret $$1" >&2; exit 1; }
+          printf '%s' "$${version}"
+        }
+        database_version="$$(secret_version mesadesk-database-url)"
+        auth_version="$$(secret_version mesadesk-auth-secret)"
+        onboarding_version="$$(secret_version mesadesk-onboarding-emails)"
+        vendor_key_version="$$(secret_version mesadesk-vendor-bank-key)"
+        handoff_key_version="$$(secret_version mesadesk-erp-ops-handoff-key)"
+        statutory_key_version="$$(secret_version mesadesk-ops-statutory-key)"
+        external_key_version="$$(secret_version mesadesk-erp-external-evidence-key)"
+
+        revision='${_SERVICE}-build-$BUILD_ID'
+        tag='candidate-$BUILD_ID'
+        gcloud run deploy '${_SERVICE}' \
+          --project='$PROJECT_ID' --region='${_REGION}' --platform=managed \
+          --image='${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID' \
+          --revision-suffix="build-$BUILD_ID" --tag="$${tag}" --no-traffic \
+          --allow-unauthenticated --ingress=all --port=8080 \
+          --cpu=1 --memory=1Gi --concurrency=20 --min-instances=1 --max-instances=3 --timeout=300 --no-cpu-throttling \
+          --service-account='mesadesk-run@$PROJECT_ID.iam.gserviceaccount.com' \
+          --update-env-vars="NODE_ENV=production,DEV_AUTH=0,APP_URL=$${app_url},AUTH_URL=$${app_url},TRUST_PROXY_HOPS=${_TRUST_PROXY_HOPS}" \
+          --update-secrets="DATABASE_URL=mesadesk-database-url:$${database_version},AUTH_SECRET=mesadesk-auth-secret:$${auth_version},ONBOARDING_ALLOWED_EMAILS=mesadesk-onboarding-emails:$${onboarding_version},MESADESK_VENDOR_BANK_ENCRYPTION_KEY=mesadesk-vendor-bank-key:$${vendor_key_version},MESADESK_ERP_OPS_HANDOFF_HMAC_KEY=mesadesk-erp-ops-handoff-key:$${handoff_key_version},MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY=mesadesk-ops-statutory-key:$${statutory_key_version},MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY=mesadesk-erp-external-evidence-key:$${external_key_version}" \
+          --add-cloudsql-instances='$PROJECT_ID:${_REGION}:${_INSTANCE}' \
+          --startup-probe='httpGet.path=/api/ready,httpGet.port=8080,timeoutSeconds=3,periodSeconds=5,failureThreshold=24' \
+          --liveness-probe='httpGet.path=/api/health,httpGet.port=8080,timeoutSeconds=3,periodSeconds=30,failureThreshold=3'
+
+        candidate_url="$$(gcloud run services describe '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --format=json | TAG="$${tag}" python3 -c 'import json, os, sys; d=json.load(sys.stdin); print(next((x.get("url", "") for x in d.get("status", {}).get("traffic", []) if x.get("tag") == os.environ["TAG"]), ""))')"
+        [[ "$${candidate_url}" == https://* ]] || { echo 'Candidate tag URL was not published.' >&2; exit 1; }
+        printf '%s' "$${revision}" > /workspace/.release/revision
+        printf '%s' "$${candidate_url}" > /workspace/.release/candidate-url
+
+  - id: smoke-candidate
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        candidate_url="$$(cat /workspace/.release/candidate-url)"
+        curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "$${candidate_url}/api/ready"
+        curl --fail --silent --show-error "$${candidate_url}/api/openapi.json" >/dev/null
+        curl --fail --silent --show-error --dump-header /tmp/candidate-headers "$${candidate_url}/" >/dev/null
+        grep -Eiq '^content-security-policy:' /tmp/candidate-headers
+        grep -Eiq '^strict-transport-security:' /tmp/candidate-headers
+        grep -Eiq '^x-content-type-options:[[:space:]]*nosniff' /tmp/candidate-headers
+
+        expect_status() {
+          expected="$$1"; shift
+          actual="$$(curl --silent --output /dev/null --write-out '%{http_code}' "$$@")"
+          [[ "$${actual}" == "$${expected}" ]] || { echo "Expected HTTP $${expected}, received $${actual}: $$*" >&2; exit 1; }
+        }
+        expect_status 404 "$${candidate_url}/server.mjs"
+        expect_status 404 "$${candidate_url}/server.mjs.map"
+        expect_status 404 "$${candidate_url}/server/server.mjs"
+        expect_status 401 "$${candidate_url}/api/mesaerp/v1/entities/not-a-company/vendors"
+        expect_status 401 -H 'x-dev-user: ADMIN-001' "$${candidate_url}/api/mesaerp/v1/entities/not-a-company/vendors"
+
+  - id: promote-and-verify
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        revision="$$(cat /workspace/.release/revision)"
+        previous_revision="$$(cat /workspace/.release/previous-revision)"
+        app_url="$$(cat /workspace/.release/app-url)"
+        gcloud run services update-traffic '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --to-revisions="$${revision}=100"
+        if ! curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 5 "$${app_url}/api/ready"; then
+          if [[ -n "$${previous_revision}" ]]; then
+            echo "Stable smoke failed; rolling traffic back to $${previous_revision}." >&2
+            gcloud run services update-traffic '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --to-revisions="$${previous_revision}=100"
+          fi
+          exit 1
+        fi
+        gcloud run services update-traffic '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --remove-tags="candidate-$BUILD_ID"
+
+  - id: publish-latest
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        release='${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID'
+        latest='${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest'
+        docker pull "$${release}"
+        docker tag "$${release}" "$${latest}"
+        docker push "$${latest}"
 
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}-migration:$BUILD_ID

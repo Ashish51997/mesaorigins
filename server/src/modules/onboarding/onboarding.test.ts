@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { buildApp } from '../../app';
-import { basePrisma } from '../../db';
+import { basePrisma, withTenant } from '../../db';
 
 const app = buildApp();
 const uniq = () => Math.random().toString(36).slice(2, 7);
@@ -52,7 +52,7 @@ describe('onboarding bootstrap', () => {
 
     const catalog = await request(app).get('/api/onboarding/services').set('x-dev-user', ALLOWED_USER);
     expect(catalog.status).toBe(200);
-    expect(catalog.body.services.map((service: { id: string }) => service.id)).toEqual(['mesaops', 'mesaleads']);
+    expect(catalog.body.services.map((service: { id: string }) => service.id)).toEqual(['mesaops', 'mesaleads', 'mesaerp']);
 
     const list = await request(app).get('/api/onboarding/organizations').set('x-dev-user', ALLOWED_USER);
     expect(list.status).toBe(200);
@@ -134,6 +134,65 @@ describe('onboarding bootstrap', () => {
     expect(r.status).toBe(201);
     expect(r.body.organization.services.map((service: { id: string }) => service.id)).toEqual(['mesaops']);
     expect(await serviceIdsForOrganization(r.body.organization.id)).toEqual(['mesaops']);
+  });
+
+  it('bootstraps only the narrow MesaERP company-creation grant for a new owner', async () => {
+    const response = await request(app)
+      .post('/api/onboarding/bootstrap')
+      .set('x-dev-user', ALLOWED_USER)
+      .send({
+        organizationName: 'ERP Bootstrap Org',
+        organizationSlug: `erp-bootstrap-${uniq()}`,
+        adminName: 'ERP Bootstrap Owner',
+        adminEmail: `erp.bootstrap.${uniq()}@example.com`,
+        password: 'client-pass-123',
+        serviceIds: ['mesaerp'],
+      });
+
+    trackCreated(response);
+    expect(response.status).toBe(201);
+    const organizationId = response.body.organization.id as string;
+    const membershipId = response.body.owner.membershipId as string;
+    const platformRole = await withTenant(organizationId, (tx) => tx.role.findUnique({
+      where: { organizationId_name: { organizationId, name: 'MesaERP Platform Administrator' } },
+      include: { permissions: { include: { permission: true } } },
+    }));
+    expect(platformRole).toMatchObject({ isAdmin: false, isSystem: true, erpLegalEntityId: null });
+    expect(platformRole?.permissions.map((grant) => grant.permission.key)).toEqual(['mesaerp.legal_entity.manage']);
+    expect(await withTenant(organizationId, (tx) => tx.roleAssignment.count({
+      where: { organizationId, membershipId, roleId: platformRole?.id, serviceId: 'mesaerp', legalEntityId: null, status: 'active' },
+    }))).toBe(1);
+  });
+
+  it('adds the same explicit MesaERP bootstrap grant when the service is enabled later', async () => {
+    const created = await request(app)
+      .post('/api/onboarding/bootstrap')
+      .set('x-dev-user', ALLOWED_USER)
+      .send({
+        organizationName: 'ERP Later Org',
+        organizationSlug: `erp-later-${uniq()}`,
+        adminName: 'ERP Later Owner',
+        adminEmail: `erp.later.${uniq()}@example.com`,
+        password: 'client-pass-123',
+        serviceIds: ['mesaops'],
+      });
+    trackCreated(created);
+    expect(created.status).toBe(201);
+
+    const organizationId = created.body.organization.id as string;
+    const enabled = await request(app)
+      .put(`/api/onboarding/organizations/${organizationId}/services`)
+      .set('x-dev-user', ALLOWED_USER)
+      .send({ serviceIds: ['mesaops', 'mesaerp'] });
+    expect(enabled.status).toBe(200);
+
+    const platformRole = await withTenant(organizationId, (tx) => tx.role.findUnique({
+      where: { organizationId_name: { organizationId, name: 'MesaERP Platform Administrator' } },
+    }));
+    expect(platformRole).toMatchObject({ isAdmin: false, isSystem: true, erpLegalEntityId: null });
+    expect(await withTenant(organizationId, (tx) => tx.roleAssignment.count({
+      where: { organizationId, roleId: platformRole?.id, serviceId: 'mesaerp', legalEntityId: null, status: 'active' },
+    }))).toBe(1);
   });
 
   it('never resets an existing account while onboarding another organization', async () => {

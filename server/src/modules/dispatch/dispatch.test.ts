@@ -2,11 +2,14 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { buildApp } from '../../app';
 import { withTenant } from '../../db';
+import { canonicalHash } from '../../lib/canonical';
+import { signMesaOpsStatutoryEvidence, type StatutoryEvidenceCore } from './statutory';
 
 // Integration tests against a live Postgres (seeded demo tenant). No auth header
 // → demo Administrator. Self-contained: drives an order through the whole chain.
 const app = buildApp();
 const uniq = () => Math.random().toString(36).slice(2, 7);
+const idem = (prefix: string) => `${prefix}-${Date.now()}-${uniq()}`;
 
 async function order(): Promise<string> {
   const c = await request(app).post('/api/customers').send({ name: `D ${uniq()}`, deliveryAddress: 'Plot 4, Peenya' });
@@ -15,26 +18,99 @@ async function order(): Promise<string> {
   return (await request(app).post('/api/orders').send({ inquiryId: inq.body.id })).body.id;
 }
 
-async function produce(orderId: string, machineCode: string, day: string): Promise<void> {
-  const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
-  const machineId = machines.find((m) => m.code === machineCode)!.id;
-  const plan = await request(app).post('/api/plans').send({ salesOrderId: orderId, machineId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
+async function produce(orderId: string, machineCode: string, day: string, plantCode = 'PRIMARY'): Promise<void> {
+  const createdMachine = await request(app).post('/api/machines').send({
+    plantCode, code: `${machineCode}${uniq()}`.slice(0, 16), line: 'Dispatch evidence test', family: 'PVC', status: 'running',
+  });
+  const machineId = createdMachine.body.id as string;
+  const plan = await request(app).post('/api/plans').set('Idempotency-Key', idem('dispatch-plan')).send({ operationalOrderId: orderId, expectedOrderVersion: 0, machineId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
   const lb = await request(app).post('/api/logbooks').send({ productionPlanId: plan.body.id });
-  await request(app).patch(`/api/logbooks/${lb.body.id}`).send({ operatorSignature: 'Nandlal' });
+  const lot = `LOT-DSP-${uniq()}`;
+  await request(app).patch(`/api/logbooks/${lb.body.id}`).send({ operatorSignature: 'Nandlal', supervisorSignature: 'Nandlal', totalRollsProduced: '500', traceabilityRows: [{ lotNumber: lot, quantity: '500', winderPackedBy: 'x' }] });
   await request(app).post(`/api/logbooks/${lb.body.id}/submit`);
+  const inspection = await request(app).post('/api/quality/inspections').send({ lotNumber: lot, decision: 'pass', weight: 500 });
+  expect(inspection.status).toBe(201);
+}
+
+async function independentOrder(plantCode: string): Promise<string> {
+  const suffix = uniq();
+  const created = await request(app).post('/api/operational-orders')
+    .set('Idempotency-Key', idem('dispatch-independent-order'))
+    .send({
+      orderNumber: `DSP-${Date.now()}-${suffix}`,
+      plantCode,
+      sourceType: 'local_customer',
+      customerName: 'Dispatch evidence fixture',
+      productCode: 'RPVC-TEST',
+      productName: 'RPVC roll',
+      quantity: '500',
+      uom: 'units',
+      dueDate: '2026-12-20',
+    });
+  expect(created.status).toBe(201);
+  return created.body.id as string;
+}
+
+async function approveStatutoryProfile(plantCode: string): Promise<string> {
+  const suffix = `${Date.now()}-${uniq()}`;
+  const sourceEvidence = { reviewedBy: 'statutory-test-checker', scope: { countryCode: 'IN', plantCode, movementType: 'supply' } };
+  const created = await request(app).post('/api/mesaops/admin/statutory-rule-profiles')
+    .set('x-dev-user', 'EMP-002')
+    .set('Idempotency-Key', `dispatch-profile-${suffix}`)
+    .send({
+      version: `DSP-${suffix}`,
+      countryCode: 'IN',
+      plantCode,
+      movementType: 'supply',
+      effectiveFrom: '2026-01-01',
+      requiresInvoice: true,
+      requiresEWayBill: true,
+      reviewedExemptionReason: '',
+      sourceReference: `test-review:${suffix}`,
+      sourceEvidence,
+      sourceChecksum: canonicalHash(sourceEvidence),
+    });
+  expect(created.status).toBe(201);
+  const approved = await request(app).post(`/api/mesaops/admin/statutory-rule-profiles/${created.body.id}/approve`)
+    .set('x-dev-user', 'EMP-020')
+    .set('Idempotency-Key', `dispatch-profile-approve-${suffix}`)
+    .send({ expectedRowVersion: 0, approvalNote: 'Independent dispatch test review' });
+  expect(approved.status).toBe(200);
+  return approved.body.version as string;
+}
+
+async function inProduction<T>(work: () => Promise<T>): Promise<T> {
+  const previous = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  try { return await work(); } finally {
+    if (previous === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previous;
+  }
 }
 
 describe('dispatch slice', () => {
-  it('a produced order is ready, dispatches (order → dispatched, invoice, FG out)', async () => {
+  it('a produced order is ready, dispatches (order → dispatched, dispatch evidence, FG out)', async () => {
     const orderId = await order();
     await produce(orderId, 'M05', '2026-10-10');
 
     const ready = (await request(app).get('/api/dispatch/ready')).body as Array<{ id: string }>;
     expect(ready.some((o) => o.id === orderId)).toBe(true);
 
-    const disp = await request(app).post('/api/dispatches').send({ salesOrderId: orderId, vehicleNumber: 'KA-01-AB-1234', transporter: 'Blue Dart', driverName: 'Ravi' });
+    const key = idem('dispatch');
+    const body = { salesOrderId: orderId, quantity: '500', expectedOrderVersion: 1, vehicleNumber: 'KA-01-AB-1234', transporter: 'Blue Dart', driverName: 'Ravi' };
+    const disp = await request(app).post('/api/dispatches').set('Idempotency-Key', key).send(body);
     expect(disp.status).toBe(201);
-    expect(disp.body.invoiceNumber).toMatch(/^INV-\d{4}-\d+$/);
+    expect(disp.body.invoiceNumber).toMatch(/^NON-TAX-DSP-\d{4}-\d+$/);
+    expect(disp.body.quantity).toBe('500');
+
+    const replay = await request(app).post('/api/dispatches').set('Idempotency-Key', key).send(body);
+    expect(replay.status).toBe(201);
+    expect(replay.body.id).toBe(disp.body.id);
+    const returnEvents = await withTenant('org-demo', (tx) => tx.integrationOutboxEvent.findMany({ where: {
+      aggregateId: disp.body.id, eventType: 'mesaops.physical-dispatch.completed.v1',
+    } }));
+    expect(returnEvents).toHaveLength(1);
+    expect(returnEvents[0].payloadHash).toBe(canonicalHash(returnEvents[0].payload));
 
     // It left the ready list…
     const ready2 = (await request(app).get('/api/dispatch/ready')).body as Array<{ id: string }>;
@@ -46,18 +122,81 @@ describe('dispatch slice', () => {
     expect(out[0].direction).toBe('out');
 
     // …and re-dispatching is refused.
-    const dupe = await request(app).post('/api/dispatches').send({ salesOrderId: orderId, vehicleNumber: 'X' });
+    const dupe = await request(app).post('/api/dispatches').set('Idempotency-Key', idem('dispatch-dupe')).send({ salesOrderId: orderId, quantity: '1', expectedOrderVersion: 2, vehicleNumber: 'X' });
     expect(dupe.status).toBe(409);
   });
 
   it('refuses to dispatch an order that is not produced yet (409)', async () => {
     const orderId = await order(); // no plan/logbook
-    const r = await request(app).post('/api/dispatches').send({ salesOrderId: orderId, vehicleNumber: 'X' });
+    const r = await request(app).post('/api/dispatches').set('Idempotency-Key', idem('dispatch-not-ready')).send({ salesOrderId: orderId, quantity: '1', expectedOrderVersion: 0, vehicleNumber: 'X' });
     expect(r.status).toBe(409);
+  });
+
+  it('rejects quantity above the submitted, packed and QA-released evidence', async () => {
+    const orderId = await order();
+    await produce(orderId, 'M04', '2026-11-10');
+    const response = await request(app).post('/api/dispatches')
+      .set('Idempotency-Key', idem('dispatch-over-evidence'))
+      .send({ salesOrderId: orderId, quantity: '500.000001', expectedOrderVersion: 1, vehicleNumber: 'KA-02-TEST' });
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('quantity_not_released');
   });
 
   it('denies a Sales Exec from the dispatch board (403)', async () => {
     const r = await request(app).get('/api/dispatch/ready').set('x-dev-user', 'EMP-003');
     expect(r.status).toBe(403);
+  });
+
+  it('fails closed in production when no approved statutory profile covers the plant movement', async () => {
+    const plantCode = `MISS-${uniq()}`.toUpperCase();
+    const orderId = await independentOrder(plantCode);
+    await produce(orderId, 'MS', '2026-12-01', plantCode);
+    const response = await inProduction(() => request(app).post('/api/dispatches')
+      .set('Idempotency-Key', idem('dispatch-profile-missing'))
+      .send({ operationalOrderId: orderId, quantity: '500', expectedOrderVersion: 1, movementType: 'supply', vehicleNumber: 'KA01AB1234' }));
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('statutory_rule_profile_missing');
+  });
+
+  it.each(['external_verified', 'mesaerp_snapshot'] as const)('dispatches independently with valid %s statutory evidence', async (source) => {
+    process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY = Buffer.alloc(32, 37).toString('base64');
+    const plantCode = `${source === 'external_verified' ? 'EXT' : 'ERP'}-${uniq()}`.toUpperCase();
+    const orderId = await independentOrder(plantCode);
+    await produce(orderId, source === 'external_verified' ? 'EX' : 'ER', '2026-12-02', plantCode);
+    const profileVersion = await approveStatutoryProfile(plantCode);
+    const artifact = { invoice: `INV-${uniq()}`, eWayBill: '123456789012', verifiedSource: source };
+    const core: StatutoryEvidenceCore = {
+      source,
+      profileVersion,
+      verificationId: `verification-${Date.now()}-${uniq()}`,
+      verifiedAt: '2026-08-14T10:00:00.000Z',
+      invoiceReference: String(artifact.invoice),
+      eWayBillReference: String(artifact.eWayBill),
+      validUntil: '2099-08-14T10:00:00.000Z',
+      artifactHash: canonicalHash(artifact),
+      artifact,
+    };
+    const statutoryEvidence = {
+      ...core,
+      signature: signMesaOpsStatutoryEvidence('org-demo', orderId, core),
+    };
+    const response = await inProduction(() => request(app).post('/api/dispatches')
+      .set('Idempotency-Key', idem(`dispatch-${source}`))
+      .send({
+        operationalOrderId: orderId,
+        quantity: '500',
+        expectedOrderVersion: 1,
+        movementType: 'supply',
+        vehicleNumber: 'KA01AB1234',
+        statutoryEvidence,
+      }));
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({
+      invoiceNumber: artifact.invoice,
+      eWayBillNumber: artifact.eWayBill,
+      statutoryRequired: true,
+      statutoryProfileVersion: profileVersion,
+    });
+    expect(response.body.statutoryArtifact.source).toBe(source);
   });
 });

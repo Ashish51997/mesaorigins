@@ -1,0 +1,63 @@
+import express from 'express';
+import request from 'supertest';
+import { describe, expect, it } from 'vitest';
+import { buildApp } from './app';
+import { productionConfigErrors, securityHeaders } from './runtime';
+
+const KEY = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+
+describe('production runtime controls', () => {
+  it('accepts the complete fail-closed production configuration', () => {
+    expect(productionConfigErrors({
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgresql://app_user:redacted@localhost/mesadesk',
+      AUTH_SECRET: 'a'.repeat(32),
+      DEV_AUTH: '0',
+      APP_URL: 'https://erp.example.test',
+      AUTH_URL: 'https://erp.example.test',
+      TRUST_PROXY_HOPS: '1',
+      MESADESK_VENDOR_BANK_ENCRYPTION_KEY: KEY,
+      MESADESK_ERP_OPS_HANDOFF_HMAC_KEY: KEY,
+      MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY: KEY,
+      MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY: KEY,
+    })).toEqual([]);
+  });
+
+  it('rejects unsafe origins, development auth and malformed trust keys', () => {
+    const errors = productionConfigErrors({
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgresql://app_user:redacted@localhost/mesadesk',
+      AUTH_SECRET: 'short',
+      DEV_AUTH: '1',
+      APP_URL: 'http://localhost:3000',
+      TRUST_PROXY_HOPS: '0',
+      MESADESK_VENDOR_BANK_ENCRYPTION_KEY: 'not-base64',
+    });
+    expect(errors).toEqual(expect.arrayContaining([
+      expect.stringContaining('AUTH_SECRET'),
+      expect.stringContaining('DEV_AUTH'),
+      expect.stringContaining('APP_URL'),
+      expect.stringContaining('TRUST_PROXY_HOPS'),
+      expect.stringContaining('MESADESK_VENDOR_BANK_ENCRYPTION_KEY'),
+    ]));
+  });
+
+  it('sets browser security headers', async () => {
+    const app = express();
+    app.use(securityHeaders);
+    app.get('/screen', (_req, res) => res.send('ok'));
+    const response = await request(app).get('/screen');
+    expect(response.headers['content-security-policy']).toContain("frame-ancestors 'none'");
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['x-frame-options']).toBe('DENY');
+  });
+
+  it('rejects an oversized ordinary API body before authentication', async () => {
+    const response = await request(buildApp())
+      .post('/api/unknown')
+      .set('Content-Type', 'application/json')
+      .send({ payload: 'x'.repeat(600 * 1024) });
+    expect(response.status).toBe(413);
+    expect(response.body.error.code).toBe('payload_too_large');
+  });
+});

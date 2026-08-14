@@ -16,6 +16,11 @@ BEGIN
   END IF;
 END $$;
 
+-- Reassert the runtime boundary when the Cloud SQL user already existed.
+-- Readiness verifies these flags too, but bootstrap should establish the safe
+-- state instead of relying on a failed deployment to reveal drift.
+ALTER ROLE app_user WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+
 GRANT USAGE ON SCHEMA public TO app_user;
 
 -- Tables/sequences the owner creates from here on (i.e. via migrations) are

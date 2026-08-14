@@ -4,6 +4,7 @@ import { buildApp } from '../../app';
 
 const app = buildApp();
 const uniq = () => Math.random().toString(36).slice(2, 7);
+const idem = () => `inventory-plan-${Date.now()}-${uniq()}`;
 
 async function stock() {
   return (await request(app).get('/api/inventory/stock')).body as { rawMaterials: Array<{ itemName: string; onHand: number }>; finishedGoods: Array<{ itemName: string; onHand: number }> };
@@ -38,11 +39,11 @@ describe('inventory slice', () => {
     const inq = await request(app).post('/api/inquiries').send({ customerId: c.body.id, product, quantity: 100, expectedDeliveryDate: '2026-10-01' });
     await request(app).post(`/api/inquiries/${inq.body.id}/quote`).send({ quotationPrice: 40 });
     const ord = await request(app).post('/api/orders').send({ inquiryId: inq.body.id });
-    const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
-    const machineId = machines.find((m) => m.code === 'M06')!.id;
-    const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId, shift: 'D', scheduledStartDate: '2026-10-11T08:00:00', supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC'});
+    const machine = await request(app).post('/api/machines').send({ code: `I${uniq()}`, line: 'Inventory QA test', family: 'PVC' });
+    const machineId = machine.body.id as string;
+    const plan = await request(app).post('/api/plans').set('Idempotency-Key', idem()).send({ salesOrderId: ord.body.id, expectedOrderVersion: 0, machineId, shift: 'D', scheduledStartDate: '2026-10-11T08:00:00', supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: product });
     const lb = await request(app).post('/api/logbooks').send({ productionPlanId: plan.body.id });
-    await request(app).patch(`/api/logbooks/${lb.body.id}`).send({ operatorSignature: 'N', traceabilityRows: [{ lotNumber: lot, colour: 'B', code: 'C', winderPackedBy: 'x' }] });
+    await request(app).patch(`/api/logbooks/${lb.body.id}`).send({ operatorSignature: 'N', supervisorSignature: 'Nandlal', traceabilityRows: [{ lotNumber: lot, colour: 'B', code: 'C', winderPackedBy: 'x' }] });
     await request(app).post(`/api/logbooks/${lb.body.id}/submit`);
     await request(app).post('/api/quality/inspections').send({ lotNumber: lot, decision: 'pass', weight: 22 });
 

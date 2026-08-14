@@ -2,13 +2,58 @@ import { prisma, tenantTx } from '../../db';
 import { tenantContext } from '../../lib/tenantContext';
 import { audit } from '../../lib/audit';
 import { ApiError } from '../../middleware/error';
-import type { EmployeeCreate, EmployeeUpdate, RoleCreate, RoleUpdate, GrantsSet, PasswordSet } from './schemas';
+import { runMesaOpsIdempotent } from '../../lib/mesaOpsIdempotency';
+import type {
+  EmployeeCreate,
+  EmployeeUpdate,
+  RoleCreate,
+  RoleUpdate,
+  GrantsSet,
+  PasswordSet,
+  MesaOpsRoleAssignmentCreate,
+  MesaOpsRoleAssignmentRevoke,
+} from './schemas';
 import { hashPassword } from '../../lib/password';
 
 function ctx() {
   const c = tenantContext.getStore();
   if (!c) throw new ApiError(401, 'unauthenticated', 'No tenant context.');
   return c;
+}
+
+const MESAOPS_PLANT_ACCESS_ROLE_NAME = 'MesaOps Plant Access';
+
+const mesaErpRoleEvidence = {
+  permissions: {
+    where: { permission: { serviceId: 'mesaerp' } },
+    select: { id: true },
+  },
+  assignments: {
+    where: { serviceId: 'mesaerp' },
+    select: { id: true },
+    take: 1,
+  },
+} as const;
+
+function isMesaErpOwnedRole(role: {
+  erpLegalEntityId: string | null;
+  permissions: Array<{ id: string }>;
+  assignments: Array<{ id: string }>;
+}): boolean {
+  return role.erpLegalEntityId !== null || role.permissions.length > 0 || role.assignments.length > 0;
+}
+
+function assertMesaOpsRole(role: Parameters<typeof isMesaErpOwnedRole>[0]): void {
+  if (isMesaErpOwnedRole(role)) {
+    throw new ApiError(409, 'mesaerp_role_forbidden', 'MesaERP roles are managed only through the MesaERP access desk.');
+  }
+}
+
+function assertEmployeeRole(role: Parameters<typeof isMesaErpOwnedRole>[0] & { name: string; isSystem: boolean }): void {
+  assertMesaOpsRole(role);
+  if (role.isSystem && role.name === MESAOPS_PLANT_ACCESS_ROLE_NAME) {
+    throw new ApiError(409, 'plant_scope_role_forbidden', 'The MesaOps Plant Access role is a protected scope anchor and cannot be assigned as an employee role.');
+  }
 }
 
 /* ---------------------------------------------------------------- employees */
@@ -37,8 +82,9 @@ export async function listDirectory() {
 export async function createEmployee(input: EmployeeCreate) {
   const c = ctx();
   return tenantTx(async (tx) => {
-    const role = await tx.role.findUnique({ where: { id: input.roleId } });
+    const role = await tx.role.findUnique({ where: { id: input.roleId }, include: mesaErpRoleEvidence });
     if (!role || role.organizationId !== c.organizationId) throw new ApiError(422, 'bad_role', 'Unknown role.');
+    assertEmployeeRole(role);
 
     const email = input.email.trim().toLowerCase();
     // A person (global User) may belong to several organizations. Reuse the
@@ -78,8 +124,9 @@ export async function updateEmployee(id: string, patch: EmployeeUpdate) {
     if (patch.shift !== undefined) data.shift = patch.shift;
     if (patch.status !== undefined) data.status = patch.status;
     if (patch.roleId !== undefined) {
-      const role = await tx.role.findUnique({ where: { id: patch.roleId } });
+      const role = await tx.role.findUnique({ where: { id: patch.roleId }, include: mesaErpRoleEvidence });
       if (!role || role.organizationId !== c.organizationId) throw new ApiError(422, 'bad_role', 'Unknown role.');
+      assertEmployeeRole(role);
       data.roleId = role.id; data.role = role.name;
     }
     const updated = await tx.membership.update({ where: { id }, data, include: { user: { select: { name: true, email: true } } } });
@@ -117,11 +164,15 @@ export async function setEmployeePassword(membershipId: string, input: PasswordS
     }
 
     await tx.user.update({ where: { id: membership.userId }, data: { passwordHash } });
+    // A password reset is also a credential-compromise boundary. Revoke every
+    // outstanding database session for this identity in the same transaction
+    // so old browser cookies cannot survive the change.
+    const revokedSessions = await tx.session.deleteMany({ where: { userId: membership.userId } });
     await audit(tx, {
       action: 'employee.password_set',
       entity: 'User',
       entityId: membership.userId,
-      after: { set: true, membershipId },
+      after: { set: true, membershipId, revokedSessionCount: revokedSessions.count },
     });
     return { ok: true };
   });
@@ -131,6 +182,11 @@ export async function setEmployeePassword(membershipId: string, input: PasswordS
 
 export function listRoles() {
   return prisma.role.findMany({
+    where: {
+      erpLegalEntityId: null,
+      permissions: { none: { permission: { serviceId: 'mesaerp' } } },
+      assignments: { none: { serviceId: 'mesaerp' } },
+    },
     include: { _count: { select: { memberships: true } } },
     orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
   });
@@ -138,6 +194,9 @@ export function listRoles() {
 
 export async function createRole(input: RoleCreate) {
   const c = ctx();
+  if (input.name.trim() === MESAOPS_PLANT_ACCESS_ROLE_NAME) {
+    throw new ApiError(409, 'reserved_role_name', 'MesaOps Plant Access is reserved for explicit plant-scope evidence.');
+  }
   const clash = await prisma.role.findFirst({ where: { name: input.name } });
   if (clash) throw new ApiError(409, 'name_taken', `A role named "${input.name}" already exists.`);
   return tenantTx(async (tx) => {
@@ -151,8 +210,15 @@ export async function createRole(input: RoleCreate) {
 
 export async function updateRole(id: string, patch: RoleUpdate) {
   const c = ctx();
-  const role = await prisma.role.findFirst({ where: { id, organizationId: c.organizationId } });
+  const role = await prisma.role.findFirst({
+    where: { id, organizationId: c.organizationId },
+    include: mesaErpRoleEvidence,
+  });
   if (!role) throw new ApiError(404, 'not_found', 'Role not found.');
+  assertMesaOpsRole(role);
+  if (role.isSystem && role.name === MESAOPS_PLANT_ACCESS_ROLE_NAME) {
+    throw new ApiError(409, 'system_role', 'The MesaOps Plant Access scope role cannot be edited.');
+  }
   return tenantTx(async (tx) => {
     const data: Record<string, unknown> = { version: { increment: 1 } };
     if (patch.screens !== undefined) data.screens = patch.screens;
@@ -172,11 +238,23 @@ export async function updateRole(id: string, patch: RoleUpdate) {
 
 export async function deleteRole(id: string) {
   const c = ctx();
-  const role = await prisma.role.findFirst({ where: { id, organizationId: c.organizationId }, include: { _count: { select: { memberships: true } } } });
-  if (!role) throw new ApiError(404, 'not_found', 'Role not found.');
-  if (role.isSystem) throw new ApiError(409, 'system_role', 'Built-in roles cannot be deleted.');
-  if (role._count.memberships > 0) throw new ApiError(409, 'role_in_use', `Reassign the ${role._count.memberships} employee(s) on this role first.`);
   return tenantTx(async (tx) => {
+    // Lock the parent row so a concurrent scope assignment cannot appear after
+    // the usage checks and then be cascade-deleted with the role. Revoked and
+    // expired assignments are retained deliberately: deleting their parent
+    // role must not erase plant-scope and revocation history.
+    await tx.$queryRaw`SELECT "id" FROM "Role" WHERE "id" = ${id} AND "organizationId" = ${c.organizationId} FOR UPDATE`;
+    const role = await tx.role.findFirst({
+      where: { id, organizationId: c.organizationId },
+      include: { _count: { select: { memberships: true, assignments: true } }, ...mesaErpRoleEvidence },
+    });
+    if (!role) throw new ApiError(404, 'not_found', 'Role not found.');
+    assertMesaOpsRole(role);
+    if (role.isSystem) throw new ApiError(409, 'system_role', 'Built-in roles cannot be deleted.');
+    if (role._count.memberships > 0) throw new ApiError(409, 'role_in_use', `Reassign the ${role._count.memberships} employee(s) on this role first.`);
+    if (role._count.assignments > 0) {
+      throw new ApiError(409, 'role_scope_history_retained', 'This role has MesaOps scope-assignment history and must be retained for plant-access safety.');
+    }
     await tx.role.delete({ where: { id } });
     await audit(tx, { action: 'role.delete', entity: 'Role', entityId: id, before: role });
     return { ok: true };
@@ -206,5 +284,177 @@ export async function setGrants(membershipId: string, input: GrantsSet) {
     }
     await audit(tx, { action: 'employee.grants', entity: 'Membership', entityId: membershipId, after: { grants: input.grants.length } });
     return tx.employeeGrant.findMany({ where: { membershipId } });
+  });
+}
+
+/* ------------------------------------------------ MesaOps plant assignments */
+
+export function listMesaOpsRoleAssignments() {
+  return prisma.roleAssignment.findMany({
+    where: { serviceId: 'mesaops' },
+    include: {
+      membership: { include: { user: { select: { name: true, email: true } } } },
+      role: { select: { id: true, name: true, isSystem: true } },
+    },
+    orderBy: [{ status: 'asc' }, { plantCode: 'asc' }, { createdAt: 'desc' }],
+  });
+}
+
+function normalizePlantCode(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toUpperCase() ?? '';
+  return normalized || null;
+}
+
+export async function createMesaOpsRoleAssignment(input: MesaOpsRoleAssignmentCreate, key: string) {
+  const c = ctx();
+  const plantCode = normalizePlantCode(input.plantCode);
+  const validFrom = input.validFrom ? new Date(input.validFrom) : null;
+  const validTo = input.validTo ? new Date(input.validTo) : null;
+  if (validFrom && validTo && validTo < validFrom) {
+    throw new ApiError(422, 'invalid_validity_window', 'validTo must be on or after validFrom.');
+  }
+
+  return runMesaOpsIdempotent({
+    scope: 'mesaops-role-assignment.create',
+    key,
+    payload: { ...input, plantCode },
+    execute: async (tx) => {
+      const [membership, role] = await Promise.all([
+        tx.membership.findFirst({
+          where: { id: input.membershipId, organizationId: c.organizationId, status: { not: 'inactive' } },
+        }),
+        tx.role.findFirst({
+          where: { id: input.roleId, organizationId: c.organizationId },
+          include: {
+            permissions: { include: { permission: { select: { serviceId: true } } } },
+            assignments: { where: { serviceId: 'mesaerp' }, select: { id: true }, take: 1 },
+          },
+        }),
+      ]);
+      if (!membership) throw new ApiError(422, 'bad_membership', 'Unknown or inactive employee for this organization.');
+      if (!role) throw new ApiError(422, 'bad_role', 'Unknown role for this organization.');
+
+      const erpOwned = role.erpLegalEntityId !== null
+        || role.permissions.some((grant) => grant.permission.serviceId === 'mesaerp')
+        || role.assignments.length > 0;
+      if (erpOwned) {
+        throw new ApiError(409, 'mesaerp_role_forbidden', 'MesaERP roles cannot be assigned or changed through MesaOps administration.');
+      }
+
+      const assignmentLock = `${c.organizationId}:mesaops-role-assignment:${membership.id}:${role.id}:${plantCode ?? '*'}`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${assignmentLock}, 0))`;
+      const existing = await tx.roleAssignment.findFirst({
+        where: {
+          membershipId: membership.id,
+          roleId: role.id,
+          serviceId: 'mesaops',
+          legalEntityId: null,
+          plantCode,
+          warehouseId: null,
+          status: 'active',
+        },
+      });
+      if (existing) {
+        throw new ApiError(409, 'assignment_exists', 'This employee already has the active MesaOps role and plant scope.');
+      }
+
+      const assignment = await tx.roleAssignment.create({
+        data: {
+          organizationId: c.organizationId,
+          membershipId: membership.id,
+          roleId: role.id,
+          serviceId: 'mesaops',
+          legalEntityId: null,
+          plantCode,
+          warehouseId: null,
+          validFrom,
+          validTo,
+          status: 'active',
+        },
+        include: {
+          membership: { include: { user: { select: { name: true, email: true } } } },
+          role: { select: { id: true, name: true, isSystem: true } },
+        },
+      });
+      await audit(tx, {
+        action: 'mesaops.role_assignment.create',
+        entity: 'RoleAssignment',
+        entityId: assignment.id,
+        after: {
+          membershipId: assignment.membershipId,
+          roleId: assignment.roleId,
+          serviceId: 'mesaops',
+          plantCode: assignment.plantCode,
+          validFrom: assignment.validFrom,
+          validTo: assignment.validTo,
+        },
+      });
+      return assignment;
+    },
+  });
+}
+
+export async function revokeMesaOpsRoleAssignment(id: string, input: MesaOpsRoleAssignmentRevoke, key: string) {
+  const c = ctx();
+  return runMesaOpsIdempotent({
+    scope: `mesaops-role-assignment.revoke:${id}`,
+    key,
+    payload: input,
+    execute: async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id"
+        FROM "RoleAssignment"
+        WHERE "id" = ${id}
+          AND "organizationId" = ${c.organizationId}
+          AND "serviceId" = 'mesaops'
+        FOR UPDATE
+      `;
+      if (locked.length !== 1) throw new ApiError(404, 'not_found', 'MesaOps role assignment not found.');
+
+      const assignment = await tx.roleAssignment.findFirst({
+        where: { id, organizationId: c.organizationId, serviceId: 'mesaops' },
+      });
+      if (!assignment) throw new ApiError(404, 'not_found', 'MesaOps role assignment not found.');
+      if (assignment.status !== 'active' || assignment.revokedAt !== null) {
+        throw new ApiError(409, 'already_revoked', 'MesaOps role assignment is already revoked.');
+      }
+      if (assignment.rowVersion !== input.expectedVersion) {
+        throw new ApiError(409, 'version_conflict', 'The MesaOps role assignment changed. Refresh it and try again.');
+      }
+
+      const revokedAt = new Date();
+      const updated = await tx.roleAssignment.update({
+        where: { id, rowVersion: input.expectedVersion },
+        data: {
+          status: 'revoked',
+          revokedAt,
+          revokedBy: c.membershipId,
+          revocationReason: input.reason,
+          rowVersion: { increment: 1 },
+        },
+        include: {
+          membership: { include: { user: { select: { name: true, email: true } } } },
+          role: { select: { id: true, name: true, isSystem: true } },
+        },
+      });
+      await audit(tx, {
+        action: 'mesaops.role_assignment.revoke',
+        entity: 'RoleAssignment',
+        entityId: id,
+        before: {
+          status: assignment.status,
+          rowVersion: assignment.rowVersion,
+          plantCode: assignment.plantCode,
+        },
+        after: {
+          status: updated.status,
+          rowVersion: updated.rowVersion,
+          revokedAt: updated.revokedAt,
+          revokedBy: updated.revokedBy,
+          revocationReason: updated.revocationReason,
+        },
+      });
+      return updated;
+    },
   });
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PrismaClient } from '@prisma/client';
 import { basePrisma, withTenant } from '../../db';
 import { hashPassword, verifyPassword } from '../../lib/password';
 import { tenantContext, type TenantCtx } from '../../lib/tenantContext';
@@ -72,6 +73,13 @@ describe('admin global identity safety', () => {
           },
         ],
       });
+      await basePrisma.session.create({
+        data: {
+          sessionToken: `identity-session-${suffix}`,
+          userId: singleUserId,
+          expires: new Date(Date.now() + 60 * 60 * 1000),
+        },
+      });
 
       const secondMembership = await tenantContext.run(secondOrganizationContext, () => createEmployee({
         name: 'Attempted Organization-Specific Rename',
@@ -112,17 +120,27 @@ describe('admin global identity safety', () => {
       const updatedSingleIdentity = await basePrisma.user.findUniqueOrThrow({ where: { id: singleUserId } });
       expect(updatedSingleIdentity.passwordHash).not.toBe(singleOriginalHash);
       expect(await verifyPassword(replacementPassword, updatedSingleIdentity.passwordHash!)).toBe(true);
+      expect(await basePrisma.session.count({ where: { userId: singleUserId } })).toBe(0);
 
       const successAudit = await withTenant(secondOrganizationId, (tx) => tx.auditEvent.findFirst({
         where: { action: 'employee.password_set', entityId: singleUserId },
         orderBy: { at: 'desc' },
       }));
-      expect(successAudit?.after).toEqual({ set: true, membershipId: singleMembershipId });
+      expect(successAudit?.after).toEqual({ set: true, membershipId: singleMembershipId, revokedSessionCount: 1 });
       expect(JSON.stringify(successAudit)).not.toContain(replacementPassword);
+      await expect(withTenant(secondOrganizationId, (tx) => tx.auditEvent.delete({ where: { id: successAudit!.id } })))
+        .rejects.toThrow('AuditEvent is append-only evidence');
     } finally {
-      await basePrisma.organization.deleteMany({
-        where: { id: { in: [firstOrganizationId, secondOrganizationId] } },
-      });
+      const directUrl = process.env.DIRECT_DATABASE_URL;
+      if (!directUrl) throw new Error('DIRECT_DATABASE_URL is required to purge identity test evidence.');
+      const cleanupPrisma = new PrismaClient({ datasources: { db: { url: directUrl } } });
+      try {
+        await cleanupPrisma.organization.deleteMany({
+          where: { id: { in: [firstOrganizationId, secondOrganizationId] } },
+        });
+      } finally {
+        await cleanupPrisma.$disconnect();
+      }
       await basePrisma.user.deleteMany({
         where: { id: { in: [sharedUserId, singleUserId] } },
       });

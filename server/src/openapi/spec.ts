@@ -121,11 +121,24 @@ function operationFor(route: DiscoveredRoute, doc: RouteDoc): JsonSchema {
     schema: { type: 'string' },
   }));
 
+  for (const [name, query] of Object.entries(doc.query ?? {})) {
+    parameters.push({
+      name,
+      in: 'query',
+      required: query.required ?? false,
+      description: query.description,
+      schema: query.schema ?? { type: 'string' },
+    });
+  }
+
   for (const [name, headerDescription] of Object.entries(doc.headers ?? {})) {
     parameters.push({
       name,
       in: 'header',
-      required: false,
+      // Every documented Idempotency-Key corresponds to a runtime guard. Keep
+      // generated clients honest instead of advertising a required write
+      // contract as an optional parameter.
+      required: name.toLowerCase() === 'idempotency-key',
       description: headerDescription,
       schema: { type: 'string' },
     });
@@ -255,16 +268,16 @@ export function buildOpenApiSpec(routes: DiscoveredRoute[]): JsonSchema {
     },
     servers: [{ url: '/', description: 'This server' }],
     tags: TAGS,
-    security: [{ FirebaseAuth: [] }, { DevUser: [] }],
+    security: [{ AuthSession: [] }, { DevUser: [] }],
     paths,
     components: {
       securitySchemes: {
-        FirebaseAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
+        AuthSession: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: '__Secure-authjs.session-token',
           description:
-            'Firebase ID token, verified server-side. This is the production scheme; it activates when `DEV_AUTH=0` and the Firebase Admin credentials are configured.',
+            'Auth.js database session cookie. Production requires DEV_AUTH=0 and AUTH_SECRET; Google and email/password sign-in both establish this server-side session.',
         },
         DevUser: {
           type: 'apiKey',

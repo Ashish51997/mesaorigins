@@ -14,8 +14,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = {};
+async function request<T>(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
+  const headers: Record<string, string> = { ...extraHeaders };
 
   // Phase-1 / local demo: x-dev-user (employee code or email).
   const dev = getDevUser();
@@ -49,4 +49,7 @@ export const api = {
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body ?? {}),
   delete: <T>(path: string) => request<T>('DELETE', path),
   del: <T>(path: string) => request<T>('DELETE', path),
+  postIdempotent: <T>(path: string, body: unknown, idempotencyKey: string) => request<T>('POST', path, body, { 'Idempotency-Key': idempotencyKey }),
+  patchIdempotent: <T>(path: string, body: unknown, idempotencyKey: string) => request<T>('PATCH', path, body, { 'Idempotency-Key': idempotencyKey }),
+  putIdempotent: <T>(path: string, body: unknown, idempotencyKey: string) => request<T>('PUT', path, body, { 'Idempotency-Key': idempotencyKey }),
 };

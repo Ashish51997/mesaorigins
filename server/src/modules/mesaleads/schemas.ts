@@ -175,6 +175,12 @@ const uploadSchema = z.object({
   dataBase64: z.string().min(1).max(7_100_000),
 });
 
+// JSON/base64 uploads are intentionally bounded as one request, not only per
+// file. Ten MiB of binary data expands to just under fourteen million base64
+// characters; keeping the aggregate below that ceiling prevents five valid
+// files from multiplying the public parser's memory footprint.
+const MAX_PUBLIC_UPLOAD_BASE64_CHARS = 14_000_000;
+
 const publicAnswerValueSchema = z.union([
   z.string().max(10_000),
   z.number().finite(),
@@ -197,6 +203,15 @@ export const publicSubmissionSchema = z.object({
     .default({}),
   attachments: z.array(uploadSchema).max(5).default([]),
   consent: z.literal(true, { errorMap: () => ({ message: 'Consent is required before submission.' }) }),
+}).superRefine((input, ctx) => {
+  const encodedCharacters = input.attachments.reduce((total, attachment) => total + attachment.dataBase64.length, 0);
+  if (encodedCharacters > MAX_PUBLIC_UPLOAD_BASE64_CHARS) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['attachments'],
+      message: 'Attachments must be 10 MB or smaller in total.',
+    });
+  }
 });
 export type PublicSubmissionInput = z.infer<typeof publicSubmissionSchema>;
 

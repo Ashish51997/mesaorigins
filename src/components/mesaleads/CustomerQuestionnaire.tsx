@@ -370,6 +370,14 @@ export default function CustomerQuestionnaire({ token }: { token: string }) {
       setErrors((current) => ({ ...current, [question.key]: 'The file must be 5 MB or smaller.' }));
       return;
     }
+    const existingBytes = Object.entries(uploads).reduce(
+      (total, [key, item]) => key === question.key ? total : total + item.size,
+      0,
+    );
+    if (existingBytes + file.size > 10 * 1024 * 1024) {
+      setErrors((current) => ({ ...current, [question.key]: 'Attachments must be 10 MB or smaller in total.' }));
+      return;
+    }
     const dataBase64 = await toBase64(file);
     setUploads((current) => ({
       ...current,

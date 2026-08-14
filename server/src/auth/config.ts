@@ -8,7 +8,10 @@ import Google from '@auth/express/providers/google';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { basePrisma } from '../db';
 
-const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 7; // 7 days
+// Finance and plant-control sessions are deliberately short lived. Users can
+// sign in again without losing draft work, while a copied cookie has a much
+// smaller useful window than the former seven-day default.
+const SESSION_MAX_AGE_SEC = 60 * 60 * 12; // 12 hours
 
 export function useSecureCookies(): boolean {
   const url = process.env.AUTH_URL || process.env.APP_URL || '';

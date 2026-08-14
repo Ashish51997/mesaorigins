@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../apiClient';
 
 export interface ApiReadyOrder {
-  id: string; soNumber: string; product: string; quantity: number; deliveryDate: string;
+  id: string; operationalOrderId: string; soNumber: string; product: string; quantity: string; orderedQuantity: string;
+  dispatchableQuantity: string; uom: string; rowVersion: number; plantCode: string; deliveryDate: string;
   priority: string; status: string; customer: { name: string; deliveryAddress: string };
 }
 export interface ApiDispatch {
@@ -22,7 +23,7 @@ export function useDispatches() {
 export function useCreateDispatch() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Record<string, unknown>) => api.post<ApiDispatch>('/dispatches', body),
+    mutationFn: (body: Record<string, unknown>) => api.postIdempotent<ApiDispatch>('/dispatches', body, `dispatch:${crypto.randomUUID()}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.ready });
       qc.invalidateQueries({ queryKey: keys.dispatches });

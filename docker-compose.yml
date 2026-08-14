@@ -36,7 +36,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["npx", "prisma", "migrate", "deploy"]
+    command: ["npm", "run", "release:migrate"]
 
   app:
     image: mesadesk-app:local
@@ -49,14 +49,20 @@ services:
       <<: *database-environment
       NODE_ENV: production
       PORT: 3000
-      APP_URL: http://localhost:${MESADESK_APP_PORT:-3000}
+      # Production-mode startup is fail-closed. These predictable values are
+      # local Compose defaults only; shared deployments use Secret Manager.
+      APP_URL: ${MESADESK_APP_URL:-https://localhost:${MESADESK_APP_PORT:-3000}}
+      AUTH_URL: ${MESADESK_APP_URL:-https://localhost:${MESADESK_APP_PORT:-3000}}
       DEV_AUTH: ${MESADESK_DEV_AUTH:-0}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      AUTH_SECRET: ${AUTH_SECRET:-local-compose-auth-secret-change-before-sharing}
       SEED_USER_PASSWORD: ${MESADESK_SEED_PASSWORD:-mesadesk123}
-      DATA_FILE_PATH: /app/storage/data.json
+      MESADESK_VENDOR_BANK_ENCRYPTION_KEY: ${MESADESK_VENDOR_BANK_ENCRYPTION_KEY:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      MESADESK_ERP_OPS_HANDOFF_HMAC_KEY: ${MESADESK_ERP_OPS_HANDOFF_HMAC_KEY:-AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=}
+      MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY: ${MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY:-AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=}
+      MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY: ${MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY:-AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=}
     ports:
       - "${MESADESK_APP_PORT:-3000}:3000"
-    volumes:
-      - mesadesk-legacy-data:/app/storage
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -86,4 +92,3 @@ services:
 
 volumes:
   masspolimer-pgdata:
-  mesadesk-legacy-data:

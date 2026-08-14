@@ -48,7 +48,11 @@ export interface SalesOrder {
 
 export interface ProductionPlan {
   id: string;
+  /** MesaOps-owned demand identifier. Present on the current planning API. */
+  operationalOrderId?: string;
+  /** Compatibility reference retained while legacy sales-order plans migrate. */
   salesOrderId: string;
+  plannedQuantity?: number;
   machineId: string;
   shift: 'D' | 'N'; // Day / Night — the plant runs two shifts
   operatorName: string;
@@ -416,4 +420,3 @@ export interface BatchLineage {
   parentLot?: string;         // regrind child → parent
   steps: LineageStep[];
 }
-

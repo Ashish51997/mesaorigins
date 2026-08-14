@@ -29,6 +29,7 @@ export const FEATURES: Feature[] = [
   S('machine_tasks', 'Machine Tasks', 'Planning & Production'),
   S('logbooks', 'Production Log Book (via Machine Tasks)', 'Planning & Production'),
   S('logbook_ledger', 'Logbook Ledger', 'Planning & Production'),
+  A('operational_order.create', 'Create a local or internal operational order', 'Planning & Production'),
   A('order.plan', 'Plan an order onto a machine', 'Planning & Production'),
   A('formula.edit', 'Edit a formulation', 'Planning & Production'),
   A('reading.save', 'Save an hourly reading', 'Planning & Production'),
@@ -68,6 +69,7 @@ export const FEATURES: Feature[] = [
 
 // The high-stakes actions wired first. Others stay default-allow.
 export const WIRED_ACTIONS: string[] = [
+  'action:operational_order.create',
   'action:order.approve', 'action:order.setPriority', 'action:qa.pass', 'action:qa.hold',
   'action:qa.override', 'action:lot.issue',
   'action:dispatch.mark',

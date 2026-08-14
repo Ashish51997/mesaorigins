@@ -4,19 +4,22 @@ import { buildApp } from '../../app';
 
 const app = buildApp();
 const uniq = () => Math.random().toString(36).slice(2, 7);
+const idem = (prefix: string) => `${prefix}-${Date.now()}-${uniq()}`;
 
 async function dispatchedOrder(machineCode: string, day: string): Promise<string> {
   const c = await request(app).post('/api/customers').send({ name: `CAPA ${uniq()}`, deliveryAddress: 'X' });
   const inq = await request(app).post('/api/inquiries').send({ customerId: c.body.id, product: 'RPVC roll', quantity: 500, expectedDeliveryDate: '2026-10-01' });
   await request(app).post(`/api/inquiries/${inq.body.id}/quote`).send({ quotationPrice: 40 });
   const ord = await request(app).post('/api/orders').send({ inquiryId: inq.body.id });
-  const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
-  const machineId = machines.find((m) => m.code === machineCode)!.id;
-  const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
+  const machine = await request(app).post('/api/machines').send({ code: `${machineCode}${uniq()}`.slice(0, 16), line: 'CAPA dispatch test', family: 'PVC' });
+  const machineId = machine.body.id as string;
+  const plan = await request(app).post('/api/plans').set('Idempotency-Key', idem('capa-plan')).send({ salesOrderId: ord.body.id, expectedOrderVersion: 0, machineId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
   const lb = await request(app).post('/api/logbooks').send({ productionPlanId: plan.body.id });
-  await request(app).patch(`/api/logbooks/${lb.body.id}`).send({ operatorSignature: 'N' });
+  const lot = `LOT-CAPA-${uniq()}`;
+  await request(app).patch(`/api/logbooks/${lb.body.id}`).send({ operatorSignature: 'N', supervisorSignature: 'Nandlal', totalRollsProduced: '500', traceabilityRows: [{ lotNumber: lot, quantity: '500', winderPackedBy: 'x' }] });
   await request(app).post(`/api/logbooks/${lb.body.id}/submit`);
-  await request(app).post('/api/dispatches').send({ salesOrderId: ord.body.id, vehicleNumber: 'KA-1' });
+  await request(app).post('/api/quality/inspections').send({ lotNumber: lot, decision: 'pass', weight: 500 });
+  await request(app).post('/api/dispatches').set('Idempotency-Key', idem('capa-dispatch')).send({ salesOrderId: ord.body.id, quantity: '500', expectedOrderVersion: 1, vehicleNumber: 'KA-1' });
   return ord.body.id as string;
 }
 
@@ -27,7 +30,7 @@ describe('capa slice', () => {
     const comp = await request(app).post('/api/complaints').send({ salesOrderId: orderId, severity: 'high', description: 'Surface tearing on the roll.' });
     expect(comp.status).toBe(201);
     expect(comp.body.complaintNumber).toMatch(/^C-\d{4}-\d+$/);
-    expect(comp.body.batchNumber).toMatch(/^INV-/); // linked to the real dispatched invoice
+    expect(comp.body.batchNumber).toMatch(/^NON-TAX-DSP-/); // linked to MesaOps dispatch evidence without generating a financial invoice
     const capaId = comp.body.capa.id;
     const complaintId = comp.body.id;
 

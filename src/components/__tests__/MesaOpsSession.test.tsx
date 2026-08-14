@@ -39,6 +39,7 @@ import App from '../../App';
 const get = api.get as ReturnType<typeof vi.fn>;
 const post = api.post as ReturnType<typeof vi.fn>;
 const fetchMock = vi.fn();
+let mesaOpsAssigned = false;
 
 function renderWithQuery(ui: ReactElement) {
   const queryClient = new QueryClient({
@@ -52,6 +53,7 @@ describe('MesaOps authenticated session boundary', () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     window.history.replaceState(null, '', '/mesaops');
+    mesaOpsAssigned = false;
     get.mockReset();
     post.mockReset();
     get.mockImplementation(async (path: string) => {
@@ -62,27 +64,24 @@ describe('MesaOps authenticated session boundary', () => {
             email: 'owner@acme.test',
             name: 'Asha Rao',
             role: 'Managing Director',
+            services: mesaOpsAssigned
+              ? [{ id: 'mesaops', name: 'MesaOps', description: '', status: 'active', sortOrder: 10 }]
+              : [],
           },
         };
       }
       if (path === '/me/permissions') return { isAdmin: true, screens: [] };
-      if (path === '/data') {
-        throw Object.assign(new Error('MesaOps is not assigned to this organization.'), {
-          status: 403,
-          code: 'service_required',
-        });
-      }
       throw new Error(`Unexpected GET ${path}`);
     });
     fetchMock.mockReset();
     fetchMock.mockImplementation(async (input: string | URL | Request) => {
       const url = String(input);
-      if (url === '/api/data') {
-        const body = { error: { code: 'service_required', message: 'MesaOps is not assigned to this organization.' } };
+      if (url === '/api/health') {
+        const body = { status: 'ok', auth: 'dev', google: false };
         return {
-          ok: false,
-          status: 403,
-          statusText: 'Forbidden',
+          ok: true,
+          status: 200,
+          statusText: 'OK',
           json: vi.fn().mockResolvedValue(body),
           text: vi.fn().mockResolvedValue(JSON.stringify(body)),
         };
@@ -108,7 +107,18 @@ describe('MesaOps authenticated session boundary', () => {
     expect(document.querySelector('#applet-root')).toBeNull();
     expect(screen.queryByText('Management dashboard mock')).toBeNull();
     expect(post).not.toHaveBeenCalledWith('/data', expect.anything());
-    await waitFor(() => expect(get).toHaveBeenCalledWith('/data'));
+    await waitFor(() => expect(get).toHaveBeenCalledWith('/me'));
+    expect(get).not.toHaveBeenCalledWith('/data');
     expectedDenialNoise.mockRestore();
+  });
+
+  it('renders an entitled session without reading or writing a shared data document', async () => {
+    mesaOpsAssigned = true;
+    renderWithQuery(<App />);
+
+    expect(await screen.findByText('Management dashboard mock')).toBeTruthy();
+    expect(document.querySelector('#applet-root')).toBeTruthy();
+    expect(get).not.toHaveBeenCalledWith('/data');
+    expect(post).not.toHaveBeenCalledWith('/data', expect.anything());
   });
 });

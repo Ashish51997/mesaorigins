@@ -1,7 +1,10 @@
+import { Prisma } from '@prisma/client';
 import { prisma, tenantTx } from '../../db';
 import { tenantContext } from '../../lib/tenantContext';
 import { audit } from '../../lib/audit';
+import { appendMesaOpsOutboxEvent } from '../../lib/mesaOpsOutbox';
 import { ApiError } from '../../middleware/error';
+import { assertMesaOpsPlantAccess, plantCodeFilter, resolveMesaOpsPlantScope } from '../../lib/mesaOpsScope';
 import type { LogbookUpdate, TemplateInput } from './schemas';
 import { summarizeLogbookIssues, validateLogbookForSubmit } from './validate';
 
@@ -14,6 +17,56 @@ function org(): string {
   return tctx().organizationId;
 }
 const today = () => new Date().toISOString().slice(0, 10);
+
+function decimalString(value: unknown): string {
+  try {
+    return new Prisma.Decimal(String(value ?? 0)).toDecimalPlaces(6, Prisma.Decimal.ROUND_HALF_UP).toString();
+  } catch {
+    return '0';
+  }
+}
+
+function positiveDecimalString(...values: unknown[]): string {
+  for (const value of values) {
+    const normalized = decimalString(value);
+    if (new Prisma.Decimal(normalized).greaterThan(0)) return normalized;
+  }
+  return '0';
+}
+
+type LegacyOrderSummary = { soNumber: string; product: string };
+type OperationalOrderSummary = { id?: string; orderNumber: string; productName: string };
+type PlanProductContext = {
+  salesOrder?: { product: string } | null;
+  operationalOrder?: { productName: string } | null;
+};
+type PlanOrderContext = PlanProductContext & {
+  salesOrder?: LegacyOrderSummary | null;
+  operationalOrder?: OperationalOrderSummary | null;
+};
+
+/**
+ * Keep the existing MesaOps response contract while plans move from the legacy
+ * SalesOrder relation to the independently owned OperationalOrder. New clients
+ * can read `operationalOrder`; current clients continue to receive the order
+ * number and product through the historical `salesOrder` property.
+ */
+function compatibleSalesOrder(plan: PlanOrderContext): LegacyOrderSummary | null {
+  if (plan.salesOrder) return plan.salesOrder;
+  if (!plan.operationalOrder) return null;
+  return {
+    soNumber: plan.operationalOrder.orderNumber,
+    product: plan.operationalOrder.productName,
+  };
+}
+
+function withCompatibleSalesOrder<T extends PlanOrderContext>(plan: T) {
+  return { ...plan, salesOrder: compatibleSalesOrder(plan) };
+}
+
+function orderProduct(plan: PlanProductContext): string {
+  return plan.salesOrder?.product || plan.operationalOrder?.productName || '';
+}
 
 // The formulation a logbook recorded in its Formula No. The picker offers
 // "<code> · Rev <n>" (see listActiveFormulas), so parse that; fall back to the
@@ -46,18 +99,21 @@ export function listActiveFormulas() {
 
 /** Scheduled/running plans grouped by machine — powers the Machine-Tasks page. */
 export async function listTasks() {
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
   const plans = await prisma.productionPlan.findMany({
-    where: { status: { in: ['scheduled', 'running'] } },
+    where: { status: { in: ['scheduled', 'running'] }, ...(plants ? { operationalOrder: { plantCode: plants } } : {}) },
     include: {
       machine: { select: { code: true, line: true } },
       salesOrder: { select: { soNumber: true, product: true } },
+      operationalOrder: { select: { id: true, orderNumber: true, productName: true } },
       logbook: { select: { id: true, status: true } },
       logbookTemplate: { select: { id: true, productName: true, layout: true, docNo: true } },
     },
     orderBy: [{ machineId: 'asc' }, { scheduledStartDate: 'asc' }],
   });
-  const byMachine = new Map<string, { machine: string; line: string; tasks: typeof plans }>();
-  for (const p of plans) {
+  const tasks = plans.map(withCompatibleSalesOrder);
+  const byMachine = new Map<string, { machine: string; line: string; tasks: typeof tasks }>();
+  for (const p of tasks) {
     const k = p.machine.code;
     if (!byMachine.has(k)) byMachine.set(k, { machine: k, line: p.machine.line, tasks: [] });
     byMachine.get(k)!.tasks.push(p);
@@ -75,8 +131,9 @@ export async function resolveMachineLogbook(machineCode: string) {
   const code = (machineCode || '').trim().toUpperCase();
   if (!code) throw new ApiError(400, 'bad_request', 'Machine code is required.');
 
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
   const machine = await prisma.machine.findFirst({
-    where: { organizationId: org(), code },
+    where: { organizationId: org(), code, ...(plants ? { plantCode: plants } : {}) },
     select: { id: true, code: true, line: true },
   });
   if (!machine) throw new ApiError(404, 'not_found', `Machine ${code} was not found.`);
@@ -118,8 +175,9 @@ export async function machineHub(machineCode: string) {
   const code = (machineCode || '').trim().toUpperCase();
   if (!code) throw new ApiError(400, 'bad_request', 'Machine code is required.');
 
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
   const machine = await prisma.machine.findFirst({
-    where: { organizationId: org(), code },
+    where: { organizationId: org(), code, ...(plants ? { plantCode: plants } : {}) },
   });
   if (!machine) throw new ApiError(404, 'not_found', `Machine ${code} was not found.`);
 
@@ -128,6 +186,7 @@ export async function machineHub(machineCode: string) {
       where: { machineId: machine.id, status: { in: ['scheduled', 'running'] } },
       include: {
         salesOrder: { select: { soNumber: true, product: true } },
+        operationalOrder: { select: { id: true, orderNumber: true, productName: true } },
         logbook: { select: { id: true, status: true, updatedAt: true } },
         logbookTemplate: { select: { id: true, docNo: true, productName: true, layout: true } },
       },
@@ -157,6 +216,7 @@ export async function machineHub(machineCode: string) {
             id: true,
             status: true,
             salesOrder: { select: { soNumber: true, product: true } },
+            operationalOrder: { select: { id: true, orderNumber: true, productName: true } },
           },
         },
       },
@@ -196,7 +256,8 @@ export async function machineHub(machineCode: string) {
           status: openPlan.status,
           operatorName: openPlan.operatorName,
           scheduledStartDate: openPlan.scheduledStartDate,
-          salesOrder: openPlan.salesOrder,
+          operationalOrder: openPlan.operationalOrder,
+          salesOrder: compatibleSalesOrder(openPlan),
           logbook: openPlan.logbook,
           logbookTemplate: openPlan.logbookTemplate,
         }
@@ -207,25 +268,31 @@ export async function machineHub(machineCode: string) {
       status: p.status,
       operatorName: p.operatorName,
       scheduledStartDate: p.scheduledStartDate,
-      salesOrder: p.salesOrder,
+      operationalOrder: p.operationalOrder,
+      salesOrder: compatibleSalesOrder(p),
       logbook: p.logbook,
       logbookTemplate: p.logbookTemplate,
     })),
-    logbooks: logbooks.map((lb) => ({
-      id: lb.id,
-      status: lb.status,
-      date: lb.date,
-      shift: lb.shift,
-      productName: lb.productName,
-      formulaNo: lb.formulaNo,
-      totalRollKgs: lb.totalRollKgs,
-      totalRollsProduced: lb.totalRollsProduced,
-      operatorSignature: lb.operatorSignature,
-      updatedAt: lb.updatedAt,
-      productionPlanId: lb.productionPlanId,
-      soNumber: lb.productionPlan?.salesOrder?.soNumber ?? null,
-      planStatus: lb.productionPlan?.status ?? null,
-    })),
+    logbooks: logbooks.map((lb) => {
+      const order = lb.productionPlan ? compatibleSalesOrder(lb.productionPlan) : null;
+      return {
+        id: lb.id,
+        status: lb.status,
+        date: lb.date,
+        shift: lb.shift,
+        productName: lb.productName || order?.product || '',
+        formulaNo: lb.formulaNo,
+        totalRollKgs: lb.totalRollKgs,
+        totalRollsProduced: lb.totalRollsProduced,
+        operatorSignature: lb.operatorSignature,
+        updatedAt: lb.updatedAt,
+        productionPlanId: lb.productionPlanId,
+        operationalOrder: lb.productionPlan?.operationalOrder ?? null,
+        orderNumber: order?.soNumber ?? null,
+        soNumber: order?.soNumber ?? null,
+        planStatus: lb.productionPlan?.status ?? null,
+      };
+    }),
     maintenance: maintenance.map((t) => ({
       id: t.id,
       taskName: t.taskName,
@@ -268,8 +335,9 @@ export async function listLedger(filter: LedgerFilter = {}) {
   const from = filter.from && /^\d{4}-\d{2}-\d{2}$/.test(filter.from) ? filter.from : undefined;
   const to = filter.to && /^\d{4}-\d{2}-\d{2}$/.test(filter.to) ? filter.to : undefined;
 
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
   const rows = await prisma.machineLogbook.findMany({
-    where: { status: 'submitted' },
+    where: { status: 'submitted', ...(plants ? { productionPlan: { operationalOrder: { plantCode: plants } } } : {}) },
     select: {
       id: true,
       machineId: true,
@@ -291,6 +359,7 @@ export async function listLedger(filter: LedgerFilter = {}) {
         select: {
           id: true,
           salesOrder: { select: { soNumber: true, product: true } },
+          operationalOrder: { select: { id: true, orderNumber: true, productName: true } },
         },
       },
     },
@@ -332,13 +401,14 @@ export async function listLedger(filter: LedgerFilter = {}) {
     mc.producedKg += kg; mc.count += 1;
     byMachine.set(mid, mc);
 
+    const order = compatibleSalesOrder(r.productionPlan);
     list.push({
       id: r.id,
       machineId: r.machineId,
       date: r.date,
       isoDate,
       shift: r.shift,
-      productName: r.productName || r.productionPlan.salesOrder?.product || '',
+      productName: r.productName || order?.product || '',
       formulaNo: r.formulaNo,
       totalRollsProduced: r.totalRollsProduced,
       totalRollKgs: r.totalRollKgs,
@@ -346,7 +416,9 @@ export async function listLedger(filter: LedgerFilter = {}) {
       rejectionKg: r.rejectionKg,
       operatorSignature: r.operatorSignature,
       supervisor: r.supervisor,
-      soNumber: r.productionPlan.salesOrder?.soNumber ?? '',
+      operationalOrder: r.productionPlan.operationalOrder,
+      orderNumber: order?.soNumber ?? '',
+      soNumber: order?.soNumber ?? '',
       productionPlanId: r.productionPlan.id,
       updatedAt: r.updatedAt,
       producedKg: Math.round(kg * 10) / 10,
@@ -459,21 +531,27 @@ export async function deleteTemplate(id: string) {
 
 /** Scheduled plans that can carry a shift logbook, each with its machine, order,
  *  and existing logbook (if any). This is the operator's gate. */
-export function listPlansToLog() {
-  return prisma.productionPlan.findMany({
-    where: { status: { in: ['scheduled', 'running'] } },
+export async function listPlansToLog() {
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
+  const plans = await prisma.productionPlan.findMany({
+    where: { status: { in: ['scheduled', 'running'] }, ...(plants ? { operationalOrder: { plantCode: plants } } : {}) },
     include: {
       machine: { select: { code: true, logbookFormat: true } },
       salesOrder: { select: { soNumber: true, product: true } },
+      operationalOrder: { select: { id: true, orderNumber: true, productName: true } },
       logbook: { select: { id: true, status: true } },
     },
     orderBy: { scheduledStartDate: 'asc' },
   });
+  return plans.map(withCompatibleSalesOrder);
 }
 
 /** The logbook for a plan, or null. */
-export function getLogbookForPlan(planId: string) {
-  return prisma.machineLogbook.findUnique({ where: { productionPlanId: planId } });
+export async function getLogbookForPlan(planId: string) {
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
+  return prisma.machineLogbook.findFirst({
+    where: { productionPlanId: planId, ...(plants ? { productionPlan: { operationalOrder: { plantCode: plants } } } : {}) },
+  });
 }
 
 // Resolve the template whose document number matches the machine's logbook format
@@ -488,7 +566,8 @@ async function resolveTemplate(logbookFormat: string) {
 export function buildBlank(plan: {
   id: string;
   machine: { code: string };
-  salesOrder: { product: string } | null;
+  salesOrder?: { product: string } | null;
+  operationalOrder?: { productName: string } | null;
   shift?: string;
   scheduledStartDate?: string;
   supervisor?: string;
@@ -518,7 +597,7 @@ export function buildBlank(plan: {
     drawingNo: plan.drawingNo || '',
     formulaNo: plan.formulaNo || '',
     moldNo: plan.moldNo || '',
-    productName: plan.productName || plan.salesOrder?.product || template.productName || '',
+    productName: plan.productName || orderProduct(plan) || template.productName || '',
     coilWeights: isPipe ? [] : Array.from({ length: coil?.count ?? 0 }, () => ''),
     hourlyInspections: slots.map((slot) => isPipe
       ? { timeSlot: slot, od: '', weight: '', colour: '', okNotOk: '', inspectionBy: '' }
@@ -540,6 +619,7 @@ export function headerPatchFromPlan(plan: {
   moldNo: string;
   productName: string;
   salesOrder?: { product: string } | null;
+  operationalOrder?: { productName: string } | null;
 }) {
   return {
     machineId: plan.machine.code,
@@ -549,7 +629,7 @@ export function headerPatchFromPlan(plan: {
     drawingNo: plan.drawingNo,
     formulaNo: plan.formulaNo,
     moldNo: plan.moldNo,
-    productName: plan.productName || plan.salesOrder?.product || '',
+    productName: plan.productName || orderProduct(plan) || '',
   };
 }
 
@@ -568,7 +648,11 @@ export async function seedDraftLogbook(
 
   const plan = await tx.productionPlan.findUnique({
     where: { id: planId },
-    include: { machine: { select: { code: true, logbookFormat: true } }, salesOrder: { select: { product: true } } },
+    include: {
+      machine: { select: { code: true, logbookFormat: true } },
+      salesOrder: { select: { product: true } },
+      operationalOrder: { select: { productName: true } },
+    },
   });
   if (!plan) throw new ApiError(404, 'not_found', 'Production plan not found.');
 
@@ -596,7 +680,11 @@ export async function syncDraftHeaderFromPlan(
 ) {
   const plan = await tx.productionPlan.findUnique({
     where: { id: planId },
-    include: { machine: { select: { code: true, logbookFormat: true } }, salesOrder: { select: { product: true } } },
+    include: {
+      machine: { select: { code: true, logbookFormat: true } },
+      salesOrder: { select: { product: true } },
+      operationalOrder: { select: { productName: true } },
+    },
   });
   if (!plan) return;
 
@@ -624,14 +712,23 @@ export async function syncDraftHeaderFromPlan(
 
 /** Get-or-create the draft logbook for a scheduled plan. */
 export async function openLogbook(productionPlanId: string) {
-  const existing = await prisma.machineLogbook.findUnique({ where: { productionPlanId } });
+  const scope = await resolveMesaOpsPlantScope();
+  const plants = plantCodeFilter(scope);
+  const existing = await prisma.machineLogbook.findFirst({
+    where: { productionPlanId, ...(plants ? { productionPlan: { operationalOrder: { plantCode: plants } } } : {}) },
+  });
   if (existing) return existing;
 
-  const plan = await prisma.productionPlan.findUnique({
-    where: { id: productionPlanId },
-    include: { machine: { select: { code: true, logbookFormat: true } }, salesOrder: { select: { product: true } } },
+  const plan = await prisma.productionPlan.findFirst({
+    where: { id: productionPlanId, ...(plants ? { operationalOrder: { plantCode: plants } } : {}) },
+    include: {
+      machine: { select: { code: true, logbookFormat: true } },
+      salesOrder: { select: { product: true } },
+      operationalOrder: { select: { productName: true, plantCode: true } },
+    },
   });
   if (!plan) throw new ApiError(404, 'not_found', 'Production plan not found.');
+  assertMesaOpsPlantAccess(scope, plan.operationalOrder.plantCode);
   if (!['scheduled', 'running'].includes(plan.status)) {
     throw new ApiError(409, 'not_schedulable', `Plan is not active (status: ${plan.status}).`);
   }
@@ -651,7 +748,10 @@ export async function openLogbook(productionPlanId: string) {
 
 /** Save draft edits (only while unlocked). */
 export async function updateLogbook(id: string, patch: LogbookUpdate) {
-  const current = await prisma.machineLogbook.findUnique({ where: { id } });
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
+  const current = await prisma.machineLogbook.findFirst({
+    where: { id, ...(plants ? { productionPlan: { operationalOrder: { plantCode: plants } } } : {}) },
+  });
   if (!current) throw new ApiError(404, 'not_found', 'Logbook not found.');
   if (current.status === 'submitted') throw new ApiError(409, 'locked', 'This logbook is submitted and locked.');
   return tenantTx(async (tx) => {
@@ -666,8 +766,15 @@ export async function updateLogbook(id: string, patch: LogbookUpdate) {
  *  negative balance correctly flags unreceipted RM). Booked exactly once, since a
  *  submitted logbook is locked against re-submit. */
 export async function submitLogbook(id: string) {
-  const lb = await prisma.machineLogbook.findUnique({ where: { id } });
+  const scope = await resolveMesaOpsPlantScope();
+  const plants = plantCodeFilter(scope);
+  const lb = await prisma.machineLogbook.findFirst({
+    where: { id, ...(plants ? { productionPlan: { operationalOrder: { plantCode: plants } } } : {}) },
+    include: { productionPlan: { select: { operationalOrder: { select: { plantCode: true } } } } },
+  });
   if (!lb) throw new ApiError(404, 'not_found', 'Logbook not found.');
+  const plantCode = lb.productionPlan.operationalOrder.plantCode;
+  assertMesaOpsPlantAccess(scope, plantCode);
   if (lb.status === 'submitted') throw new ApiError(409, 'already_submitted', 'This logbook is already submitted.');
 
   const template = await prisma.logbookTemplate.findUnique({ where: { id: lb.templateId } });
@@ -725,7 +832,7 @@ export async function submitLogbook(id: string) {
     ? components
         .filter((k) => k && (k.name ?? '').trim() && Number(k.pct) > 0)
         .map((k) => ({
-          organizationId: c.organizationId, type: 'raw_material', direction: 'out',
+          organizationId: c.organizationId, plantCode, type: 'raw_material', direction: 'out',
           itemCode: k.name!.trim(), itemName: k.name!.trim(),
           quantity: Math.round(producedKg * (Number(k.pct) / 100) * 1000) / 1000,
           unit: 'kg', lotNumber: k.lotId?.trim() || null,
@@ -741,6 +848,120 @@ export async function submitLogbook(id: string) {
     await audit(tx, {
       action: 'logbook.submit', entity: 'MachineLogbook', entityId: id,
       after: { status: 'submitted', formula: formula?.code ?? null, rmConsumedKg: producedKg, rmLines: consumption.length },
+    });
+    const plan = await tx.productionPlan.findUniqueOrThrow({
+      where: { id: lb.productionPlanId },
+      include: {
+        machine: { select: { id: true, code: true, line: true } },
+        operationalOrder: {
+          include: {
+            sourceLink: {
+              select: {
+                id: true, sourceService: true, sourceType: true, sourceId: true,
+                sourceSnapshotHash: true, correlationId: true, legalEntityId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    const order = plan.operationalOrder;
+    const link = order.sourceLink;
+    const traceRows = Array.isArray(submitted.traceabilityRows)
+      ? submitted.traceabilityRows as Array<Record<string, unknown>>
+      : [];
+    const outputKg = positiveDecimalString(submitted.totalRollKgs);
+    const outputCount = positiveDecimalString(submitted.totalRollsProduced);
+    const outputQuantity = new Prisma.Decimal(outputKg).greaterThan(0) ? outputKg : outputCount;
+    const outputUom = new Prisma.Decimal(outputKg).greaterThan(0) ? 'KG' : order.uom.toUpperCase();
+    const scrap = [
+      ['process_waste', submitted.processWasteKg],
+      ['lumps_waste', submitted.lumpsWasteKg],
+      ['rejection', submitted.rejectionKg],
+      ['startup_scrap', submitted.scrapKg],
+    ].flatMap(([kind, raw]) => {
+      const scrapQuantity = positiveDecimalString(raw);
+      return new Prisma.Decimal(scrapQuantity).greaterThan(0)
+        ? [{ kind, itemCode: `${order.productCode || order.orderNumber}:SCRAP`, quantity: scrapQuantity, uom: 'KG', lots: [] }]
+        : [];
+    });
+    const snapshot = {
+      businessDate: submitted.date || today(),
+      operationalOrderId: order.id,
+      operationalOrderNumber: order.orderNumber,
+      productionPlanId: plan.id,
+      logbookId: submitted.id,
+      logbookVersion: submitted.version,
+      plantCode: order.plantCode,
+      productCode: order.productCode || order.orderNumber,
+      productName: order.productName,
+      batchNumber: String(traceRows.find((row) => typeof row.lotNumber === 'string')?.lotNumber || `OPS-${submitted.id}`),
+      uom: outputUom,
+      materialConsumption: consumption.map((line) => ({
+        itemCode: line.itemCode,
+        description: line.itemName,
+        quantity: decimalString(line.quantity),
+        uom: line.unit.toUpperCase(),
+        lotNumber: line.lotNumber ?? '',
+      })),
+      materialReturns: [],
+      outputs: new Prisma.Decimal(outputQuantity).greaterThan(0) ? [{
+        itemCode: order.productCode || order.orderNumber,
+        description: order.productName,
+        quantity: outputQuantity,
+        uom: outputUom,
+        outputType: 'finished_good',
+        lots: traceRows.map((row) => ({
+          lotNumber: String(row.lotNumber ?? ''),
+          quantity: positiveDecimalString(row.pktKg, row.quantity, row.pieces, row.nos),
+          uom: outputUom,
+        })).filter((row) => row.lotNumber),
+      }] : [],
+      scrap,
+      byproducts: [],
+      laborActuals: [{
+        reference: submitted.operatorSignature || c.email,
+        description: `Shift ${submitted.shift}`,
+        quantity: '1',
+        uom: 'SHIFT',
+      }],
+      machineActuals: [{
+        reference: plan.machine.code,
+        description: `${plan.machine.code}${plan.machine.line ? ` · ${plan.machine.line}` : ''}`,
+        quantity: '1',
+        uom: 'SHIFT',
+        readings: {
+          motorSpeed: submitted.motorSpeed,
+          ampere: submitted.ampere,
+          takeupSpeed: submitted.takeupSpeed,
+          vacuum: submitted.vacuum,
+          productionPerHour: submitted.productionPerHour,
+        },
+      }],
+      qaDisposition: { status: 'pending', reference: '', notes: 'Awaiting accepted MesaOps QA evidence.' },
+      packingEvidence: {
+        traceabilityRows: structuredClone(traceRows),
+        coilWeights: structuredClone(submitted.coilWeights),
+        packingNote: template?.packingNote ?? '',
+      },
+      formulation: formula ? { id: formula.id, code: formula.code, revision: formula.rev } : null,
+      originLegalEntityId: link?.legalEntityId ?? null,
+    };
+    await appendMesaOpsOutboxEvent(tx as unknown as Prisma.TransactionClient, {
+      legalEntityId: link?.legalEntityId,
+      aggregateType: 'MachineLogbook',
+      aggregateId: submitted.id,
+      eventType: 'mesaops.production-actuals.submitted.v1',
+      sourceLink: link ? {
+        sourceLinkId: link.id,
+        sourceService: link.sourceService,
+        sourceType: link.sourceType,
+        sourceId: link.sourceId,
+        sourceSnapshotHash: link.sourceSnapshotHash,
+        correlationId: link.correlationId,
+      } : null,
+      snapshot,
+      causationId: order.id,
     });
     return submitted;
   });

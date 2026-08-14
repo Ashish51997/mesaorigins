@@ -5,15 +5,13 @@
  * Enquiry Desk (enquiries + quotations), Orders, Customers, Complaints use the API
  * (Postgres, tenant-scoped) via TanStack Query hooks (src/lib/queries/*). A
  * complaint links to a dispatched batch and auto-opens a CAPA that must be
- * worked and closed before the complaint can be resolved. Home stays on the
- * legacy lifted-state path until its phase.
+ * worked and closed before the complaint can be resolved.
  */
 
 import { useState, useEffect, useMemo } from 'react';
 import {
   Inbox, FileText, ClipboardList, Users, MessageSquareWarning, Camera, ArrowRight, Send, CheckCircle2, Plus, X, Paperclip, Search
 } from 'lucide-react';
-import { Inquiry, SalesOrder, CustomerComplaint, Customer } from '../../types';
 import { pushToast, pushNudge } from '../Notify';
 import { useCan } from '../../lib/accessStore';
 import { EmptyState } from '../EmptyState';
@@ -32,12 +30,7 @@ import {
   useUpdateCapa, useCloseCapa, type ApiComplaint,
 } from '../../lib/queries/capa';
 
-type Dispatch<T> = (v: T | ((p: T) => T)) => void;
 export interface SalesData {
-  inquiries: Inquiry[]; setInquiries: Dispatch<Inquiry[]>;
-  salesOrders: SalesOrder[]; setSalesOrders: Dispatch<SalesOrder[]>;
-  complaints: CustomerComplaint[]; setComplaints: Dispatch<CustomerComplaint[]>;
-  customers: Customer[]; setCustomers: Dispatch<Customer[]>;
   onOpen: (m: string) => void; onTrace: (q: string) => void;
 }
 
@@ -75,9 +68,6 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 type OrderStatusFilter = 'all' | 'active' | 'pending' | 'in_production' | 'dispatched' | 'high';
-
-/* ---------------------------------------------------------------- Home (legacy) */
-
 
 /* ---------------------------------------------------------------- Inquiries */
 

@@ -2,17 +2,15 @@
  * PlannerScreens.tsx — the Production Planner role (PROMPT 02, dark theme).
  * Home · Orders to Plan (+ plan flow) · Production Plan board (list default /
  * Gantt toggle) · Formulations (BOM, before/after normalize confirm + locked
- * revisions) · Machine Capacity · Material Availability. Reuses productionPlans /
- * salesOrders (App state), the planner store (formulas + RM store), simulation,
- * nudges/toasts. Planning an order updates queue + board + material live.
+ * revisions) · Machine Capacity · Material Availability. Operational orders,
+ * plans, machines and formulas are tenant-scoped API resources.
  */
 
 import { useState, useEffect } from 'react';
-import type { Dispatch, SetStateAction, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   ClipboardList, Lock, AlertTriangle, CheckCircle2, ArrowRight, Boxes, Gauge, List, BarChart3, Beaker, CalendarClock, Plus, Trash2, Pencil
 } from 'lucide-react';
-import { SalesOrder, ProductionPlan, Customer } from '../../types';
 import { useFormulations, useCreateFormulation, useUpdateFormulation, type ApiFormula, type ApiFormulaComponent } from '../../lib/queries/formulation';
 import { pushToast, pushNudge } from '../Notify';
 import { useCan } from '../../lib/accessStore';
@@ -23,21 +21,14 @@ import ResponsiveOverlay from '../ui/ResponsiveOverlay';
 import { StatusBadge, type StatusTone } from '../ui/StatusBadge';
 import { ApiError } from '../../lib/apiClient';
 import { useMachines } from '../../lib/queries/maintenance';
-import { useOrdersToPlan, usePlans, useOperators, useSchedulePlan, useUpdatePlan, useReleasePlan, planIsEditable, type ApiPlanOrder, type ApiPlan } from '../../lib/queries/planning';
+import { useOrdersToPlan, usePlans, useOperators, useCreateOperationalOrder, useSchedulePlan, useUpdatePlan, useReleasePlan, planIsEditable, type ApiPlanOrder, type ApiPlan, type OperationalOrderCreateInput } from '../../lib/queries/planning';
 import { useLogbookTemplates, useLogbookFormulas } from '../../lib/queries/logbook';
 import { useDirectory } from '../../lib/queries/admin';
 
 export interface PlannerData {
-  salesOrders: SalesOrder[];
-  setSalesOrders: Dispatch<SetStateAction<SalesOrder[]>>;
-  productionPlans: ProductionPlan[];
-  setProductionPlans: Dispatch<SetStateAction<ProductionPlan[]>>;
-  customers: Customer[];
   onOpen: (m: string) => void;
   onTrace: (q: string) => void;
 }
-
-const custName = (p: PlannerData, id: string) => p.customers.find((c) => c.id === id)?.name ?? id;
 
 
 function Card({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) {
@@ -53,10 +44,10 @@ function Card({ title, right, children }: { title: string; right?: ReactNode; ch
 }
 
 const priorityChip = (pr: string) => {
-  const tone: StatusTone = pr === 'high' ? 'error' : pr === 'medium' ? 'warn' : 'neutral';
+  const tone: StatusTone = pr === 'urgent' || pr === 'high' ? 'error' : pr === 'medium' ? 'warn' : 'neutral';
   return (
     <StatusBadge tone={tone}>
-      {pr === 'high' ? 'High priority' : pr === 'medium' ? 'Medium' : 'Low'}
+      {pr === 'urgent' ? 'Urgent' : pr === 'high' ? 'High priority' : pr === 'medium' ? 'Medium' : 'Low'}
     </StatusBadge>
   );
 };
@@ -90,8 +81,6 @@ const fmtDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padS
 /* ---------------------------------------------------------------- plan flow */
 
 
-const orderLabel = (p: PlannerData, soId: string) => p.salesOrders.find((o) => o.id === soId)?.soNumber ?? soId;
-
 /* ---------------------------------------------------------------- Home */
 
 
@@ -103,34 +92,141 @@ const planLbl = 'block text-[11px] font-bold text-slate-500 mb-1';
 const planInp = 'w-full h-11 px-3 rounded-lg border border-slate-300 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200';
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : 'Something went wrong — please try again.');
 
+const operationalOrderNumber = (order: ApiPlanOrder) => order.orderNumber || order.soNumber || order.id;
+const operationalOrderProduct = (order: ApiPlanOrder) => order.productName || order.product || '';
+const operationalOrderDueDate = (order: ApiPlanOrder) => order.dueDate || order.deliveryDate || '';
+const operationalOrderCustomer = (order: ApiPlanOrder) => order.customerName || order.customer?.name || 'Internal demand';
+const quantityNumber = (value: number | string | undefined) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+const operationalOrderRemaining = (order: ApiPlanOrder) => {
+  if (order.remainingQuantity !== undefined) return quantityNumber(order.remainingQuantity);
+  if (order.plannedQuantity !== undefined) return Math.max(0, quantityNumber(order.quantity) - quantityNumber(order.plannedQuantity));
+  // An older response cannot tell us the balance of a partially planned order.
+  // Keep it unknown rather than presenting the total as the remaining quantity.
+  if (order.status === 'partially_planned') return undefined;
+  return quantityNumber(order.quantity);
+};
+const quantityLabel = (value: number | string | undefined) => value === undefined || value === ''
+  ? '—'
+  : quantityNumber(value).toLocaleString('en-IN', { maximumFractionDigits: 6 });
+const sourceTypeLabel = (sourceType?: string) => ({
+  local_customer: 'Local customer', internal: 'Internal', forecast: 'Forecast', replenishment: 'Replenishment',
+  trial: 'Trial', rework: 'Rework', import: 'Import', mesaerp: 'MesaERP',
+}[sourceType ?? ''] ?? (sourceType ? sourceType.replaceAll('_', ' ') : 'Local customer'));
+const sourceLinkState = (order: ApiPlanOrder) => order.sourceLinkState
+  || order.linkState
+  || order.sourceLink?.state
+  || (order.sourceType === 'mesaerp' ? (order.sourceReference || order.sourceSnapshotHash ? 'linked' : 'unlinked') : 'independent');
+const sourceLinkTone = (state: string): StatusTone => state === 'linked' ? 'success' : state === 'stale' ? 'warn' : state === 'conflict' ? 'error' : 'neutral';
+
+const planOrderNumber = (plan: ApiPlan) => plan.operationalOrder?.orderNumber || plan.salesOrder?.soNumber || plan.operationalOrderId || plan.salesOrderId || plan.id;
+const planOrderProduct = (plan: ApiPlan) => plan.operationalOrder?.productName || plan.salesOrder?.product || plan.productName || '';
+const planOrderCustomer = (plan: ApiPlan) => plan.operationalOrder?.customerName || plan.salesOrder?.customer.name || 'Internal demand';
+const planOrderDueDate = (plan: ApiPlan) => plan.operationalOrder?.dueDate || plan.salesOrder?.deliveryDate || '';
+
 export function OrdersToPlan(p: PlannerData) {
   const ordersQ = useOrdersToPlan();
   const [planning, setPlanning] = useState<ApiPlanOrder | null>(null);
+  const [creating, setCreating] = useState(false);
+  const canCreate = useCan('action:operational_order.create');
   const orders = ordersQ.data ?? [];
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+        <div>
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-100">MesaOps demand starts here</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">Create a local, internal, forecast, replenishment, trial, rework or imported order without MesaERP.</p>
+        </div>
+        <button type="button" disabled={!canCreate} title={canCreate ? undefined : 'No access — ask your administrator'} onClick={() => setCreating(true)} className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-3.5 w-3.5" /> New operational order</button>
+      </div>
       <DataTable
         title="Orders to plan"
         loading={ordersQ.isLoading}
         rows={orders}
         rowKey={(o) => o.id}
-        empty={<EmptyState title="Nothing waiting to be planned." hint="Confirmed orders from sales appear here with their required date and priority." />}
+        empty={<EmptyState title="Nothing waiting to be planned." hint="Customer, internal, forecast, replenishment, trial and rework orders appear here when ready." />}
         columns={[
-          { key: 'so', header: 'SO', cell: (o) => <TraceLink id={o.soNumber} onTrace={p.onTrace} className="font-bold font-mono text-slate-800 dark:text-slate-100" /> },
+          { key: 'order', header: 'Operational order', cell: (o) => <TraceLink id={operationalOrderNumber(o)} onTrace={p.onTrace} className="font-bold font-mono text-slate-800 dark:text-slate-100" /> },
+          { key: 'source', header: 'Source / link', cell: (o) => {
+            const linkState = sourceLinkState(o);
+            return <div><span className="block text-[11px] font-semibold text-slate-700 dark:text-slate-200">{sourceTypeLabel(o.sourceType)}</span><span className="mt-1 inline-block"><StatusBadge tone={sourceLinkTone(linkState)}>{linkState === 'independent' ? 'Independent' : linkState}</StatusBadge></span></div>;
+          } },
           { key: 'prio', header: 'Priority', cell: (o) => priorityChip(o.priority) },
-          { key: 'due', header: 'Due', cell: (o) => <DueBadge date={o.deliveryDate} /> },
-          { key: 'product', header: 'Product', cell: (o) => <span className="font-semibold">{o.product}</span> },
-          { key: 'customer', header: 'Customer', cell: (o) => o.customer.name },
-          { key: 'qty', header: 'Qty', align: 'right', className: 'font-mono whitespace-nowrap', cell: (o) => o.quantity.toLocaleString('en-IN') },
+          { key: 'due', header: 'Due', cell: (o) => <DueBadge date={operationalOrderDueDate(o)} /> },
+          { key: 'product', header: 'Product', cell: (o) => <span className="font-semibold">{operationalOrderProduct(o)}</span> },
+          { key: 'customer', header: 'Customer', cell: (o) => operationalOrderCustomer(o) },
+          { key: 'qty', header: 'Remaining / total', align: 'right', className: 'font-mono whitespace-nowrap', cell: (o) => <span>{quantityLabel(operationalOrderRemaining(o))} / {quantityLabel(o.quantity)} {o.uom || 'units'}</span> },
           { key: 'act', header: '', align: 'right', cell: (o) => (
             <button onClick={() => setPlanning(o)} className="h-9 px-4 rounded-lg bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 inline-flex items-center gap-1">Plan <ArrowRight className="w-3.5 h-3.5" /></button>
           ) },
         ]}
       />
+      {creating && <OperationalOrderModal onClose={() => setCreating(false)} />}
       {planning && <SchedulePlanModal order={planning} onClose={() => setPlanning(null)} />}
     </div>
   );
 }
+
+function OperationalOrderModal({ onClose }: { onClose: () => void }) {
+  const create = useCreateOperationalOrder();
+  const [form, setForm] = useState<OperationalOrderCreateInput>({
+    orderNumber: '', sourceType: 'local_customer', sourceReference: '', customerName: '',
+    productCode: '', productName: '', quantity: '', uom: 'units', dueDate: '', priority: 'medium', requirements: {},
+  });
+  const set = <K extends keyof OperationalOrderCreateInput>(key: K, value: OperationalOrderCreateInput[K]) => setForm((current) => ({ ...current, [key]: value }));
+  const valid = Boolean(form.orderNumber.trim() && form.productName.trim() && Number(form.quantity) > 0 && form.uom.trim());
+  const submit = () => {
+    if (!valid || create.isPending) return;
+    const body = {
+      ...form,
+      orderNumber: form.orderNumber.trim(),
+      sourceReference: form.sourceReference?.trim() || undefined,
+      customerName: form.customerName?.trim() || undefined,
+      productCode: form.productCode?.trim() || undefined,
+      productName: form.productName.trim(),
+      quantity: form.quantity.trim(),
+      uom: form.uom.trim(),
+      dueDate: form.dueDate || undefined,
+    };
+    create.mutate(body, {
+      onSuccess: (order) => {
+        pushToast(`${operationalOrderNumber(order)} created in MesaOps and is ready for machine planning.`);
+        onClose();
+      },
+    });
+  };
+  return (
+    <ResponsiveOverlay open onClose={onClose} title="New operational order">
+      <div className="space-y-4">
+        <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-[11px] text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-200">This is a MesaOps-owned demand record. Machine, shift and operator are selected only after it reaches the planning queue.</div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block"><span className={planLbl}>Order number *</span><input aria-label="Order number" className={planInp} value={form.orderNumber} onChange={(event) => set('orderNumber', event.target.value)} placeholder="OP-2026-001" /></label>
+          <label className="block"><span className={planLbl}>Source *</span><select aria-label="Order source" className={planInp} value={form.sourceType} onChange={(event) => set('sourceType', event.target.value as OperationalOrderCreateInput['sourceType'])}>{['local_customer', 'internal', 'forecast', 'replenishment', 'trial', 'rework', 'import'].map((source) => <option key={source} value={source}>{sourceTypeLabel(source)}</option>)}</select></label>
+        </div>
+        <label className="block"><span className={planLbl}>Customer / internal owner</span><input aria-label="Customer or owner" className={planInp} value={form.customerName} onChange={(event) => set('customerName', event.target.value)} placeholder="Customer, department or planner" /></label>
+        <div className="grid grid-cols-[0.7fr_1.3fr] gap-3">
+          <label className="block"><span className={planLbl}>Product code</span><input aria-label="Product code" className={planInp} value={form.productCode} onChange={(event) => set('productCode', event.target.value)} /></label>
+          <label className="block"><span className={planLbl}>Product name *</span><input aria-label="Product name" className={planInp} value={form.productName} onChange={(event) => set('productName', event.target.value)} /></label>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <label className="block"><span className={planLbl}>Quantity *</span><input aria-label="Order quantity" type="number" min="0.000001" step="any" className={planInp} value={form.quantity} onChange={(event) => set('quantity', event.target.value)} /></label>
+          <label className="block"><span className={planLbl}>UOM *</span><input aria-label="Order UOM" className={planInp} value={form.uom} onChange={(event) => set('uom', event.target.value)} /></label>
+          <label className="block"><span className={planLbl}>Priority</span><select aria-label="Order priority" className={planInp} value={form.priority} onChange={(event) => set('priority', event.target.value as OperationalOrderCreateInput['priority'])}>{['low', 'medium', 'high', 'urgent'].map((priority) => <option key={priority} value={priority}>{labelPriority(priority)}</option>)}</select></label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block"><span className={planLbl}>Required date</span><input aria-label="Required date" type="date" className={planInp} value={form.dueDate} onChange={(event) => set('dueDate', event.target.value)} /></label>
+          <label className="block"><span className={planLbl}>Source reference</span><input aria-label="Source reference" className={planInp} value={form.sourceReference} onChange={(event) => set('sourceReference', event.target.value)} placeholder="Forecast, trial or import ref" /></label>
+        </div>
+        {create.isError && <p className="text-xs font-bold text-rose-600">{errMsg(create.error)}</p>}
+        <button type="button" onClick={submit} disabled={!valid || create.isPending} className="h-12 w-full rounded-lg bg-indigo-600 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">{create.isPending ? 'Creating…' : 'Create independent demand'}</button>
+      </div>
+    </ResponsiveOverlay>
+  );
+}
+
+const labelPriority = (priority: string) => priority.charAt(0).toUpperCase() + priority.slice(1);
 
 type SchedulePlanModalProps =
   | { order: ApiPlanOrder; plan?: undefined; onClose: () => void }
@@ -145,17 +241,21 @@ function SchedulePlanModal({ order, plan, onClose }: SchedulePlanModalProps) {
   const schedule = useSchedulePlan();
   const update = useUpdatePlan();
   const canPlan = useCan('action:order.plan');
-  const productDefault = plan?.productName || plan?.salesOrder.product || order?.product || '';
+  const productDefault = plan ? planOrderProduct(plan) : order ? operationalOrderProduct(order) : '';
+  const orderQuantity = order ? quantityNumber(order.quantity) : quantityNumber(plan?.operationalOrder?.quantity);
+  const remainingQuantity = order ? operationalOrderRemaining(order) : 0;
+  const plannedDefault = plan?.plannedQuantity ?? (order ? remainingQuantity ?? '' : '');
 
   const [machineId, setMachineId] = useState(plan?.machineId || '');
   const [shift, setShift] = useState<'D' | 'N'>((plan?.shift as 'D' | 'N') || 'D');
   const [operatorName, setOperatorName] = useState(plan?.operatorName || '');
-  const [date, setDate] = useState((plan?.scheduledStartDate || order?.deliveryDate || '').slice(0, 10));
+  const [date, setDate] = useState((plan?.scheduledStartDate || (order ? operationalOrderDueDate(order) : '')).slice(0, 10));
   const [supervisor, setSupervisor] = useState(plan?.supervisor || '');
   const [drawingNo, setDrawingNo] = useState(plan?.drawingNo || '');
   const [formulaNo, setFormulaNo] = useState(plan?.formulaNo || '');
   const [moldNo, setMoldNo] = useState(plan?.moldNo || '');
   const [productName, setProductName] = useState(productDefault);
+  const [plannedQuantity, setPlannedQuantity] = useState(String(plannedDefault));
   const templates = useLogbookTemplates().data ?? [];
   const [templateId, setTemplateId] = useState(plan?.logbookTemplateId || '');
 
@@ -171,7 +271,9 @@ function SchedulePlanModal({ order, plan, onClose }: SchedulePlanModalProps) {
   const supervisors = Array.from(new Set(directory.map((d) => d.name.trim()).filter(Boolean))).sort();
   const mId = machineId || machines[0]?.id || '';
   const pending = schedule.isPending || update.isPending;
-  const valid = !!mId && !!date && !!supervisor.trim() && !!drawingNo.trim() && !!formulaNo.trim() && !!moldNo.trim() && !!productName.trim();
+  const plannedQuantityNumber = quantityNumber(plannedQuantity);
+  const quantityFits = isEdit || !order || remainingQuantity === undefined || (remainingQuantity > 0 && plannedQuantityNumber <= remainingQuantity);
+  const valid = !!mId && !!date && plannedQuantityNumber > 0 && quantityFits && !!supervisor.trim() && !!drawingNo.trim() && !!formulaNo.trim() && !!moldNo.trim() && !!productName.trim();
 
   const body = () => {
     const startT = shift === 'D' ? '08:00:00' : '20:00:00';
@@ -188,15 +290,16 @@ function SchedulePlanModal({ order, plan, onClose }: SchedulePlanModalProps) {
       formulaNo: formulaNo.trim(),
       moldNo: moldNo.trim(),
       productName: productName.trim(),
+      plannedQuantity: plannedQuantity.trim(),
     };
   };
 
   const confirm = () => {
     if (!valid || !canPlan || pending) return;
     if (isEdit && plan) {
-      update.mutate({ id: plan.id, body: body() }, {
+      update.mutate({ id: plan.id, body: { ...body(), expectedVersion: plan.version ?? 0 } }, {
         onSuccess: (p) => {
-          pushToast(`${p.salesOrder.soNumber} schedule updated on ${p.machine.code}.`);
+          pushToast(`${planOrderNumber(p)} schedule updated on ${p.machine.code}.`);
           onClose();
         },
         onError: (e) => pushToast(errMsg(e)),
@@ -205,11 +308,17 @@ function SchedulePlanModal({ order, plan, onClose }: SchedulePlanModalProps) {
     }
     if (!order) return;
     schedule.mutate(
-      { salesOrderId: order.id, ...body() },
+      {
+        operationalOrderId: order.id,
+        expectedOrderVersion: order.rowVersion ?? 0,
+        // Compatibility alias for older MesaOps servers during a rolling upgrade.
+        salesOrderId: order.legacySalesOrderId || order.id,
+        ...body(),
+      },
       {
         onSuccess: (p) => {
-          pushToast(`${order.soNumber} planned on ${p.machine.code}, Shift ${shift}.`);
-          pushNudge('good', `${order.soNumber} planned on ${p.machine.code} — operators will see it on Machine Tasks.`);
+          pushToast(`${operationalOrderNumber(order)} planned on ${p.machine.code}, Shift ${shift}.`);
+          pushNudge('good', `${operationalOrderNumber(order)} planned on ${p.machine.code} — operators will see it on Machine Tasks.`);
           onClose();
         },
         onError: (e) => pushToast(errMsg(e)),
@@ -217,8 +326,10 @@ function SchedulePlanModal({ order, plan, onClose }: SchedulePlanModalProps) {
     );
   };
 
-  const title = isEdit ? `Edit ${plan!.salesOrder.soNumber}` : `Plan ${order!.soNumber}`;
-  const dueDate = plan?.salesOrder.deliveryDate || order?.deliveryDate || '';
+  const title = isEdit ? `Edit ${planOrderNumber(plan!)}` : `Plan ${operationalOrderNumber(order!)}`;
+  const dueDate = plan ? planOrderDueDate(plan) : order ? operationalOrderDueDate(order) : '';
+  const sourceOrder = order || plan?.operationalOrder;
+  const linkState = sourceOrder ? sourceLinkState(sourceOrder) : 'independent';
 
   return (
     <ResponsiveOverlay open onClose={onClose} title={title}>
@@ -226,15 +337,26 @@ function SchedulePlanModal({ order, plan, onClose }: SchedulePlanModalProps) {
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-slate-600 dark:text-slate-300">
             <span className="font-semibold text-slate-800 dark:text-slate-100">{productDefault}</span>
             {(order || plan) && <>
-              <span className="text-slate-300">·</span> {(order?.quantity ?? '—')} units
-              <span className="text-slate-300">·</span> {(order?.customer.name || plan?.salesOrder.customer.name)}
+              <span className="text-slate-300">·</span> {quantityLabel(order?.quantity ?? plan?.operationalOrder?.quantity ?? plan?.plannedQuantity)} {order?.uom || plan?.operationalOrder?.uom || 'units'}
+              <span className="text-slate-300">·</span> {order ? operationalOrderCustomer(order) : plan ? planOrderCustomer(plan) : 'Internal demand'}
               {order && priorityChip(order.priority)} {dueDate && <DueBadge date={dueDate} />}
             </>}
           </div>
 
+          {sourceOrder && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 px-3 py-2 text-[11px] text-slate-600 dark:text-slate-300">
+            <span className="font-bold">Source: {sourceTypeLabel(sourceOrder.sourceType)}</span>
+            <StatusBadge tone={sourceLinkTone(linkState)}>{linkState === 'independent' ? 'Independent' : linkState}</StatusBadge>
+            {sourceOrder.sourceReference && <span className="font-mono text-slate-500">{sourceOrder.sourceReference}</span>}
+          </div>}
+
           <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 dark:bg-indigo-950/30 dark:border-indigo-900 px-3 py-2 text-[11px] text-indigo-800 dark:text-indigo-200">
-            Machine Identification &amp; Shift Header is locked in at planning. Operators fill process readings from Machine Tasks.
+            Machine, shift and operator assignment stay in MesaOps. Operators fill process readings from Machine Tasks.
           </div>
+
+          <label className="block"><span className={planLbl}>Planned quantity *</span>
+            <div className="relative"><input type="number" min="0.000001" step="any" max={!isEdit && remainingQuantity !== undefined && remainingQuantity > 0 ? remainingQuantity : undefined} value={plannedQuantity} onChange={(e) => setPlannedQuantity(e.target.value)} className={`${planInp} pr-20 font-mono`} /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">{order?.uom || plan?.operationalOrder?.uom || 'units'}</span></div>
+            <span className={`mt-1 block text-[10px] ${quantityFits ? 'text-slate-400' : 'font-bold text-rose-600'}`}>{isEdit ? 'Change this schedule quantity; the server rechecks the order total.' : remainingQuantity === undefined ? `Split is allowed. Enter a quantity; the server will validate it against the remaining ${quantityLabel(orderQuantity)} ${order?.uom || 'units'} order balance.` : `Split is allowed. ${quantityLabel(remainingQuantity)} of ${quantityLabel(orderQuantity)} ${order?.uom || 'units'} remains available.`}</span>
+          </label>
 
           <label className="block"><span className={planLbl}>Machine</span>
             <select value={mId} onChange={(e) => setMachineId(e.target.value)} className={planInp}>{machines.map((m) => <option key={m.id} value={m.id}>{m.code} — {m.line}</option>)}</select>
@@ -314,8 +436,10 @@ export function PlanBoardScreen(p: PlannerData) {
         { key: 'shift', header: 'Shift', cell: (pl) => (
           <StatusBadge tone={pl.shift === 'D' ? 'warn' : 'info'}>{pl.shift === 'D' ? 'Day' : 'Night'}</StatusBadge>
         ) },
-        { key: 'so', header: 'SO', cell: (pl) => <TraceLink id={pl.salesOrder.soNumber} onTrace={p.onTrace} className="text-indigo-600 dark:text-indigo-400 font-semibold font-mono" /> },
-        { key: 'product', header: 'Product / Customer', cell: (pl) => <span className="truncate block max-w-[280px]">{pl.productName || pl.salesOrder.product} · {pl.salesOrder.customer.name}</span> },
+        { key: 'order', header: 'Operational order', cell: (pl) => <TraceLink id={planOrderNumber(pl)} onTrace={p.onTrace} className="text-indigo-600 dark:text-indigo-400 font-semibold font-mono" /> },
+        { key: 'source', header: 'Source / link', cell: (pl) => pl.operationalOrder ? <div><span className="block text-[11px] font-semibold">{sourceTypeLabel(pl.operationalOrder.sourceType)}</span><span className="mt-1 inline-block"><StatusBadge tone={sourceLinkTone(sourceLinkState(pl.operationalOrder))}>{sourceLinkState(pl.operationalOrder) === 'independent' ? 'Independent' : sourceLinkState(pl.operationalOrder)}</StatusBadge></span></div> : <StatusBadge tone="neutral">Legacy</StatusBadge> },
+        { key: 'product', header: 'Product / Customer', cell: (pl) => <span className="truncate block max-w-[280px]">{planOrderProduct(pl)} · {planOrderCustomer(pl)}</span> },
+        { key: 'qty', header: 'Planned qty', align: 'right', className: 'font-mono whitespace-nowrap', cell: (pl) => `${quantityLabel(pl.plannedQuantity)} ${pl.operationalOrder?.uom || 'units'}` },
         { key: 'header', header: 'Header', cell: (pl) => (
           <span className="text-[11px] text-slate-500 truncate block max-w-[160px]">{pl.supervisor || '—'} · {pl.formulaNo || '—'}</span>
         ) },
@@ -333,7 +457,7 @@ export function PlanBoardScreen(p: PlannerData) {
                   <Lock className="w-3 h-3" /> Locked
                 </span>
               )}
-              <button onClick={() => release.mutate(pl.id, { onSuccess: () => pushToast(`${pl.salesOrder.soNumber} released — back to the planning queue.`), onError: (e) => pushToast(errMsg(e)) })} disabled={release.isPending || pl.logbook?.status === 'submitted'} className="text-[11px] font-bold text-slate-400 hover:text-rose-600 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 disabled:opacity-50" title="Release this plan back to the queue">Release</button>
+              <button onClick={() => release.mutate({ id: pl.id, expectedVersion: pl.version ?? 0 }, { onSuccess: () => pushToast(`${planOrderNumber(pl)} released — back to the planning queue.`), onError: (e) => pushToast(errMsg(e)) })} disabled={release.isPending || pl.logbook?.status === 'submitted'} className="text-[11px] font-bold text-slate-400 hover:text-rose-600 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 disabled:opacity-50" title="Release this plan back to the queue">Release</button>
             </div>
           );
         } },
@@ -529,4 +653,3 @@ function AddFormulationModal({ onClose }: { onClose: () => void }) {
 
 
 /* ---------------------------------------------------------------- Material Availability */
-

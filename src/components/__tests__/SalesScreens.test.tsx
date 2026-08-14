@@ -17,10 +17,8 @@ const get = api.get as ReturnType<typeof vi.fn>;
 const post = api.post as ReturnType<typeof vi.fn>;
 
 const stub = {
-  inquiries: [], setInquiries: () => {}, salesOrders: [], setSalesOrders: () => {},
-  complaints: [], setComplaints: () => {}, customers: [], setCustomers: () => {},
   onOpen: () => {}, onTrace: () => {},
-} as unknown as SalesData;
+} satisfies SalesData;
 
 const customers = [{ id: 'c1', name: 'Acme Pipes', status: 'active', gstNumber: '', contactPerson: '', phone: '', email: '', billingAddress: '', deliveryAddress: '', paymentTerms: '' }];
 

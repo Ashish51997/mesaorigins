@@ -1,153 +1,219 @@
-# Industrial ERP & Formulation System (Millennium Series)
-## Technical Architecture & System Specification
+# MesaDesk manufacturing platform architecture
 
-This document provides a comprehensive technical overview of the full-stack architecture designed for the Industrial ERP, Formulation, and Standardization platform. It outlines the data schemas, backend endpoints, frontend component modularity, and physical-chemical formulation engines that power the system.
+MesaDesk is a modular manufacturing platform delivered as one React, Express and
+PostgreSQL application. Its three product services are independently entitled and
+independently operable:
 
----
+| Service | Source of truth |
+|---|---|
+| **MesaLeads** | Leads, requirements, technical review, quotations and customer decisions |
+| **MesaERP** | Companies, vendors, sourcing, procurement, customers, sales, valued inventory, business MRP, manufacturing accounting, finance, tax and reporting |
+| **MesaOps** | Operational demand, machine and shift planning, job execution, physical material movement, QA, traceability, maintenance, packing and dispatch |
 
-## 1. System Topology Overview
+Shared platform services provide identity, organization tenancy, service entitlement,
+audit evidence and reliable event infrastructure. They do not merge the business
+lifecycles owned by the three services.
 
-The application follows a full-stack monolithic architecture designed for containerized cloud deployment (Cloud Run, Docker) with local state synchronization.
+The detailed boundary decision is recorded in
+[`docs/adr/0003-mesaerp-mesaops-independent-boundary.md`](docs/adr/0003-mesaerp-mesaops-independent-boundary.md).
 
-```
-+---------------------------------------------------------------------------------+
-|                                 CLIENT PORTAL                                   |
-|                        (React v18+ / Vite / Tailwind)                           |
-+---------------------------------------------------------------------------------+
-|   Management   |   BOM & OEE    |   Logbooks &   |  QA & Packing  |   Sales &   |
-|   Dashboard    | Standards (D3) |   Shift Forms  |  Verification  |   Logistics |
-+---------------------------------------------------------------------------------+
-       |                                                                   ^
-       | HTTP POST (Reactive State Sync)                                   | HTTP GET (JSON)
-       v                                                                   |
-+---------------------------------------------------------------------------------+
-|                                 EXPRESS BACKEND                                 |
-|                                (server.ts / tsx)                                |
-+---------------------------------------------------------------------------------+
-|             API Middleware             |             Vite Dev Proxy             |
-+---------------------------------------------------------------------------------+
-       |                                                                   ^
-       | Read / Write                                                      | Auto-migration
-       v                                                                   |
-+---------------------------------------------------------------------------------+
-|                                DATA PERSISTENCE                                 |
-|                         (data.json / Flat-File Relational)                      |
-+---------------------------------------------------------------------------------+
-```
+## Runtime topology
 
----
-
-## 2. Full-Stack Data Persistence (`data.json`)
-
-To ensure durable, persistent records across browser restarts and multiple client sessions, state is synchronized reactively with a flat-file JSON document database hosted on the server container.
-
-### Relational Schema Layout
-
-The `data.json` schema binds several manufacturing entities:
-
-```json
-{
-  "customers": [],          // CRM Records (Customer Name, Code, Grade Requirements)
-  "inquiries": [],          // Sales Inquiry pipeline and approval trackers
-  "salesOrders": [],        // Active Commercial Dispatch orders matched with CRM
-  "productionPlans": [],    // Allocated machine calendars, line outputs, and targets
-  "templates": [],          // Schema definitions for Extrusion metrics
-  "machineLogbooks": [],    // Real-time roll-by-roll extrusion shifts (Machine ID, operator)
-  "inspections": [],        // QA dimensional audits (thickness, width, weight, tensile)
-  "packingRecords": [],     // Final secondary packaging and barcoding records
-  "inventory": [],          // Raw material silos (Resin) and finished goods store transactions
-  "dispatches": [],         // Logistical truck dispatch ledgers (waybill, driver)
-  "complaints": [],         // CRM Quality Complaints feedback loops
-  "capas": [],              // Corrective & Preventive Action loop registers
-  "recipes": [],            // Bill of Materials (BOM) formulas for compounds
-  "maintenanceTasks": []    // Preventive Maintenance (PM) schedules and calibrations
-}
+```text
+Browser
+  React 19 + Vite + TanStack Query
+        |
+        | HTTPS / JSON
+        v
+Express API
+  authentication -> tenant resolution -> service entitlement -> exact permission
+        |
+        | Prisma transactions with tenant context
+        v
+PostgreSQL 16
+  forced row-level security + append-only evidence + transactional outbox/inbox
 ```
 
----
+The application remains a modular monolith. Service boundaries are enforced in API
+middleware, authorization, database ownership and event contracts without introducing
+distributed-transaction failure modes.
 
-## 3. API Routing Specifications
+## Service independence
 
-The backend (`server.ts`) exposes critical microservices and maps production-ready serving in an optimized runtime environment:
+- An organization can enable MesaLeads, MesaERP or MesaOps in any combination.
+- Every service has native create APIs and its own lifecycle. A cross-service source is
+  optional.
+- MesaERP can record issue, completion, scrap, recovery and batch cost without MesaOps.
+- MesaOps can create local customer, internal, forecast, replenishment, trial, rework or
+  imported operational demand without MesaERP.
+- Machine, line, shift and operator assignment always remains in MesaOps.
+- Destination records are local drafts created from immutable snapshots. Source status is
+  displayed separately from destination status and link state.
+- Source failure never rolls back a destination record, and destination failure never
+  rolls back the source event.
 
-### Core Endpoints
+## Identity, roles and access
 
-*   **`GET /api/health`**
-    *   *Purpose*: Readiness and Liveness probe for high-availability containers.
-    *   *Response*: `{"status": "ok", "time": "2026-07-17T..."}`
-*   **`GET /api/data`**
-    *   *Purpose*: Fetches the entire compiled state database. On initial boot, the backend imports baseline standard configurations automatically to prevent empty states.
-    *   *Response*: `JSON containing all relational ERP fields`
-*   **`POST /api/data`**
-    *   *Purpose*: Commits incremental state changes. Accepts full or partial payloads to update records.
-    *   *Payload*: `{ "recipes": [...], "maintenanceTasks": [...] }`
+Authorization is layered:
 
----
+1. A shared identity resolves one organization membership.
+2. The organization must hold an active entitlement for the requested service.
+3. MesaERP requires an explicit company-scoped role assignment and exact permission.
+   Financial access is default-deny; the legacy organization-admin flag is not a finance
+   bypass.
+4. MesaOps plant access is explicit and default-deny in production. An active all-scope
+   assignment grants every plant; otherwise the caller sees only assigned plant codes.
+   The additive migration preserves eligible legacy access by recording it against a
+   dedicated permissionless system role, while any existing assignment history is left
+   unchanged. Zero history grants nothing. A legacy zero-history fallback exists only when
+   a local/test process explicitly sets `MESAOPS_ALLOW_LEGACY_UNASSIGNED=1`; production
+   ignores that flag.
+5. Supplier portal users authenticate through a separate supplier session and are
+   restricted to their vendor and company. They cannot enter employee, voucher or journal
+   APIs.
 
-## 4. Frontend Modular Architecture
+Sensitive accounting, vendor bank, access and approval actions use maker-checker controls.
+Assignments support validity windows and auditable revocation.
 
-The client side utilizes a highly structured, single-view reactive module switcher to isolate core concerns and prevent memory leakage during long shifts.
+## Persistence and tenant isolation
 
-### Module Topology
+PostgreSQL is the durable system of record for migrated domains. Tenant-owned tables carry
+`organizationId`; MesaERP transactions additionally carry `legalEntityId`, financial-year
+context, origin metadata and an optimistic row version.
 
-1.  **`Dashboard.tsx`**: Management KPI hub utilizing customized `D3RadialProgress` rings to show live OEE rates, scrap waste metrics, line output capacities, and CRM approved order indexes.
-2.  **`ManufacturingStandards.tsx`**: StandardizedWorldwide Industrial Formulation center. Isolates:
-    *   *BOM Formulation & Normalization*: Scales feed elements to exact stoichiometric proportions ($100\%$).
-    *   *D3 OEE Live Simulator*: Half-dial needle dashboard calculating:
-        $$\text{OEE} = \text{Availability} \times \text{Performance} \times \text{Quality}$$
-    *   *Predictive PM Ledger*: Coordinates extruder alignments, gearbox oil flushes, and die clearances.
-3.  **`Planning.tsx`**: Gantt-style machine allocation calendars showing active/idle line capacities.
-4.  **`Reports.tsx`**: Compiled shift logbooks mapped through custom `D3BarChart` (extruder throughputs), `D3DonutChart` (QA pass/fail ratios), and `D3LineChart` (interactive timeline trends).
-5.  **`LogbookModule.tsx`**: Operator interface for submitting shift rolls, material inputs, and downtime alerts.
-6.  **`QualityPacking.tsx`**: QA inspector panel tracking micron thickness deviation, tensile limits, and bubble cooling profiles.
+The runtime connection uses a least-privilege database role. Request transactions set the
+tenant context, and forced PostgreSQL row-level security provides a second isolation layer
+beneath API filters. Financial quantities and values use Prisma/PostgreSQL `Decimal`, while
+public JSON contracts use decimal strings.
 
----
+The legacy `/api/data` document endpoint is retired; PostgreSQL is the only application
+system of record. Deployments no longer mount `/app/storage`. An existing Docker named
+volume may remain as an unmounted recovery artifact until its contents are independently
+archived and an authorized retention decision removes it.
 
-## 5. Standardized Industrial Math Formulations
+## Accounting and valued inventory
 
-The architecture handles core manufacturing metrics using standardized equations:
+One versioned posting engine owns the legal ledger. Vouchers move through
+`draft -> submitted -> approved -> posted -> reversed`. Debits and credits must balance in
+the company base currency. Voucher numbering is scoped by company, voucher family and
+financial year.
 
-### A. Overall Equipment Effectiveness (OEE)
-$$\text{OEE} = A \times P \times Q$$
-*   **Availability ($A$)**:
-    $$A = \frac{\text{Actual Run Time}}{\text{Scheduled Production Time}}$$
-*   **Performance ($P$)**:
-    $$P = \frac{\text{Actual Output Mass (Kg)}}{\text{Ideal Theoretical Throughput Speed (Kg)}}$$
-*   **Quality ($Q$)**:
-    $$Q = \frac{\text{Conforming Material Weight}}{\text{Total Scrap + Conforming Material Weight}}$$
+Posted evidence is immutable. Corrections create reversal, debit/credit-note or adjustment
+documents; application code does not update posted journal rows in place. Accounting
+periods support open, soft-closed and locked states with controlled reopening.
 
-### B. Bill of Materials (BOM) Auto-Normalization
-When adding custom chemical additives, fillers, or masterbatches, total proportions might deviate from exactly $100.0\%$. The system implements a proportion-scaling algorithm:
-$$w_i' = \left( \frac{w_i}{\sum_{j=1}^{n} w_j} \right) \times 100$$
-*Where $w_i$ is the raw portion feed, and $w_i'$ is the normalized stoichiometric ratio percentage.*
+Valued inventory is a separate MesaERP ledger with moving weighted average or preselected
+FIFO valuation. Approved source documents first create a posting link and a draft voucher.
+Only the independently approved voucher post commits general-ledger and stock movements
+atomically. MesaOps operational stock evidence cannot write these records directly.
 
----
+## Manufacturing ownership
 
-## 6. High-Contrast Interactive D3.js Engines
+MesaERP owns planning BOM revisions, commercial availability, reservations, aggregate
+production demand, material planning suggestions, manufacturing vouchers, WIP and actual
+batch cost. It never selects an executable machine.
 
-All charts (`D3Charts.tsx`) are hand-coded directly with the raw **D3.js** library, avoiding heavy standard wrappers and enabling beautiful CSS-injected vector SVG elements.
+MesaOps owns `OperationalOrder`. A `ProductionPlan` references that local order and stores
+the selected machine, shift, operator, dates, quantity and execution snapshot. Quantity and
+schedule checks run under database locks so concurrent split plans cannot over-plan the
+order or double-book a machine slot.
 
-*   **D3BarChart**: Incorporates horizontal guideline grids, vertical linear-gradient defs, and custom tooltips with mouse coordinate tracking (`d3.pointer`).
-*   **D3DonutChart**: Features radial sector expansion on hover (`d3.arc().outerRadius * 1.08`) and dynamic central text interpolation showing absolute value weights versus total batch sizes.
-*   **D3LineChart**: Integrates continuous area opacity slopes, monotone curve calculations (`d3.curveMonotoneX`), dual-axis tracking (comparing primary outputs versus targets), and interactive vertical crosshair grids.
-*   **D3GaugeChart**: High-precision half-dial needle dashboard. Renders red, amber, and green sectors, calculates trigonometric coordinates for the needle pointer, and handles smooth angular ease-in animations (`d3.easeCubicOut`).
+Plant execution, QA and physical dispatch use their own evidence and permissions. Dispatch
+quantity is bounded by ordered, completed, packed, QA-released and previously undispatched
+quantity. Statutory applicability is derived from an active rules profile; callers cannot
+disable a required legal gate with a request flag.
 
----
+## Reliable optional handoffs
 
-## 7. Build, Bundling & Container Compatibility
+Service transitions and their outbox events commit in the same database transaction. Each
+event carries a stable ID, schema version, correlation ID, aggregate version, canonical
+payload hash and immutable snapshot. Consumers deduplicate by consumer and event ID.
 
-The platform is designed to compile efficiently for high-performance production workloads.
+Trusted service handoffs use deployment-managed signing keys in addition to normal user
+authorization. A browser cannot assert that a local order originated in MesaERP merely by
+supplying source IDs and a hash. Invalid mappings, stale versions and out-of-order events
+enter an exception state instead of being guessed or silently overwritten.
+
+## India external compliance evidence
+
+Provider-backed e-invoice and e-way-bill operations keep their adapter validation path.
+Fallback acknowledgements, externally issued e-way bills, supplier e-invoices and GSTR-2B
+uploads use a separate deployment-owned verifier attestation. The verifier signs a
+canonical envelope that binds organization, legal entity, evidence kind, source-record
+type/id, retained-payload hash, verifier reference and verification timestamp.
+
+The API never treats a caller-supplied checksum or label as verification. It requires
+`MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY` to be canonical base64 decoding to at least 32 bytes,
+and fails closed when the key or HMAC is invalid. External e-way activation, inbound-to-
+GSTR-2B reconciliation and an ITC claimed decision re-verify the stored signed envelopes
+against the immutable retained payload. This deployment attestation is not represented as
+a government or provider signature.
+
+## API conventions
+
+MesaERP routes are company scoped under:
+
+```text
+/api/mesaerp/v1/entities/:legalEntityId/...
+```
+
+Every mutating ERP request uses an `Idempotency-Key`. Lifecycle changes also carry the
+expected row version. Dates use ISO business dates, event timestamps use UTC, and money or
+quantity values are decimal strings. The generated OpenAPI document is derived from the
+actual Express route stack and is served beneath `/api/docs`.
+
+MesaOps planning, dispatch and high-risk plant mutations use the same retry-safe and
+optimistic-concurrency principles while retaining their existing service-native routes.
+
+## Application entry points
+
+- `/` — entitled-service selector
+- `/mesaleads` — MesaLeads
+- `/mesaerp` — MesaERP company workspace
+- `/mesaops` — MesaOps plant workspace
+- `/supplier-portal` — separately authenticated supplier workspace
+- `/admin` — organization/service administration
+
+## Build and deployment
 
 ```bash
-# Developer Sandbox Startup
-npm run dev
-
-# Production Build Sequence
+npm run lint
+npm run lint:server
+npm run test:unit
+npm run test:server
 npm run build
+npm start
 ```
 
-The build sequence utilizes **Vite** to package highly optimized client-side assets under `dist/`, while **esbuild** compiles the full-stack server into a single standalone CommonJS bundle:
-```bash
-esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
-```
-This ensures high-speed startup, avoids directory resolution path errors across execution runtimes, and remains perfectly compatible with secure container ports (`0.0.0.0:3000`).
+The Vite client is emitted only under `dist/client`; the ESM Express bundle is emitted under
+`dist/server`. Express exposes only the client directory, and production builds do not ship
+a server source map. The production entry is `dist/server/server.mjs`. Docker Compose
+provides a PostgreSQL service, an explicit one-shot
+migration service and the non-root production application container. Seeding is a separate
+profile because it recreates demo data and must never run implicitly against customer data.
+
+Production secrets include the application database/authentication credentials, vendor-bank
+encryption key and separate keys for trusted service handoffs, MesaERP-issued dispatch
+evidence and externally verified compliance evidence. They belong in the deployment secret
+store, never in repository environment files.
+
+Production startup validates the public HTTPS origin, proxy-hop count, Auth.js secret and
+four independent cryptographic keys. `/api/ready` additionally verifies database access
+through a non-superuser/non-`BYPASSRLS` runtime role and confirms every migration packaged
+with the image is complete. Cloud Build gates releases on the full test suite, a verified
+Cloud SQL backup, an additive migration job and a no-traffic candidate smoke test before
+traffic promotion. Runtime revisions pin numeric Secret Manager versions.
+
+## Change rules
+
+- Add schema changes through forward-only Prisma migrations. Never reset or reseed customer
+  databases during an upgrade.
+- Run `npm run db:preflight:mesaerp` before the first MesaERP migration. Legacy sales orders
+  already split over multiple plans require explicit planned-quantity reconciliation; the
+  preflight is read-only and refuses to guess an allocation.
+- Preserve accepted source snapshots and audit records when a service is disabled.
+- Do not write journals or valued stock outside their posting engine.
+- Do not put machine scheduling, operator tasks or plant logbooks in MesaERP.
+- Do not make a service's native completion depend on a live call to another service.
+- Quarantine ambiguous party, item, UOM, warehouse or legacy-plan mappings for explicit
+  reconciliation.

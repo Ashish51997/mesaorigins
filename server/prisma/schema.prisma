@@ -43,39 +43,113 @@ model Organization {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  memberships            Membership[]
-  roles                  Role[]
-  employeeGrants         EmployeeGrant[]
-  customers              Customer[]
-  inquiries              Inquiry[]
-  salesOrders            SalesOrder[]
-  productionPlans        ProductionPlan[]
-  logbookTemplates       LogbookTemplate[]
-  machineLogbooks        MachineLogbook[]
-  qualityInspections     QualityInspection[]
-  inventoryTransactions  InventoryTransaction[]
-  dispatchRecords        DispatchRecord[]
-  complaints             Complaint[]
-  capaRecords            CAPARecord[]
-  formulations           Formulation[]
-  maintenanceTasks       MaintenanceTask[]
-  machines               Machine[]
-  auditEvents            AuditEvent[]
-  services               OrganizationService[]
-  leadForms              LeadForm[]
-  mesaLeads              MesaLead[]
-  leadSubmissions        LeadSubmission[]
-  leadActivities         LeadActivity[]
-  leadAttachments        LeadAttachment[]
-  leadFormLinks          LeadFormLink[]
-  leadFormQuestions      LeadFormQuestion[]
-  leadPortalLinks        LeadPortalLink[]
-  leadDecisionChallenges LeadDecisionChallenge[]
-  leadQuotes             LeadQuote[]
-  leadQuoteLineItems     LeadQuoteLineItem[]
-  leadQuoteEvents        LeadQuoteEvent[]
-  leadFulfillments       LeadFulfillment[]
-  leadMilestones         LeadMilestone[]
+  memberships                  Membership[]
+  roles                        Role[]
+  employeeGrants               EmployeeGrant[]
+  customers                    Customer[]
+  inquiries                    Inquiry[]
+  salesOrders                  SalesOrder[]
+  productionPlans              ProductionPlan[]
+  logbookTemplates             LogbookTemplate[]
+  machineLogbooks              MachineLogbook[]
+  qualityInspections           QualityInspection[]
+  inventoryTransactions        InventoryTransaction[]
+  dispatchRecords              DispatchRecord[]
+  complaints                   Complaint[]
+  capaRecords                  CAPARecord[]
+  formulations                 Formulation[]
+  maintenanceTasks             MaintenanceTask[]
+  machines                     Machine[]
+  auditEvents                  AuditEvent[]
+  services                     OrganizationService[]
+  leadForms                    LeadForm[]
+  mesaLeads                    MesaLead[]
+  leadSubmissions              LeadSubmission[]
+  leadActivities               LeadActivity[]
+  leadAttachments              LeadAttachment[]
+  leadFormLinks                LeadFormLink[]
+  leadFormQuestions            LeadFormQuestion[]
+  leadPortalLinks              LeadPortalLink[]
+  leadDecisionChallenges       LeadDecisionChallenge[]
+  leadQuotes                   LeadQuote[]
+  leadQuoteLineItems           LeadQuoteLineItem[]
+  leadQuoteEvents              LeadQuoteEvent[]
+  leadFulfillments             LeadFulfillment[]
+  leadMilestones               LeadMilestone[]
+  legalEntities                LegalEntity[]
+  financialYears               FinancialYear[]
+  accountingPeriods            AccountingPeriod[]
+  rolePermissions              RolePermission[]
+  roleAssignments              RoleAssignment[]
+  approvalPolicies             ApprovalPolicy[]
+  delegations                  Delegation[]
+  erpAccounts                  ErpAccount[]
+  erpNumberSeries              ErpNumberSeries[]
+  erpIdempotencyRecords        ErpIdempotencyRecord[]
+  erpVendors                   ErpVendor[]
+  erpVendorBankAccounts        ErpVendorBankAccount[]
+  erpVendorDocuments           ErpVendorDocument[]
+  supplierPortalUsers          SupplierPortalUser[]
+  supplierPortalInvites        SupplierPortalInvite[]
+  supplierPortalSessions       SupplierPortalSession[]
+  erpRfqs                      ErpRfq[]
+  erpRfqLines                  ErpRfqLine[]
+  erpRfqInvitations            ErpRfqInvitation[]
+  erpSupplierQuotations        ErpSupplierQuotation[]
+  erpSupplierQuotationLines    ErpSupplierQuotationLine[]
+  erpRateAgreements            ErpRateAgreement[]
+  erpPoAcknowledgements        ErpPoAcknowledgement[]
+  erpAdvanceShipmentNotices    ErpAdvanceShipmentNotice[]
+  erpVendorChangeCases         ErpVendorChangeCase[]
+  erpVendorDisputes            ErpVendorDispute[]
+  erpVendorPaymentProposals    ErpVendorPaymentProposal[]
+  erpSupplierInvoiceEvidence   ErpSupplierInvoiceEvidence[]
+  erpCustomers                 ErpCustomer[]
+  erpItems                     ErpItem[]
+  erpWarehouses                ErpWarehouse[]
+  erpDocuments                 ErpDocument[]
+  erpDocumentLines             ErpDocumentLine[]
+  erpDocumentLinks             ErpDocumentLink[]
+  erpMatchCases                ErpMatchCase[]
+  erpVouchers                  ErpVoucher[]
+  erpVoucherLines              ErpVoucherLine[]
+  erpStockMovements            ErpStockMovement[]
+  erpValuationLayers           ErpValuationLayer[]
+  erpValuationConsumptions     ErpValuationConsumption[]
+  erpInventoryCounts           ErpInventoryCount[]
+  erpPostingLinks              ErpPostingLink[]
+  erpPlanningBoms              ErpPlanningBom[]
+  erpPlanningBomRevisions      ErpPlanningBomRevision[]
+  erpPlanningBomComponents     ErpPlanningBomComponent[]
+  erpDemandForecasts           ErpDemandForecast[]
+  erpStockReservations         ErpStockReservation[]
+  erpMrpRuns                   ErpMrpRun[]
+  erpMrpRequirements           ErpMrpRequirement[]
+  erpMrpSuggestions            ErpMrpSuggestion[]
+  erpTransferProposals         ErpTransferProposal[]
+  erpProductionDemands         ErpProductionDemand[]
+  erpManufacturingVouchers     ErpManufacturingVoucher[]
+  erpBatchCosts                ErpBatchCost[]
+  erpTaxDocuments              ErpTaxDocument[]
+  erpComplianceRuleProfiles    ErpComplianceRuleProfile[]
+  erpBankReconciliations       ErpBankReconciliation[]
+  erpAssets                    ErpAsset[]
+  erpBudgets                   ErpBudget[]
+  erpHandoffMappings           ErpHandoffMapping[]
+  erpHandoffEventRoutes        ErpHandoffEventRoute[]
+  erpHandoffInboxEvents        ErpHandoffInboxEvent[]
+  erpPlantQaEvidence           ErpPlantQaEvidence[]
+  erpPlantDispatchEvidence     ErpPlantDispatchEvidence[]
+  erpTdsSections               ErpTdsSection[]
+  erpTdsRates                  ErpTdsRate[]
+  erpVendorTdsClassifications  ErpVendorTdsClassification[]
+  erpTdsDeductions             ErpTdsDeduction[]
+  sourceLinks                  SourceLink[]
+  outboxEvents                 IntegrationOutboxEvent[]
+  inboxReceipts                IntegrationInboxReceipt[]
+  operationalOrders            OperationalOrder[]
+  mesaOpsStatutoryRuleProfiles MesaOpsStatutoryRuleProfile[]
+  mesaOpsIdempotencyRecords    MesaOpsIdempotencyRecord[]
 }
 
 // MesaDesk's global product catalog. Organizations subscribe through the
@@ -90,6 +164,7 @@ model Service {
   updatedAt   DateTime @updatedAt
 
   organizations OrganizationService[]
+  permissions   Permission[]
 }
 
 model OrganizationService {
@@ -103,6 +178,23 @@ model OrganizationService {
   service      Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@id([organizationId, serviceId])
+  @@index([serviceId])
+}
+
+// Global, namespaced permission catalogue. Service actions are intentionally
+// explicit; MesaERP never inherits the legacy "unknown action = allow" rule.
+model Permission {
+  id          String @id
+  serviceId   String
+  key         String
+  label       String
+  description String @default("")
+  riskLevel   String @default("standard") // standard | sensitive | high
+
+  service         Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+
+  @@unique([serviceId, key])
   @@index([serviceId])
 }
 
@@ -250,10 +342,14 @@ model Membership {
 
   roleId String?
 
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roleRef      Role?           @relation(fields: [roleId], references: [id])
-  grants       EmployeeGrant[]
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleRef             Role?                @relation(fields: [roleId], references: [id])
+  grants              EmployeeGrant[]
+  roleAssignments     RoleAssignment[]
+  delegationsFrom     Delegation[]         @relation("DelegationFrom")
+  delegationsTo       Delegation[]         @relation("DelegationTo")
+  supplierPortalUsers SupplierPortalUser[]
 
   @@unique([organizationId, userId])
   @@unique([organizationId, employeeCode])
@@ -262,25 +358,30 @@ model Membership {
   @@index([roleId])
 }
 
-// A tenant-defined role: a named set of allowed screens (actions inherit from
-// their screen). isAdmin bypasses all screen checks (Owner/Administrator).
-// isSystem marks the seeded built-ins. Access is enforced server-side from here.
+// A tenant-defined role. Legacy MesaOps screens may use isAdmin, but MesaERP
+// finance never inherits that bypass: it uses explicit RolePermission rows and
+// company-scoped RoleAssignments. isSystem marks protected platform built-ins.
 model Role {
-  id             String   @id @default(cuid())
-  organizationId String
-  name           String
-  screens        Json     @default("[]") // string[] of screen ids
-  isAdmin        Boolean  @default(false)
-  isSystem       Boolean  @default(false)
-  version        Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String   @id @default(cuid())
+  organizationId   String
+  erpLegalEntityId String?
+  name             String
+  screens          Json     @default("[]") // string[] of screen ids
+  isAdmin          Boolean  @default(false)
+  isSystem         Boolean  @default(false)
+  version          Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  memberships  Membership[]
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  erpLegalEntity LegalEntity?     @relation(fields: [erpLegalEntityId], references: [id], onDelete: Restrict)
+  memberships    Membership[]
+  permissions    RolePermission[]
+  assignments    RoleAssignment[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
+  @@index([erpLegalEntityId])
 }
 
 // A per-employee screen override on top of their role (state on|off). Lets an
@@ -320,10 +421,11 @@ model Customer {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  inquiries    Inquiry[]
-  salesOrders  SalesOrder[]
-  complaints   Complaint[]
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inquiries         Inquiry[]
+  salesOrders       SalesOrder[]
+  complaints        Complaint[]
+  operationalOrders OperationalOrder[]
 
   @@index([organizationId])
 }
@@ -373,11 +475,12 @@ model SalesOrder {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  inquiry         Inquiry          @relation(fields: [inquiryId], references: [id])
-  customer        Customer         @relation(fields: [customerId], references: [id])
-  productionPlans ProductionPlan[]
-  dispatches      DispatchRecord[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inquiry          Inquiry           @relation(fields: [inquiryId], references: [id])
+  customer         Customer          @relation(fields: [customerId], references: [id])
+  productionPlans  ProductionPlan[]
+  dispatches       DispatchRecord[]
+  operationalOrder OperationalOrder?
 
   @@unique([organizationId, soNumber])
   @@index([organizationId])
@@ -716,8 +819,10 @@ model LeadAttachment {
 model ProductionPlan {
   id                 String   @id @default(cuid())
   organizationId     String
-  salesOrderId       String
+  salesOrderId       String?
+  operationalOrderId String
   machineId          String
+  plannedQuantity    Decimal  @db.Decimal(18, 6)
   shift              String   @default("D")
   operatorName       String   @default("")
   scheduledStartDate String   @default("")
@@ -729,18 +834,22 @@ model ProductionPlan {
   formulaNo          String   @default("")
   moldNo             String   @default("")
   productName        String   @default("")
+  taskSequence       Json     @default("[]")
+  executionSnapshot  Json     @default("{}")
   version            Int      @default(0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  salesOrder      SalesOrder       @relation(fields: [salesOrderId], references: [id])
-  machine         Machine          @relation(fields: [machineId], references: [id], onDelete: Cascade)
-  logbookTemplate LogbookTemplate? @relation(fields: [logbookTemplateId], references: [id])
-  logbook         MachineLogbook?
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  salesOrder       SalesOrder?      @relation(fields: [salesOrderId], references: [id])
+  operationalOrder OperationalOrder @relation(fields: [operationalOrderId], references: [id], onDelete: Restrict)
+  machine          Machine          @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  logbookTemplate  LogbookTemplate? @relation(fields: [logbookTemplateId], references: [id])
+  logbook          MachineLogbook?
 
   @@index([organizationId])
   @@index([salesOrderId])
+  @@index([operationalOrderId])
   @@index([machineId])
   @@index([logbookTemplateId])
 }
@@ -847,6 +956,7 @@ model MachineLogbook {
 model QualityInspection {
   id             String   @id @default(cuid())
   organizationId String
+  plantCode      String   @default("PRIMARY")
   rollNumber     String
   lotNumber      String   @default("")
   dimensions     Json     @default("{}")
@@ -865,11 +975,13 @@ model QualityInspection {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+  @@index([organizationId, plantCode, createdAt])
 }
 
 model InventoryTransaction {
   id             String   @id @default(cuid())
   organizationId String
+  plantCode      String   @default("PRIMARY")
   type           String
   direction      String
   itemCode       String
@@ -885,31 +997,81 @@ model InventoryTransaction {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+  @@index([organizationId, plantCode, createdAt])
 }
 
 model DispatchRecord {
-  id                     String   @id @default(cuid())
-  organizationId         String
-  invoiceNumber          String
-  salesOrderId           String
-  vehicleNumber          String   @default("")
-  transporter            String   @default("")
-  driverName             String   @default("")
-  dispatchDate           String   @default("")
-  deliveryAddress        String   @default("")
-  etaDate                String   @default("")
-  status                 String   @default("shipped")
-  communicationTriggered Boolean  @default(false)
-  version                Int      @default(0)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  organizationId          String
+  invoiceNumber           String
+  gatePassNumber          String   @default("")
+  eWayBillNumber          String   @default("")
+  statutoryRequired       Boolean  @default(false)
+  statutoryArtifact       Json     @default("{}")
+  statutoryProfileVersion String   @default("")
+  statutoryEvidenceHash   String   @default("")
+  salesOrderId            String?
+  operationalOrderId      String
+  quantity                Decimal  @default(0) @db.Decimal(18, 6)
+  uom                     String   @default("units")
+  evidenceSnapshot        Json     @default("{}")
+  evidenceHash            String   @default("")
+  vehicleNumber           String   @default("")
+  transporter             String   @default("")
+  driverName              String   @default("")
+  dispatchDate            String   @default("")
+  deliveryAddress         String   @default("")
+  etaDate                 String   @default("")
+  status                  String   @default("shipped")
+  communicationTriggered  Boolean  @default(false)
+  version                 Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  salesOrder   SalesOrder   @relation(fields: [salesOrderId], references: [id])
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  salesOrder       SalesOrder?      @relation(fields: [salesOrderId], references: [id])
+  operationalOrder OperationalOrder @relation(fields: [operationalOrderId], references: [id], onDelete: Restrict)
 
   @@unique([organizationId, invoiceNumber])
   @@index([organizationId])
   @@index([salesOrderId])
+  @@index([operationalOrderId])
+}
+
+// Approved MesaOps dispatch applicability is tenant-owned and independent of
+// MesaERP. Each approved version is immutable and scoped by country, plant,
+// movement and effective dates. A reviewed exemption is represented by an
+// approved profile with both artifact requirements false and a nonblank reason.
+model MesaOpsStatutoryRuleProfile {
+  id                      String    @id @default(cuid())
+  organizationId          String
+  version                 String
+  countryCode             String    @default("IN")
+  plantCode               String    @default("*")
+  movementType            String    @default("*")
+  effectiveFrom           DateTime  @db.Date
+  effectiveTo             DateTime? @db.Date
+  status                  String    @default("draft") // draft | approved
+  requiresInvoice         Boolean
+  requiresEWayBill        Boolean
+  reviewedExemptionReason String    @default("")
+  sourceReference         String
+  sourceEvidence          Json
+  sourceChecksum          String
+  createIdempotencyKey    String?
+  requestHash             String    @default("")
+  rowVersion              Int       @default(0)
+  createdBy               String
+  approvedBy              String    @default("")
+  approvedAt              DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, version], map: "MesaOpsStatutoryRuleProfile_identity_key")
+  @@unique([organizationId, createIdempotencyKey], map: "MesaOpsStatutoryRuleProfile_idempotency_key")
+  @@index([organizationId, status, countryCode, plantCode, movementType, effectiveFrom], map: "MesaOpsStatutoryRuleProfile_lookup_idx")
 }
 
 // ============================================================ complaints / CAPA (tenant)
@@ -1012,6 +1174,7 @@ model MaintenanceTask {
 model Machine {
   id             String  @id @default(cuid())
   organizationId String
+  plantCode      String  @default("PRIMARY")
   code           String // 'M01'..'M09'
   line           String  @default("")
   family         String  @default("PVC")
@@ -1028,6 +1191,7 @@ model Machine {
 
   @@unique([organizationId, code])
   @@index([organizationId])
+  @@index([organizationId, plantCode])
 }
 
 // ============================================================ authorization (tenant)
@@ -1050,4 +1214,2584 @@ model AuditEvent {
 
   @@index([organizationId])
   @@index([organizationId, entity, entityId])
+}
+
+// ============================================================ shared access + company foundation
+
+model LegalEntity {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  code                 String
+  legalName            String
+  tradeName            String   @default("")
+  countryCode          String   @default("IN")
+  baseCurrency         String   @default("INR")
+  fiscalYearStartMonth Int      @default(4)
+  pan                  String   @default("")
+  cin                  String   @default("")
+  gstRegistrations     Json     @default("[]")
+  registeredAddress    Json     @default("{}")
+  settings             Json     @default("{}")
+  status               String   @default("active") // active | inactive
+  createIdempotencyKey String?
+  requestHash          String   @default("")
+  rowVersion           Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization             Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  erpRoles                 Role[]
+  financialYears           FinancialYear[]
+  accountingPeriods        AccountingPeriod[]
+  roleAssignments          RoleAssignment[]
+  approvalPolicies         ApprovalPolicy[]
+  delegations              Delegation[]
+  accounts                 ErpAccount[]
+  numberSeries             ErpNumberSeries[]
+  idempotencyRecords       ErpIdempotencyRecord[]
+  vendors                  ErpVendor[]
+  vendorBankAccounts       ErpVendorBankAccount[]
+  vendorDocuments          ErpVendorDocument[]
+  supplierPortalUsers      SupplierPortalUser[]
+  rfqs                     ErpRfq[]
+  rfqLines                 ErpRfqLine[]
+  rfqInvitations           ErpRfqInvitation[]
+  supplierQuotations       ErpSupplierQuotation[]
+  supplierQuotationLines   ErpSupplierQuotationLine[]
+  rateAgreements           ErpRateAgreement[]
+  poAcknowledgements       ErpPoAcknowledgement[]
+  advanceShipmentNotices   ErpAdvanceShipmentNotice[]
+  vendorChangeCases        ErpVendorChangeCase[]
+  vendorDisputes           ErpVendorDispute[]
+  vendorPaymentProposals   ErpVendorPaymentProposal[]
+  supplierInvoiceEvidence  ErpSupplierInvoiceEvidence[]
+  customers                ErpCustomer[]
+  items                    ErpItem[]
+  warehouses               ErpWarehouse[]
+  documents                ErpDocument[]
+  documentLines            ErpDocumentLine[]
+  documentLinks            ErpDocumentLink[]
+  matchCases               ErpMatchCase[]
+  vouchers                 ErpVoucher[]
+  voucherLines             ErpVoucherLine[]
+  stockMovements           ErpStockMovement[]
+  valuationLayers          ErpValuationLayer[]
+  valuationConsumptions    ErpValuationConsumption[]
+  inventoryCounts          ErpInventoryCount[]
+  postingLinks             ErpPostingLink[]
+  planningBoms             ErpPlanningBom[]
+  planningBomRevisions     ErpPlanningBomRevision[]
+  planningBomComponents    ErpPlanningBomComponent[]
+  demandForecasts          ErpDemandForecast[]
+  stockReservations        ErpStockReservation[]
+  mrpRuns                  ErpMrpRun[]
+  mrpRequirements          ErpMrpRequirement[]
+  mrpSuggestions           ErpMrpSuggestion[]
+  transferProposals        ErpTransferProposal[]
+  productionDemands        ErpProductionDemand[]
+  manufacturingVouchers    ErpManufacturingVoucher[]
+  batchCosts               ErpBatchCost[]
+  taxDocuments             ErpTaxDocument[]
+  complianceRuleProfiles   ErpComplianceRuleProfile[]
+  bankReconciliations      ErpBankReconciliation[]
+  assets                   ErpAsset[]
+  budgets                  ErpBudget[]
+  handoffMappings          ErpHandoffMapping[]
+  handoffEventRoutes       ErpHandoffEventRoute[]
+  handoffInboxEvents       ErpHandoffInboxEvent[]
+  plantQaEvidence          ErpPlantQaEvidence[]
+  plantDispatchEvidence    ErpPlantDispatchEvidence[]
+  tdsSections              ErpTdsSection[]
+  tdsRates                 ErpTdsRate[]
+  vendorTdsClassifications ErpVendorTdsClassification[]
+  tdsDeductions            ErpTdsDeduction[]
+  sourceLinks              SourceLink[]
+  outboxEvents             IntegrationOutboxEvent[]
+  inboxReceipts            IntegrationInboxReceipt[]
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+model FinancialYear {
+  id             String   @id @default(cuid())
+  organizationId String
+  legalEntityId  String
+  code           String
+  startsOn       DateTime @db.Date
+  endsOn         DateTime @db.Date
+  status         String   @default("open") // open | soft_closed | locked
+  rowVersion     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity           LegalEntity               @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  periods               AccountingPeriod[]
+  numberSeries          ErpNumberSeries[]
+  documents             ErpDocument[]
+  vouchers              ErpVoucher[]
+  stockMovements        ErpStockMovement[]
+  inventoryCounts       ErpInventoryCount[]
+  demandForecasts       ErpDemandForecast[]
+  mrpRuns               ErpMrpRun[]
+  productionDemands     ErpProductionDemand[]
+  manufacturingVouchers ErpManufacturingVoucher[]
+  batchCosts            ErpBatchCost[]
+  taxDocuments          ErpTaxDocument[]
+  assets                ErpAsset[]
+  budgets               ErpBudget[]
+  tdsDeductions         ErpTdsDeduction[]
+
+  @@unique([organizationId, legalEntityId, code])
+  @@index([organizationId])
+  @@index([legalEntityId, status])
+}
+
+model AccountingPeriod {
+  id              String   @id @default(cuid())
+  organizationId  String
+  legalEntityId   String
+  financialYearId String
+  periodNumber    Int
+  name            String
+  startsOn        DateTime @db.Date
+  endsOn          DateTime @db.Date
+  status          String   @default("open") // open | soft_closed | locked
+  reopenedReason  String   @default("")
+  reopenedBy      String   @default("")
+  rowVersion      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity   @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  vouchers      ErpVoucher[]
+
+  @@unique([organizationId, legalEntityId, financialYearId, periodNumber])
+  @@index([organizationId])
+  @@index([legalEntityId, startsOn, endsOn])
+}
+
+model RolePermission {
+  id             String   @id @default(cuid())
+  organizationId String
+  roleId         String
+  permissionId   String
+  effect         String   @default("allow") // allow | deny
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission   @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, roleId, permissionId])
+  @@index([organizationId])
+  @@index([roleId])
+}
+
+model RoleAssignment {
+  id               String    @id @default(cuid())
+  organizationId   String
+  membershipId     String
+  roleId           String
+  serviceId        String
+  legalEntityId    String?
+  plantCode        String?
+  warehouseId      String?
+  validFrom        DateTime?
+  validTo          DateTime?
+  status           String    @default("active")
+  rowVersion       Int       @default(0)
+  revokedAt        DateTime?
+  revokedBy        String    @default("")
+  revocationReason String    @default("")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  membership   Membership    @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role         Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  legalEntity  LegalEntity?  @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+  warehouse    ErpWarehouse? @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, membershipId, roleId, serviceId, legalEntityId, plantCode, warehouseId])
+  @@index([organizationId])
+  @@index([membershipId, serviceId, status])
+  @@index([roleId, serviceId])
+  @@index([legalEntityId])
+}
+
+model ApprovalPolicy {
+  id                String   @id @default(cuid())
+  organizationId    String
+  legalEntityId     String?
+  serviceId         String
+  action            String
+  currency          String   @default("INR")
+  minimumAmount     Decimal? @db.Decimal(18, 2)
+  maximumAmount     Decimal? @db.Decimal(18, 2)
+  steps             Json     @default("[]")
+  allowSelfApproval Boolean  @default(false)
+  active            Boolean  @default(true)
+  rowVersion        Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  legalEntity  LegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([legalEntityId, action, active])
+}
+
+model Delegation {
+  id               String   @id @default(cuid())
+  organizationId   String
+  fromMembershipId String
+  toMembershipId   String
+  serviceId        String
+  legalEntityId    String?
+  permissions      Json     @default("[]")
+  validFrom        DateTime
+  validTo          DateTime
+  reason           String   @default("")
+  status           String   @default("active") // active | revoked | expired
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fromMembership Membership   @relation("DelegationFrom", fields: [fromMembershipId], references: [id], onDelete: Cascade)
+  toMembership   Membership   @relation("DelegationTo", fields: [toMembershipId], references: [id], onDelete: Cascade)
+  legalEntity    LegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([fromMembershipId, status])
+  @@index([toMembershipId, status])
+}
+
+// ============================================================ MesaERP masters + commercial documents
+
+model ErpAccount {
+  id                     String   @id @default(cuid())
+  organizationId         String
+  legalEntityId          String
+  code                   String
+  name                   String
+  accountType            String // asset | liability | equity | income | expense
+  classification         String   @default("other")
+  cashFlowClass          String   @default("operating") // operating | investing | financing | cash | non_cash
+  parentId               String?
+  currency               String   @default("INR")
+  allowPosting           Boolean  @default(true)
+  reconciliationRequired Boolean  @default(false)
+  active                 Boolean  @default(true)
+  rowVersion             Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity      @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  parent       ErpAccount?      @relation("AccountTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children     ErpAccount[]     @relation("AccountTree")
+  voucherLines ErpVoucherLine[]
+
+  @@unique([organizationId, legalEntityId, code])
+  @@index([organizationId])
+  @@index([legalEntityId, accountType])
+}
+
+model ErpVendor {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  legalEntityId      String
+  vendorCode         String
+  legalName          String
+  tradeName          String   @default("")
+  pan                String   @default("")
+  gstin              String   @default("")
+  msmeNumber         String   @default("")
+  registrations      Json     @default("[]")
+  addresses          Json     @default("[]")
+  categories         Json     @default("[]")
+  plantCoverage      Json     @default("[]")
+  geographyCoverage  Json     @default("[]")
+  contacts           Json     @default("[]")
+  paymentTerms       String   @default("")
+  currency           String   @default("INR")
+  creditDays         Int      @default(0)
+  taxClassification  String   @default("")
+  tdsClassification  String   @default("")
+  avlStatus          String   @default("not_listed")
+  lifecycleStatus    String   @default("invited") // invited | onboarding | under_review | approved | conditionally_approved | suspended | blocked
+  riskRating         String   @default("unrated")
+  complianceStatus   String   @default("pending")
+  performance        Json     @default("{}")
+  originMetadata     Json     @default("{}")
+  createdBy          String   @default("")
+  lastLifecycleActor String   @default("")
+  rowVersion         Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization           Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity            LegalEntity                  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  bankAccounts           ErpVendorBankAccount[]
+  documents              ErpVendorDocument[]
+  portalUsers            SupplierPortalUser[]
+  erpDocuments           ErpDocument[]
+  matchCases             ErpMatchCase[]
+  rfqInvitations         ErpRfqInvitation[]
+  supplierQuotations     ErpSupplierQuotation[]
+  rateAgreements         ErpRateAgreement[]
+  poAcknowledgements     ErpPoAcknowledgement[]
+  advanceShipmentNotices ErpAdvanceShipmentNotice[]
+  changeCases            ErpVendorChangeCase[]
+  disputes               ErpVendorDispute[]
+  paymentProposals       ErpVendorPaymentProposal[]
+  invoiceEvidence        ErpSupplierInvoiceEvidence[]
+  tdsClassifications     ErpVendorTdsClassification[]
+  tdsDeductions          ErpTdsDeduction[]
+
+  @@unique([organizationId, legalEntityId, vendorCode])
+  @@index([organizationId])
+  @@index([legalEntityId, lifecycleStatus])
+  @@index([legalEntityId, gstin])
+}
+
+model ErpVendorBankAccount {
+  id                    String    @id @default(cuid())
+  organizationId        String
+  legalEntityId         String
+  vendorId              String
+  accountHolderName     String
+  bankName              String
+  accountNumberMasked   String
+  accountNumberCipher   Bytes?
+  ifsc                  String
+  branch                String    @default("")
+  currency              String    @default("INR")
+  status                String    @default("pending_verification")
+  createdBy             String    @default("")
+  verifiedBy            String?
+  verifiedAt            DateTime?
+  verificationReference String    @default("")
+  decisionReason        String    @default("")
+  changeCaseId          String?
+  rowVersion            Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor       ErpVendor    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([vendorId, status])
+}
+
+model ErpVendorDocument {
+  id                      String    @id @default(cuid())
+  organizationId          String
+  legalEntityId           String
+  vendorId                String
+  documentType            String
+  documentNumber          String    @default("")
+  issuedOn                DateTime? @db.Date
+  expiresOn               DateTime? @db.Date
+  status                  String    @default("pending")
+  storageRef              String
+  checksum                String
+  metadata                Json      @default("{}")
+  submittedByPortalUserId String?
+  reviewedBy              String    @default("")
+  reviewedAt              DateTime?
+  createIdempotencyKey    String?
+  requestHash             String    @default("")
+  rowVersion              Int       @default(0)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity           LegalEntity         @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor                ErpVendor           @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  submittedByPortalUser SupplierPortalUser? @relation(fields: [submittedByPortalUserId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([vendorId, expiresOn])
+}
+
+model SupplierPortalUser {
+  id             String    @id @default(cuid())
+  organizationId String
+  legalEntityId  String
+  vendorId       String
+  membershipId   String?
+  email          String
+  name           String
+  status         String    @default("invited") // invited | active | suspended | revoked
+  permissions    Json      @default("[]")
+  lastSeenAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization           Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity            LegalEntity                  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor                 ErpVendor                    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  membership             Membership?                  @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  submittedDocuments     ErpVendorDocument[]
+  quotations             ErpSupplierQuotation[]
+  poAcknowledgements     ErpPoAcknowledgement[]
+  advanceShipmentNotices ErpAdvanceShipmentNotice[]
+  changeCases            ErpVendorChangeCase[]
+  invoiceEvidence        ErpSupplierInvoiceEvidence[]
+
+  @@unique([organizationId, legalEntityId, vendorId, email])
+  @@index([organizationId])
+  @@index([vendorId, status])
+}
+
+// Authentication-plane records. Only SHA-256 token digests are persisted;
+// the raw invite/session token is returned or set as a cookie once.
+model SupplierPortalInvite {
+  id             String    @id @default(cuid())
+  organizationId String
+  legalEntityId  String
+  vendorId       String
+  portalUserId   String
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  revokedAt      DateTime?
+  createdBy      String
+  idempotencyKey String
+  requestHash    String
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, portalUserId])
+  @@index([expiresAt])
+}
+
+model SupplierPortalSession {
+  id             String    @id @default(cuid())
+  organizationId String
+  legalEntityId  String
+  vendorId       String
+  portalUserId   String
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  lastSeenAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, portalUserId])
+  @@index([expiresAt])
+}
+
+model ErpRfq {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  rfqNumber            String
+  title                String
+  description          String    @default("")
+  currency             String    @default("INR")
+  responseDueAt        DateTime
+  status               String    @default("draft") // draft | issued | awarded | closed | cancelled
+  commercialTerms      Json      @default("{}")
+  technicalTerms       Json      @default("{}")
+  createdBy            String
+  issuedBy             String    @default("")
+  selectedBy           String    @default("")
+  selectedQuotationId  String?
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  issuedAt             DateTime?
+  selectedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity       LegalEntity            @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  lines             ErpRfqLine[]
+  invitations       ErpRfqInvitation[]
+  quotations        ErpSupplierQuotation[]
+  selectedQuotation ErpSupplierQuotation?  @relation("SelectedRfqQuotation", fields: [selectedQuotationId], references: [id], onDelete: Restrict)
+  agreements        ErpRateAgreement[]
+
+  @@unique([organizationId, legalEntityId, rfqNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, status, responseDueAt])
+}
+
+model ErpRfqLine {
+  id                     String    @id @default(cuid())
+  organizationId         String
+  legalEntityId          String
+  rfqId                  String
+  lineNumber             Int
+  itemId                 String?
+  description            String
+  quantity               Decimal   @db.Decimal(18, 6)
+  uom                    String
+  requiredOn             DateTime? @db.Date
+  technicalSpecification Json      @default("{}")
+  createdAt              DateTime  @default(now())
+
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity    LegalEntity                @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  rfq            ErpRfq                     @relation(fields: [rfqId], references: [id], onDelete: Restrict)
+  quotationLines ErpSupplierQuotationLine[]
+
+  @@unique([organizationId, rfqId, lineNumber])
+  @@index([organizationId])
+  @@index([rfqId])
+}
+
+model ErpRfqInvitation {
+  id             String    @id @default(cuid())
+  organizationId String
+  legalEntityId  String
+  rfqId          String
+  vendorId       String
+  status         String    @default("shortlisted") // shortlisted | issued | viewed | responded | declined
+  issuedAt       DateTime?
+  viewedAt       DateTime?
+  respondedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity            @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  rfq          ErpRfq                 @relation(fields: [rfqId], references: [id], onDelete: Restrict)
+  vendor       ErpVendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  quotations   ErpSupplierQuotation[]
+
+  @@unique([organizationId, rfqId, vendorId])
+  @@index([organizationId])
+  @@index([vendorId, status])
+}
+
+model ErpSupplierQuotation {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  rfqId                String
+  invitationId         String
+  vendorId             String
+  portalUserId         String
+  quotationNumber      String
+  status               String    @default("submitted") // submitted | withdrawn | selected | rejected
+  currency             String    @default("INR")
+  subtotal             Decimal   @db.Decimal(18, 2)
+  taxTotal             Decimal   @db.Decimal(18, 2)
+  grandTotal           Decimal   @db.Decimal(18, 2)
+  validUntil           DateTime  @db.Date
+  promisedOn           DateTime? @db.Date
+  commercialResponse   Json      @default("{}")
+  technicalResponse    Json      @default("{}")
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  submittedAt          DateTime  @default(now())
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity    LegalEntity                @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  rfq            ErpRfq                     @relation(fields: [rfqId], references: [id], onDelete: Restrict)
+  invitation     ErpRfqInvitation           @relation(fields: [invitationId], references: [id], onDelete: Restrict)
+  vendor         ErpVendor                  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  portalUser     SupplierPortalUser         @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+  lines          ErpSupplierQuotationLine[]
+  selectedForRfq ErpRfq[]                   @relation("SelectedRfqQuotation")
+  agreements     ErpRateAgreement[]
+
+  @@unique([organizationId, rfqId, vendorId, quotationNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([rfqId, status])
+  @@index([vendorId, submittedAt])
+}
+
+model ErpSupplierQuotationLine {
+  id                String    @id @default(cuid())
+  organizationId    String
+  legalEntityId     String
+  quotationId       String
+  rfqLineId         String
+  lineNumber        Int
+  quantity          Decimal   @db.Decimal(18, 6)
+  unitRate          Decimal   @db.Decimal(18, 6)
+  taxRate           Decimal   @default(0) @db.Decimal(7, 4)
+  taxAmount         Decimal   @default(0) @db.Decimal(18, 2)
+  lineTotal         Decimal   @db.Decimal(18, 2)
+  promisedOn        DateTime? @db.Date
+  technicalResponse Json      @default("{}")
+  createdAt         DateTime  @default(now())
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity          @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  quotation    ErpSupplierQuotation @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  rfqLine      ErpRfqLine           @relation(fields: [rfqLineId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, quotationId, lineNumber])
+  @@unique([organizationId, quotationId, rfqLineId])
+  @@index([organizationId])
+}
+
+model ErpRateAgreement {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  vendorId             String
+  rfqId                String?
+  quotationId          String?
+  agreementNumber      String
+  status               String    @default("draft") // draft | active | expired | terminated
+  currency             String    @default("INR")
+  validFrom            DateTime  @db.Date
+  validUntil           DateTime  @db.Date
+  lines                Json      @default("[]")
+  terms                Json      @default("{}")
+  createdBy            String
+  activatedBy          String    @default("")
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  activatedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity           @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor       ErpVendor             @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  rfq          ErpRfq?               @relation(fields: [rfqId], references: [id], onDelete: Restrict)
+  quotation    ErpSupplierQuotation? @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, agreementNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([vendorId, status, validUntil])
+}
+
+model ErpPoAcknowledgement {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  purchaseOrderId      String
+  vendorId             String
+  portalUserId         String
+  status               String // accepted | change_requested
+  responseNote         String   @default("")
+  proposedChanges      Json     @default("{}")
+  createIdempotencyKey String?
+  requestHash          String   @default("")
+  rowVersion           Int      @default(0)
+  respondedAt          DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity        @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  purchaseOrder ErpDocument        @relation("PurchaseOrderAcknowledgements", fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  vendor        ErpVendor          @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  portalUser    SupplierPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, purchaseOrderId, vendorId])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([vendorId, status])
+}
+
+model ErpAdvanceShipmentNotice {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  purchaseOrderId      String
+  vendorId             String
+  portalUserId         String
+  asnNumber            String
+  status               String   @default("submitted") // submitted | received | cancelled
+  dispatchedOn         DateTime @db.Date
+  expectedArrivalOn    DateTime @db.Date
+  carrier              String   @default("")
+  vehicleNumber        String   @default("")
+  trackingReference    String   @default("")
+  lines                Json     @default("[]")
+  createIdempotencyKey String?
+  requestHash          String   @default("")
+  rowVersion           Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity        @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  purchaseOrder ErpDocument        @relation("PurchaseOrderAsns", fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  vendor        ErpVendor          @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  portalUser    SupplierPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, purchaseOrderId, asnNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([vendorId, status, expectedArrivalOn])
+}
+
+model ErpVendorChangeCase {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  vendorId             String
+  portalUserId         String
+  changeType           String // profile | legal | gstin | bank
+  proposedValues       Json
+  status               String    @default("pending") // pending | approved | rejected
+  decisionReason       String    @default("")
+  decidedBy            String    @default("")
+  decidedAt            DateTime?
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity        @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor       ErpVendor          @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  portalUser   SupplierPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([vendorId, status, createdAt])
+}
+
+model ErpVendorDispute {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  vendorId             String
+  supplierInvoiceId    String?
+  matchCaseId          String?
+  subject              String
+  description          String
+  status               String    @default("open") // open | vendor_response | resolved | rejected
+  requestedDebitAmount Decimal   @default(0) @db.Decimal(18, 2)
+  vendorResponse       String    @default("")
+  resolution           String    @default("")
+  createdByActorType   String // employee | supplier
+  createdByRef         String
+  resolvedBy           String    @default("")
+  resolvedAt           DateTime?
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor       ErpVendor    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([vendorId, status, createdAt])
+}
+
+model ErpVendorPaymentProposal {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  vendorId             String
+  supplierInvoiceId    String
+  paymentVoucherId     String?
+  proposalNumber       String
+  status               String    @default("draft") // draft | approved | rejected
+  amount               Decimal   @db.Decimal(18, 2)
+  currency             String    @default("INR")
+  proposedPaymentOn    DateTime  @db.Date
+  payableAccountId     String
+  settlementAccountId  String
+  narration            String    @default("")
+  createdBy            String
+  approvedBy           String    @default("")
+  approvedAt           DateTime?
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity     LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor          ErpVendor    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  supplierInvoice ErpDocument  @relation("PaymentProposalInvoice", fields: [supplierInvoiceId], references: [id], onDelete: Restrict)
+  paymentVoucher  ErpVoucher?  @relation("PaymentProposalVoucher", fields: [paymentVoucherId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, proposalNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@unique([organizationId, paymentVoucherId])
+  @@index([organizationId])
+  @@index([vendorId, status, proposedPaymentOn])
+}
+
+model ErpSupplierInvoiceEvidence {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  vendorId             String
+  supplierInvoiceId    String
+  portalUserId         String
+  evidenceType         String // invoice | e_invoice | supporting
+  storageRef           String
+  checksum             String
+  externalReference    String   @default("")
+  metadata             Json     @default("{}")
+  createIdempotencyKey String?
+  requestHash          String   @default("")
+  createdAt            DateTime @default(now())
+
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity     LegalEntity        @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor          ErpVendor          @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  supplierInvoice ErpDocument        @relation("SupplierInvoiceEvidence", fields: [supplierInvoiceId], references: [id], onDelete: Restrict)
+  portalUser      SupplierPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([vendorId, supplierInvoiceId])
+}
+
+model ErpCustomer {
+  id             String   @id @default(cuid())
+  organizationId String
+  legalEntityId  String
+  customerCode   String
+  legalName      String
+  tradeName      String   @default("")
+  pan            String   @default("")
+  gstin          String   @default("")
+  addresses      Json     @default("[]")
+  contacts       Json     @default("[]")
+  paymentTerms   String   @default("")
+  currency       String   @default("INR")
+  creditLimit    Decimal  @default(0) @db.Decimal(18, 2)
+  creditDays     Int      @default(0)
+  status         String   @default("active")
+  rowVersion     Int      @default(0)
+  originMetadata Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity           LegalEntity                @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  documents             ErpDocument[]
+  plantDispatchEvidence ErpPlantDispatchEvidence[]
+
+  @@unique([organizationId, legalEntityId, customerCode])
+  @@index([organizationId])
+  @@index([legalEntityId, gstin])
+}
+
+model ErpItem {
+  id                        String    @id @default(cuid())
+  organizationId            String
+  legalEntityId             String
+  itemCode                  String
+  name                      String
+  itemType                  String    @default("inventory") // inventory | service | asset | expense
+  category                  String    @default("")
+  baseUom                   String
+  uomConversions            Json      @default("[]")
+  hsnSacCode                String    @default("")
+  gstRate                   Decimal   @default(0) @db.Decimal(7, 4)
+  valuationMethod           String    @default("moving_average") // moving_average | fifo
+  batchTracked              Boolean   @default(false)
+  serialTracked             Boolean   @default(false)
+  expiryTracked             Boolean   @default(false)
+  planningLeadTimeDays      Int       @default(0)
+  planningSafetyStock       Decimal   @default(0) @db.Decimal(18, 6)
+  planningMinimumStock      Decimal   @default(0) @db.Decimal(18, 6)
+  planningMaximumStock      Decimal?  @db.Decimal(18, 6)
+  planningLotSizing         String    @default("lot_for_lot") // lot_for_lot | fixed | min_max
+  planningFixedLotSize      Decimal   @default(0) @db.Decimal(18, 6)
+  planningMinimumOrder      Decimal   @default(0) @db.Decimal(18, 6)
+  planningOrderMultiple     Decimal   @default(0) @db.Decimal(18, 6)
+  planningSupplyPolicy      String    @default("buy") // make | buy | transfer
+  planningWarehouseId       String?
+  transferSourceWarehouseId String?
+  planningPreferredVendorId String    @default("")
+  planningPolicyUpdatedAt   DateTime?
+  inventoryAccount          String    @default("")
+  consumptionAccount        String    @default("")
+  salesAccount              String    @default("")
+  purchaseAccount           String    @default("")
+  active                    Boolean   @default(true)
+  attributes                Json      @default("{}")
+  createIdempotencyKey      String?
+  requestHash               String    @default("")
+  rowVersion                Int       @default(0)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  organization            Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity             LegalEntity                @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  documentLines           ErpDocumentLine[]
+  stockMovements          ErpStockMovement[]
+  valuationLayers         ErpValuationLayer[]
+  productionDemands       ErpProductionDemand[]
+  planningWarehouse       ErpWarehouse?              @relation("ItemPlanningWarehouse", fields: [planningWarehouseId], references: [id], onDelete: Restrict)
+  transferSourceWarehouse ErpWarehouse?              @relation("ItemTransferSourceWarehouse", fields: [transferSourceWarehouseId], references: [id], onDelete: Restrict)
+  planningBoms            ErpPlanningBom[]           @relation("PlanningBomParentItem")
+  planningBomComponents   ErpPlanningBomComponent[]  @relation("PlanningBomComponentItem")
+  demandForecasts         ErpDemandForecast[]
+  stockReservations       ErpStockReservation[]
+  mrpRequirements         ErpMrpRequirement[]
+  mrpSuggestions          ErpMrpSuggestion[]
+  transferProposals       ErpTransferProposal[]
+  plantDispatchEvidence   ErpPlantDispatchEvidence[]
+
+  @@unique([organizationId, legalEntityId, itemCode])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, active])
+}
+
+model ErpWarehouse {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  code                 String
+  name                 String
+  kind                 String   @default("warehouse") // plant | warehouse | godown | subcontractor
+  plantCode            String   @default("")
+  branchCode           String   @default("")
+  address              Json     @default("{}")
+  allowNegative        Boolean  @default(false)
+  active               Boolean  @default(true)
+  createIdempotencyKey String?
+  requestHash          String   @default("")
+  rowVersion           Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity           LegalEntity                @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  roleAssignments       RoleAssignment[]
+  stockMovements        ErpStockMovement[]
+  valuationLayers       ErpValuationLayer[]
+  inventoryCounts       ErpInventoryCount[]
+  planningItems         ErpItem[]                  @relation("ItemPlanningWarehouse")
+  transferSourceItems   ErpItem[]                  @relation("ItemTransferSourceWarehouse")
+  planningBomComponents ErpPlanningBomComponent[]
+  demandForecasts       ErpDemandForecast[]
+  stockReservations     ErpStockReservation[]
+  mrpRequirements       ErpMrpRequirement[]
+  mrpSuggestions        ErpMrpSuggestion[]
+  mrpSuggestionSources  ErpMrpSuggestion[]         @relation("MrpSuggestionSourceWarehouse")
+  transferProposalsFrom ErpTransferProposal[]      @relation("TransferProposalFromWarehouse")
+  transferProposalsTo   ErpTransferProposal[]      @relation("TransferProposalToWarehouse")
+  plantDispatchEvidence ErpPlantDispatchEvidence[]
+
+  @@unique([organizationId, legalEntityId, code])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, active])
+}
+
+model ErpNumberSeries {
+  id              String   @id @default(cuid())
+  organizationId  String
+  legalEntityId   String
+  financialYearId String
+  documentType    String
+  prefix          String
+  suffix          String   @default("")
+  padding         Int      @default(5)
+  nextValue       Int      @default(1)
+  rowVersion      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity   @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, financialYearId, documentType])
+  @@index([organizationId])
+}
+
+model ErpIdempotencyRecord {
+  id             String    @id @default(cuid())
+  organizationId String
+  legalEntityId  String?
+  scope          String
+  key            String
+  requestHash    String
+  response       Json
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, scope, key])
+  @@index([organizationId])
+  @@index([legalEntityId, createdAt])
+}
+
+model ErpDocument {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  financialYearId      String
+  documentType         String
+  documentNumber       String
+  documentDate         DateTime  @db.Date
+  dueDate              DateTime? @db.Date
+  status               String    @default("draft") // draft | submitted | approved | posted | cancelled | closed
+  approvalState        String    @default("not_required")
+  vendorId             String?
+  customerId           String?
+  parentDocumentId     String?
+  partySnapshot        Json      @default("{}")
+  currency             String    @default("INR")
+  exchangeRate         Decimal   @default(1) @db.Decimal(18, 8)
+  subtotal             Decimal   @default(0) @db.Decimal(18, 2)
+  discountTotal        Decimal   @default(0) @db.Decimal(18, 2)
+  taxTotal             Decimal   @default(0) @db.Decimal(18, 2)
+  roundingAmount       Decimal   @default(0) @db.Decimal(18, 2)
+  grandTotal           Decimal   @default(0) @db.Decimal(18, 2)
+  baseCurrencyTotal    Decimal   @default(0) @db.Decimal(18, 2)
+  taxSummary           Json      @default("{}")
+  terms                Json      @default("[]")
+  shipping             Json      @default("{}")
+  originType           String    @default("manual")
+  originMetadata       Json      @default("{}")
+  sourceSnapshotHash   String    @default("")
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  submittedAt          DateTime?
+  approvedAt           DateTime?
+  postedAt             DateTime?
+  createdBy            String    @default("")
+  approvedBy           String    @default("")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization            Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity             LegalEntity                  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear           FinancialYear                @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  vendor                  ErpVendor?                   @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  customer                ErpCustomer?                 @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  parent                  ErpDocument?                 @relation("DocumentRevisions", fields: [parentDocumentId], references: [id], onDelete: Restrict)
+  revisions               ErpDocument[]                @relation("DocumentRevisions")
+  lines                   ErpDocumentLine[]
+  outboundLinks           ErpDocumentLink[]            @relation("DocumentLinkFrom")
+  inboundLinks            ErpDocumentLink[]            @relation("DocumentLinkTo")
+  invoiceMatches          ErpMatchCase[]               @relation("MatchInvoice")
+  purchaseOrderMatches    ErpMatchCase[]               @relation("MatchPurchaseOrder")
+  goodsReceiptMatches     ErpMatchCase[]               @relation("MatchGoodsReceipt")
+  inspectionMatches       ErpMatchCase[]               @relation("MatchInspection")
+  vouchers                ErpVoucher[]
+  stockMovements          ErpStockMovement[]
+  taxDocuments            ErpTaxDocument[]
+  poAcknowledgements      ErpPoAcknowledgement[]       @relation("PurchaseOrderAcknowledgements")
+  advanceShipmentNotices  ErpAdvanceShipmentNotice[]   @relation("PurchaseOrderAsns")
+  paymentProposals        ErpVendorPaymentProposal[]   @relation("PaymentProposalInvoice")
+  supplierInvoiceEvidence ErpSupplierInvoiceEvidence[] @relation("SupplierInvoiceEvidence")
+  plantDispatchEvidence   ErpPlantDispatchEvidence[]
+
+  @@unique([organizationId, legalEntityId, financialYearId, documentType, documentNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, documentType, status])
+  @@index([vendorId, documentDate])
+  @@index([customerId, documentDate])
+}
+
+model ErpDocumentLine {
+  id             String    @id @default(cuid())
+  organizationId String
+  legalEntityId  String
+  documentId     String
+  lineNumber     Int
+  itemId         String?
+  description    String
+  hsnSacCode     String    @default("")
+  quantity       Decimal   @db.Decimal(18, 6)
+  uom            String
+  unitPrice      Decimal   @default(0) @db.Decimal(18, 6)
+  discountAmount Decimal   @default(0) @db.Decimal(18, 2)
+  taxableAmount  Decimal   @default(0) @db.Decimal(18, 2)
+  taxRate        Decimal   @default(0) @db.Decimal(7, 4)
+  taxAmount      Decimal   @default(0) @db.Decimal(18, 2)
+  lineTotal      Decimal   @default(0) @db.Decimal(18, 2)
+  warehouseCode  String    @default("")
+  batchNumber    String    @default("")
+  promisedOn     DateTime? @db.Date
+  dimensions     Json      @default("{}")
+  sourceLineId   String?
+  createdAt      DateTime  @default(now())
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity       @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  document     ErpDocument       @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  item         ErpItem?          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  sourceLine   ErpDocumentLine?  @relation("DocumentLineSource", fields: [sourceLineId], references: [id], onDelete: Restrict)
+  derivedLines ErpDocumentLine[] @relation("DocumentLineSource")
+
+  @@unique([organizationId, documentId, lineNumber])
+  @@index([organizationId])
+  @@index([documentId])
+  @@index([itemId])
+}
+
+model ErpDocumentLink {
+  id             String   @id @default(cuid())
+  organizationId String
+  legalEntityId  String
+  fromDocumentId String
+  toDocumentId   String
+  relationship   String
+  snapshotHash   String   @default("")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  fromDocument ErpDocument  @relation("DocumentLinkFrom", fields: [fromDocumentId], references: [id], onDelete: Restrict)
+  toDocument   ErpDocument  @relation("DocumentLinkTo", fields: [toDocumentId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, fromDocumentId, toDocumentId, relationship])
+  @@index([organizationId])
+  @@index([fromDocumentId])
+  @@index([toDocumentId])
+}
+
+model ErpMatchCase {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  legalEntityId       String
+  vendorId            String
+  supplierInvoiceId   String
+  purchaseOrderId     String
+  goodsReceiptId      String
+  inspectionId        String?
+  status              String   @default("pending") // pending | matched | variance | disputed | approved
+  quantityVariance    Decimal  @default(0) @db.Decimal(18, 6)
+  priceVariance       Decimal  @default(0) @db.Decimal(18, 2)
+  taxVariance         Decimal  @default(0) @db.Decimal(18, 2)
+  totalVariance       Decimal  @default(0) @db.Decimal(18, 2)
+  details             Json     @default("[]")
+  makerMembershipId   String   @default("")
+  checkerMembershipId String   @default("")
+  rowVersion          Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity     LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor          ErpVendor    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  supplierInvoice ErpDocument  @relation("MatchInvoice", fields: [supplierInvoiceId], references: [id], onDelete: Restrict)
+  purchaseOrder   ErpDocument  @relation("MatchPurchaseOrder", fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  goodsReceipt    ErpDocument  @relation("MatchGoodsReceipt", fields: [goodsReceiptId], references: [id], onDelete: Restrict)
+  inspection      ErpDocument? @relation("MatchInspection", fields: [inspectionId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, supplierInvoiceId])
+  @@index([organizationId])
+  @@index([vendorId, status])
+}
+
+// ============================================================ MesaERP accounting, inventory + manufacturing
+
+model ErpVoucher {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  financialYearId      String
+  accountingPeriodId   String
+  voucherType          String
+  voucherNumber        String
+  businessDate         DateTime  @db.Date
+  status               String    @default("draft") // draft | submitted | approved | posted | reversed
+  currency             String    @default("INR")
+  exchangeRate         Decimal   @default(1) @db.Decimal(18, 8)
+  transactionDebit     Decimal   @default(0) @db.Decimal(18, 2)
+  transactionCredit    Decimal   @default(0) @db.Decimal(18, 2)
+  baseDebit            Decimal   @default(0) @db.Decimal(18, 2)
+  baseCredit           Decimal   @default(0) @db.Decimal(18, 2)
+  reference            String    @default("")
+  narration            String    @default("")
+  sourceDocumentId     String?
+  reversalOfId         String?
+  dimensions           Json      @default("{}")
+  originType           String    @default("manual")
+  originMetadata       Json      @default("{}")
+  sourceSnapshotHash   String    @default("")
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  submittedAt          DateTime?
+  approvedAt           DateTime?
+  postedAt             DateTime?
+  reversedAt           DateTime?
+  createdBy            String    @default("")
+  approvedBy           String    @default("")
+  postedBy             String    @default("")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity          LegalEntity                @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear        FinancialYear              @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  accountingPeriod     AccountingPeriod           @relation(fields: [accountingPeriodId], references: [id], onDelete: Restrict)
+  sourceDocument       ErpDocument?               @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  reversalOf           ErpVoucher?                @relation("VoucherReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversals            ErpVoucher[]               @relation("VoucherReversal")
+  lines                ErpVoucherLine[]
+  stockMovements       ErpStockMovement[]
+  postingLinks         ErpPostingLink[]
+  inventoryCounts      ErpInventoryCount[]
+  paymentProposals     ErpVendorPaymentProposal[] @relation("PaymentProposalVoucher")
+  tdsPayableDeductions ErpTdsDeduction[]          @relation("TdsPayableVoucher")
+  tdsPaymentDeductions ErpTdsDeduction[]          @relation("TdsPaymentVoucher")
+
+  @@unique([organizationId, legalEntityId, financialYearId, voucherType, voucherNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, businessDate, status])
+  @@index([sourceDocumentId])
+}
+
+model ErpVoucherLine {
+  id                String    @id @default(cuid())
+  organizationId    String
+  legalEntityId     String
+  voucherId         String
+  lineNumber        Int
+  accountId         String
+  accountSnapshot   Json      @default("{}")
+  transactionDebit  Decimal   @default(0) @db.Decimal(18, 2)
+  transactionCredit Decimal   @default(0) @db.Decimal(18, 2)
+  baseDebit         Decimal   @default(0) @db.Decimal(18, 2)
+  baseCredit        Decimal   @default(0) @db.Decimal(18, 2)
+  billReference     String    @default("")
+  dueDate           DateTime? @db.Date
+  dimensions        Json      @default("{}")
+  narration         String    @default("")
+  createdAt         DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  voucher      ErpVoucher   @relation(fields: [voucherId], references: [id], onDelete: Restrict)
+  account      ErpAccount   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, voucherId, lineNumber])
+  @@index([organizationId])
+  @@index([voucherId])
+  @@index([accountId])
+}
+
+model ErpStockMovement {
+  id               String    @id @default(cuid())
+  organizationId   String
+  legalEntityId    String
+  financialYearId  String
+  itemId           String
+  warehouseId      String
+  movementType     String
+  businessDate     DateTime  @db.Date
+  quantity         Decimal   @db.Decimal(18, 6)
+  uom              String
+  unitCost         Decimal   @default(0) @db.Decimal(18, 6)
+  value            Decimal   @default(0) @db.Decimal(18, 2)
+  valuationMethod  String
+  valuationLayer   Json      @default("{}")
+  batchNumber      String    @default("")
+  serialNumber     String    @default("")
+  expiryDate       DateTime? @db.Date
+  sourceDocumentId String?
+  voucherId        String?
+  originType       String    @default("manual")
+  originMetadata   Json      @default("{}")
+  idempotencyKey   String?
+  occurredAt       DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+
+  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity           LegalEntity               @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear         FinancialYear             @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  item                  ErpItem                   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  warehouse             ErpWarehouse              @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  sourceDocument        ErpDocument?              @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  voucher               ErpVoucher?               @relation(fields: [voucherId], references: [id], onDelete: Restrict)
+  receiptValuationLayer ErpValuationLayer?
+  layerConsumptions     ErpValuationConsumption[]
+
+  @@unique([organizationId, legalEntityId, idempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, itemId, warehouseId, businessDate])
+  @@index([batchNumber])
+}
+
+model ErpValuationLayer {
+  id                String    @id @default(cuid())
+  organizationId    String
+  legalEntityId     String
+  itemId            String
+  warehouseId       String
+  receiptMovementId String    @unique
+  batchNumber       String    @default("")
+  serialNumber      String    @default("")
+  expiryDate        DateTime? @db.Date
+  quantity          Decimal   @db.Decimal(18, 6)
+  unitCost          Decimal   @db.Decimal(18, 6)
+  value             Decimal   @db.Decimal(18, 2)
+  createdAt         DateTime  @default(now())
+
+  organization    Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity     LegalEntity               @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  item            ErpItem                   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  warehouse       ErpWarehouse              @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  receiptMovement ErpStockMovement          @relation(fields: [receiptMovementId], references: [id], onDelete: Restrict)
+  consumptions    ErpValuationConsumption[]
+
+  @@index([organizationId])
+  @@index([legalEntityId, itemId, warehouseId, createdAt])
+  @@index([batchNumber, serialNumber])
+}
+
+model ErpValuationConsumption {
+  id               String   @id @default(cuid())
+  organizationId   String
+  legalEntityId    String
+  valuationLayerId String
+  issueMovementId  String
+  quantity         Decimal  @db.Decimal(18, 6)
+  value            Decimal  @db.Decimal(18, 2)
+  createdAt        DateTime @default(now())
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity    LegalEntity       @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  valuationLayer ErpValuationLayer @relation(fields: [valuationLayerId], references: [id], onDelete: Restrict)
+  issueMovement  ErpStockMovement  @relation(fields: [issueMovementId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, valuationLayerId, issueMovementId])
+  @@index([organizationId])
+  @@index([legalEntityId, issueMovementId])
+}
+
+model ErpInventoryCount {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  financialYearId      String
+  warehouseId          String
+  voucherId            String?  @unique
+  countNumber          String
+  businessDate         DateTime @db.Date
+  status               String   @default("recorded") // recorded | adjustment_pending | reconciled
+  lines                Json     @default("[]")
+  sourceSnapshotHash   String
+  createIdempotencyKey String?
+  requestHash          String   @default("")
+  createdBy            String
+  rowVersion           Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity   @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  warehouse     ErpWarehouse  @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  voucher       ErpVoucher?   @relation(fields: [voucherId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, financialYearId, countNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, warehouseId, businessDate])
+}
+
+model ErpPostingLink {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  legalEntityId      String
+  sourceType         String
+  sourceId           String
+  voucherId          String
+  mappingSnapshot    Json
+  sourceSnapshotHash String
+  createdAt          DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  voucher      ErpVoucher   @relation(fields: [voucherId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, sourceType, sourceId])
+  @@unique([organizationId, voucherId])
+  @@index([organizationId])
+  @@index([legalEntityId, sourceType, sourceId])
+}
+
+// ============================================================ MesaERP business planning, ATP + MRP
+
+model ErpPlanningBom {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  bomCode              String
+  parentItemId         String
+  bomType              String   @default("discrete") // discrete | formula
+  description          String   @default("")
+  active               Boolean  @default(true)
+  createIdempotencyKey String?
+  requestHash          String   @default("")
+  rowVersion           Int      @default(0)
+  createdBy            String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity              @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  parentItem   ErpItem                  @relation("PlanningBomParentItem", fields: [parentItemId], references: [id], onDelete: Restrict)
+  revisions    ErpPlanningBomRevision[]
+
+  @@unique([organizationId, legalEntityId, bomCode])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, parentItemId, active])
+}
+
+model ErpPlanningBomRevision {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  bomId                String
+  revisionNumber       Int
+  revisionCode         String
+  status               String    @default("draft") // draft | submitted | approved
+  effectiveFrom        DateTime  @db.Date
+  effectiveTo          DateTime? @db.Date
+  outputQuantity       Decimal   @db.Decimal(18, 6)
+  outputUom            String
+  yieldPercentage      Decimal   @default(100) @db.Decimal(7, 4)
+  notes                String    @default("")
+  formulaParameters    Json      @default("{}")
+  sourceSnapshotHash   String    @default("")
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  createdBy            String
+  submittedAt          DateTime?
+  approvedBy           String    @default("")
+  approvedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity               @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  bom          ErpPlanningBom            @relation(fields: [bomId], references: [id], onDelete: Restrict)
+  components   ErpPlanningBomComponent[]
+  requirements ErpMrpRequirement[]
+
+  @@unique([organizationId, bomId, revisionNumber])
+  @@unique([organizationId, legalEntityId, bomId, revisionCode])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, bomId, status, effectiveFrom])
+}
+
+model ErpPlanningBomComponent {
+  id               String   @id @default(cuid())
+  organizationId   String
+  legalEntityId    String
+  revisionId       String
+  lineNumber       Int
+  componentItemId  String
+  issueWarehouseId String?
+  quantity         Decimal  @db.Decimal(18, 6)
+  uom              String
+  scrapPercentage  Decimal  @default(0) @db.Decimal(7, 4)
+  componentType    String   @default("material") // material | packaging
+  phase            String   @default("")
+  dimensions       Json     @default("{}")
+  createdAt        DateTime @default(now())
+
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity    LegalEntity            @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  revision       ErpPlanningBomRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  componentItem  ErpItem                @relation("PlanningBomComponentItem", fields: [componentItemId], references: [id], onDelete: Restrict)
+  issueWarehouse ErpWarehouse?          @relation(fields: [issueWarehouseId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, revisionId, lineNumber])
+  @@index([organizationId])
+  @@index([legalEntityId, componentItemId])
+}
+
+model ErpDemandForecast {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  financialYearId      String
+  forecastNumber       String
+  itemId               String
+  warehouseId          String
+  forecastDate         DateTime  @db.Date
+  quantity             Decimal   @db.Decimal(18, 6)
+  uom                  String
+  status               String    @default("draft") // draft | submitted | approved | cancelled
+  notes                String    @default("")
+  sourceSnapshotHash   String    @default("")
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  createdBy            String
+  submittedAt          DateTime?
+  approvedBy           String    @default("")
+  approvedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity   @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  item          ErpItem       @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  warehouse     ErpWarehouse  @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, financialYearId, forecastNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, status, forecastDate])
+}
+
+model ErpStockReservation {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  reservationNumber    String
+  itemId               String
+  warehouseId          String
+  quantity             Decimal   @db.Decimal(18, 6)
+  uom                  String
+  batchNumber          String    @default("")
+  serialNumber         String    @default("")
+  sourceType           String    @default("manual") // sales_order | production_demand | manual
+  sourceId             String    @default("")
+  sourceLineId         String    @default("")
+  requiredOn           DateTime? @db.Date
+  status               String    @default("active") // active | released | consumed | cancelled
+  sourceSnapshotHash   String
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  createdBy            String
+  releasedBy           String    @default("")
+  releasedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  item         ErpItem      @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  warehouse    ErpWarehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, reservationNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, itemId, warehouseId, status])
+  @@index([sourceType, sourceId, sourceLineId])
+}
+
+model ErpMrpRun {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  financialYearId      String
+  runNumber            String
+  asOfDate             DateTime @db.Date
+  horizonEnd           DateTime @db.Date
+  status               String   @default("calculated") // calculated | stale
+  parameters           Json
+  demandSnapshot       Json
+  supplySnapshot       Json
+  sourceSnapshotHash   String
+  resultSnapshot       Json
+  resultSnapshotHash   String
+  createIdempotencyKey String?
+  requestHash          String   @default("")
+  rowVersion           Int      @default(0)
+  createdBy            String
+  calculatedAt         DateTime @default(now())
+  createdAt            DateTime @default(now())
+
+  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity         @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear FinancialYear       @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  requirements  ErpMrpRequirement[]
+  suggestions   ErpMrpSuggestion[]
+
+  @@unique([organizationId, legalEntityId, financialYearId, runNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, asOfDate, status])
+}
+
+model ErpMrpRequirement {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  mrpRunId             String
+  itemId               String
+  warehouseId          String
+  bomRevisionId        String?
+  level                Int      @default(0)
+  requiredOn           DateTime @db.Date
+  grossRequirement     Decimal  @db.Decimal(18, 6)
+  includedReservation  Decimal  @default(0) @db.Decimal(18, 6)
+  onHandQuantity       Decimal  @default(0) @db.Decimal(18, 6)
+  externalReservation  Decimal  @default(0) @db.Decimal(18, 6)
+  openPurchaseSupply   Decimal  @default(0) @db.Decimal(18, 6)
+  openProductionSupply Decimal  @default(0) @db.Decimal(18, 6)
+  safetyStock          Decimal  @default(0) @db.Decimal(18, 6)
+  netRequirement       Decimal  @db.Decimal(18, 6)
+  sourceRefs           Json
+  calculationSnapshot  Json
+  snapshotHash         String
+  createdAt            DateTime @default(now())
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity             @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  mrpRun       ErpMrpRun               @relation(fields: [mrpRunId], references: [id], onDelete: Restrict)
+  item         ErpItem                 @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  warehouse    ErpWarehouse            @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  bomRevision  ErpPlanningBomRevision? @relation(fields: [bomRevisionId], references: [id], onDelete: Restrict)
+  suggestions  ErpMrpSuggestion[]
+
+  @@unique([organizationId, mrpRunId, itemId, warehouseId, requiredOn, level])
+  @@index([organizationId])
+  @@index([legalEntityId, itemId, warehouseId, requiredOn])
+}
+
+model ErpMrpSuggestion {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  mrpRunId             String
+  requirementId        String
+  suggestionType       String // make | purchase | transfer
+  itemId               String
+  warehouseId          String
+  sourceWarehouseId    String?
+  quantity             Decimal   @db.Decimal(18, 6)
+  uom                  String
+  orderOn              DateTime  @db.Date
+  requiredOn           DateTime  @db.Date
+  status               String    @default("draft") // draft | submitted | approved | released | cancelled
+  planningSnapshot     Json
+  sourceSnapshotHash   String
+  releasedResourceType String    @default("")
+  releasedResourceId   String    @default("")
+  rowVersion           Int       @default(0)
+  createdBy            String
+  submittedAt          DateTime?
+  approvedBy           String    @default("")
+  approvedAt           DateTime?
+  releasedBy           String    @default("")
+  releasedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity      LegalEntity          @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  mrpRun           ErpMrpRun            @relation(fields: [mrpRunId], references: [id], onDelete: Restrict)
+  requirement      ErpMrpRequirement    @relation(fields: [requirementId], references: [id], onDelete: Restrict)
+  item             ErpItem              @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  warehouse        ErpWarehouse         @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  sourceWarehouse  ErpWarehouse?        @relation("MrpSuggestionSourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: Restrict)
+  transferProposal ErpTransferProposal?
+
+  @@unique([organizationId, requirementId])
+  @@index([organizationId])
+  @@index([legalEntityId, mrpRunId, status])
+}
+
+model ErpTransferProposal {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  legalEntityId      String
+  suggestionId       String   @unique
+  proposalNumber     String
+  itemId             String
+  fromWarehouseId    String
+  toWarehouseId      String
+  quantity           Decimal  @db.Decimal(18, 6)
+  uom                String
+  requiredOn         DateTime @db.Date
+  status             String   @default("draft")
+  sourceSnapshotHash String
+  rowVersion         Int      @default(0)
+  createdBy          String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity      @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  suggestion    ErpMrpSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Restrict)
+  item          ErpItem          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  fromWarehouse ErpWarehouse     @relation("TransferProposalFromWarehouse", fields: [fromWarehouseId], references: [id], onDelete: Restrict)
+  toWarehouse   ErpWarehouse     @relation("TransferProposalToWarehouse", fields: [toWarehouseId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, proposalNumber])
+  @@index([organizationId])
+  @@index([legalEntityId, status])
+}
+
+model ErpProductionDemand {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  financialYearId      String
+  demandNumber         String
+  demandType           String    @default("sales_order")
+  itemId               String
+  quantity             Decimal   @db.Decimal(18, 6)
+  uom                  String
+  requiredOn           DateTime? @db.Date
+  status               String    @default("draft") // draft | approved | released | partially_completed | completed | cancelled
+  bomSnapshot          Json      @default("{}")
+  materialRequirements Json      @default("[]")
+  suggestions          Json      @default("[]")
+  originType           String    @default("manual")
+  originMetadata       Json      @default("{}")
+  sourceSnapshotHash   String    @default("")
+  createIdempotencyKey String?
+  rowVersion           Int       @default(0)
+  releasedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity           LegalEntity               @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear         FinancialYear             @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  item                  ErpItem                   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  manufacturingVouchers ErpManufacturingVoucher[]
+  batchCosts            ErpBatchCost[]
+
+  @@unique([organizationId, legalEntityId, financialYearId, demandNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, status, requiredOn])
+}
+
+model ErpManufacturingVoucher {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  financialYearId      String
+  productionDemandId   String?
+  voucherNumber        String
+  voucherType          String    @default("manufacturing") // issue | return | manufacturing | completion | rework
+  businessDate         DateTime  @db.Date
+  status               String    @default("draft")
+  batchNumber          String
+  materialLines        Json      @default("[]")
+  outputLines          Json      @default("[]")
+  laborLines           Json      @default("[]")
+  resourceLines        Json      @default("[]")
+  overheadLines        Json      @default("[]")
+  subcontractLines     Json      @default("[]")
+  recoveryCredits      Json      @default("[]")
+  qaDisposition        Json      @default("{}")
+  materialValue        Decimal   @default(0) @db.Decimal(18, 2)
+  conversionValue      Decimal   @default(0) @db.Decimal(18, 2)
+  recoveryValue        Decimal   @default(0) @db.Decimal(18, 2)
+  actualCost           Decimal   @default(0) @db.Decimal(18, 2)
+  originType           String    @default("manual")
+  originMetadata       Json      @default("{}")
+  sourceSnapshotHash   String    @default("")
+  createIdempotencyKey String?
+  rowVersion           Int       @default(0)
+  approvedAt           DateTime?
+  postedAt             DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity      LegalEntity          @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear    FinancialYear        @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  productionDemand ErpProductionDemand? @relation(fields: [productionDemandId], references: [id], onDelete: Restrict)
+  batchCost        ErpBatchCost?
+
+  @@unique([organizationId, legalEntityId, financialYearId, voucherNumber])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, status, businessDate])
+  @@index([batchNumber])
+}
+
+model ErpBatchCost {
+  id                     String    @id @default(cuid())
+  organizationId         String
+  legalEntityId          String
+  financialYearId        String
+  productionDemandId     String?
+  manufacturingVoucherId String    @unique
+  batchNumber            String
+  materialCost           Decimal   @default(0) @db.Decimal(18, 2)
+  laborCost              Decimal   @default(0) @db.Decimal(18, 2)
+  machineCost            Decimal   @default(0) @db.Decimal(18, 2)
+  overheadCost           Decimal   @default(0) @db.Decimal(18, 2)
+  subcontractCost        Decimal   @default(0) @db.Decimal(18, 2)
+  recoveryCredits        Decimal   @default(0) @db.Decimal(18, 2)
+  actualCost             Decimal   @default(0) @db.Decimal(18, 2)
+  outputQuantity         Decimal   @default(0) @db.Decimal(18, 6)
+  unitCost               Decimal   @default(0) @db.Decimal(18, 6)
+  costingMethod          String    @default("actual")
+  calculationSnapshot    Json      @default("{}")
+  status                 String    @default("draft") // draft | approved
+  sourceSnapshotHash     String    @default("")
+  approvedAt             DateTime?
+  approvedBy             String    @default("")
+  createdAt              DateTime  @default(now())
+
+  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity          LegalEntity             @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear        FinancialYear           @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  productionDemand     ErpProductionDemand?    @relation(fields: [productionDemandId], references: [id], onDelete: Restrict)
+  manufacturingVoucher ErpManufacturingVoucher @relation(fields: [manufacturingVoucherId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, batchNumber])
+  @@index([organizationId])
+  @@index([legalEntityId, status])
+}
+
+// ============================================================ MesaERP tax, treasury, assets + durable handoffs
+
+model ErpTaxDocument {
+  id                    String    @id @default(cuid())
+  organizationId        String
+  legalEntityId         String
+  financialYearId       String
+  sourceDocumentId      String?
+  documentKind          String // outbound_e_invoice | inbound_e_invoice | e_way_bill | gstr2b
+  provider              String    @default("")
+  providerReference     String    @default("")
+  status                String    @default("draft")
+  supplierGstin         String    @default("")
+  recipientGstin        String    @default("")
+  documentType          String    @default("")
+  documentNumber        String    @default("")
+  documentDate          DateTime? @db.Date
+  irn                   String    @default("")
+  acknowledgementNumber String    @default("")
+  acknowledgementAt     DateTime?
+  signedPayload         Json      @default("{}")
+  submittedPayload      Json      @default("{}")
+  qrData                String    @default("")
+  transporter           Json      @default("{}")
+  vehicle               Json      @default("{}")
+  validUntil            DateTime?
+  cancellation          Json      @default("{}")
+  reconciliation        Json      @default("{}")
+  itcStatus             String    @default("pending")
+  ruleProfileVersion    String    @default("")
+  evidenceHash          String    @default("")
+  createIdempotencyKey  String?
+  rowVersion            Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity    LegalEntity   @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear  FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  sourceDocument ErpDocument?  @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, documentKind, status])
+  @@index([legalEntityId, irn])
+  @@index([legalEntityId, supplierGstin, documentNumber])
+}
+
+model ErpComplianceRuleProfile {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  jurisdiction         String    @default("IN")
+  artifactKind         String // outbound_e_invoice | e_way_bill | inbound_e_invoice
+  version              String
+  effectiveFrom        DateTime  @db.Date
+  effectiveTo          DateTime? @db.Date
+  status               String    @default("draft") // draft | approved | retired
+  rules                Json
+  sourceReference      String
+  sourceEvidence       Json
+  sourceChecksum       String
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  rowVersion           Int       @default(0)
+  createdBy            String
+  approvedBy           String    @default("")
+  approvedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, artifactKind, version], map: "ErpComplianceRuleProfile_identity_key")
+  @@unique([organizationId, legalEntityId, createIdempotencyKey], map: "ErpComplianceRuleProfile_idempotency_key")
+  @@index([organizationId])
+  @@index([legalEntityId, artifactKind, status, effectiveFrom], map: "ErpComplianceRuleProfile_lookup_idx")
+}
+
+model ErpBankReconciliation {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  bankAccountId        String
+  statementReference   String
+  statementFrom        DateTime  @db.Date
+  statementTo          DateTime  @db.Date
+  openingBalance       Decimal   @db.Decimal(18, 2)
+  closingBalance       Decimal   @db.Decimal(18, 2)
+  lines                Json      @default("[]")
+  matchedTotal         Decimal   @default(0) @db.Decimal(18, 2)
+  unmatchedTotal       Decimal   @default(0) @db.Decimal(18, 2)
+  status               String    @default("in_progress")
+  sourceHash           String    @default("")
+  requestHash          String    @default("")
+  createdBy            String    @default("")
+  completedBy          String    @default("")
+  completionEvidence   Json      @default("{}")
+  createIdempotencyKey String?
+  rowVersion           Int       @default(0)
+  completedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, statementReference])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, status])
+}
+
+model ErpAsset {
+  id                      String    @id @default(cuid())
+  organizationId          String
+  legalEntityId           String
+  financialYearId         String
+  assetCode               String
+  name                    String
+  category                String
+  acquisitionDate         DateTime  @db.Date
+  capitalizationDate      DateTime? @db.Date
+  acquisitionCost         Decimal   @db.Decimal(18, 2)
+  residualValue           Decimal   @default(0) @db.Decimal(18, 2)
+  depreciationMethod      String    @default("wdv") // slm | wdv
+  usefulLifeMonths        Int
+  depreciationRate        Decimal   @default(0) @db.Decimal(7, 4)
+  accumulatedDepreciation Decimal   @default(0) @db.Decimal(18, 2)
+  accumulatedImpairment   Decimal   @default(0) @db.Decimal(18, 2)
+  netBookValue            Decimal   @default(0) @db.Decimal(18, 2)
+  depreciationThrough     DateTime? @db.Date
+  accountingProfile       Json      @default("{}")
+  originMetadata          Json      @default("{}")
+  sourceSnapshotHash      String    @default("")
+  createIdempotencyKey    String?
+  requestHash             String    @default("")
+  createdBy               String    @default("")
+  approvedBy              String    @default("")
+  location                Json      @default("{}")
+  status                  String    @default("under_construction")
+  rowVersion              Int       @default(0)
+  disposedAt              DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity   @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, assetCode])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, status])
+}
+
+model ErpBudget {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  financialYearId      String
+  budgetCode           String
+  name                 String
+  dimensionType        String
+  currency             String    @default("INR")
+  lines                Json      @default("[]")
+  status               String    @default("draft")
+  approvalState        String    @default("pending")
+  totalAmount          Decimal   @default(0) @db.Decimal(18, 2)
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  sourceSnapshotHash   String    @default("")
+  createdBy            String    @default("")
+  approvedBy           String    @default("")
+  submittedAt          DateTime?
+  rowVersion           Int       @default(0)
+  approvedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity   LegalEntity   @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, financialYearId, budgetCode])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, status])
+}
+
+/// Append-only accounting proposal/evidence for an asset. Financial effects
+/// are applied only after the linked voucher is posted through the voucher engine.
+model ErpAssetEvent {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  assetId              String
+  voucherId            String?
+  eventType            String // capitalization | transfer | depreciation | impairment | disposal
+  businessDate         DateTime  @db.Date
+  financialYearId      String?
+  accountingPeriodId   String?
+  amount               Decimal   @default(0) @db.Decimal(18, 2)
+  proceeds             Decimal   @default(0) @db.Decimal(18, 2)
+  status               String    @default("pending_voucher") // pending_voucher | completed
+  calculationSnapshot  Json      @default("{}")
+  fromLocation         Json      @default("{}")
+  toLocation           Json      @default("{}")
+  sourceSnapshotHash   String
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  createdBy            String
+  completedBy          String    @default("")
+  completedAt          DateTime?
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@unique([organizationId, voucherId])
+  @@index([organizationId])
+  @@index([legalEntityId, assetId, businessDate])
+}
+
+/// Correlation record for two independent company vouchers. Each company keeps
+/// its own lifecycle; this record never silently advances either voucher.
+model ErpIntercompanyPair {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  sourceLegalEntityId  String
+  targetLegalEntityId  String
+  sourceVoucherId      String
+  targetVoucherId      String
+  reference            String
+  businessDate         DateTime  @db.Date
+  sourceCurrency       String
+  targetCurrency       String
+  sourceAmount         Decimal   @db.Decimal(18, 2)
+  targetAmount         Decimal   @db.Decimal(18, 2)
+  exchangeRate         Decimal   @db.Decimal(18, 8)
+  rateEffectiveFrom    DateTime  @db.Date
+  rateEffectiveTo      DateTime? @db.Date
+  rateSourceReference  String
+  sourceSnapshot       Json
+  sourceSnapshotHash   String
+  status               String    @default("draft")
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  createdBy            String
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([organizationId, createIdempotencyKey])
+  @@unique([organizationId, sourceVoucherId])
+  @@unique([organizationId, targetVoucherId])
+  @@index([organizationId])
+  @@index([sourceLegalEntityId, targetLegalEntityId, businessDate])
+}
+
+// ============================================================ MesaOps return handoffs + India TDS evidence
+
+model ErpHandoffMapping {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  sourceService        String    @default("mesaops")
+  mappingType          String // item | uom | warehouse | customer
+  sourceKey            String
+  targetId             String    @default("")
+  targetValue          String    @default("")
+  sourceEvidence       Json      @default("{}")
+  status               String    @default("draft") // draft | approved
+  active               Boolean   @default(false)
+  requestedActive      Boolean   @default(true)
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  createdBy            String
+  proposedBy           String
+  approvedBy           String    @default("")
+  approvedAt           DateTime?
+  approvalReason       String    @default("")
+  proposalHash         String
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, sourceService, mappingType, sourceKey])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, mappingType, active])
+}
+
+model ErpHandoffEventRoute {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  sourceEventId        String
+  sourcePayloadHash    String
+  reason               String
+  routingEvidence      Json
+  evidenceHash         String
+  status               String    @default("draft") // draft | approved | rejected
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  createdBy            String
+  approvedBy           String    @default("")
+  approvedAt           DateTime?
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, sourceEventId])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, status, createdAt])
+}
+
+model ErpHandoffInboxEvent {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  legalEntityId      String
+  sourceEventId      String
+  sourceService      String    @default("mesaops")
+  eventType          String
+  schemaVersion      Int       @default(1)
+  aggregateType      String
+  aggregateId        String
+  correlationId      String
+  occurredAt         DateTime
+  sourceSnapshotHash String
+  payloadHash        String
+  payload            Json
+  state              String    @default("received") // received | accepted | retry | rejected | conflict
+  exceptionCode      String    @default("")
+  exceptionDetails   Json      @default("{}")
+  createdArtifacts   Json      @default("{}")
+  attemptCount       Int       @default(0)
+  receivedBy         String
+  resolvedBy         String    @default("")
+  resolvedAt         DateTime?
+  rowVersion         Int       @default(0)
+  receivedAt         DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  organization     Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity      LegalEntity               @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  qaEvidence       ErpPlantQaEvidence?
+  dispatchEvidence ErpPlantDispatchEvidence?
+
+  @@unique([organizationId, legalEntityId, sourceEventId])
+  @@index([organizationId])
+  @@index([legalEntityId, state, occurredAt])
+  @@index([legalEntityId, eventType, aggregateType, aggregateId])
+}
+
+model ErpPlantQaEvidence {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  legalEntityId       String
+  handoffInboxEventId String   @unique
+  inspectionId        String
+  operationalOrderId  String
+  productionPlanId    String   @default("")
+  logbookId           String   @default("")
+  productCode         String
+  lotNumber           String
+  quantity            Decimal  @default(0) @db.Decimal(18, 6)
+  uom                 String
+  disposition         String
+  businessDate        DateTime @db.Date
+  evidenceSnapshot    Json
+  evidenceHash        String
+  acceptedBy          String
+  acceptedAt          DateTime @default(now())
+
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity       LegalEntity          @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  handoffInboxEvent ErpHandoffInboxEvent @relation(fields: [handoffInboxEventId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, inspectionId])
+  @@index([organizationId])
+  @@index([legalEntityId, operationalOrderId, lotNumber])
+}
+
+model ErpPlantDispatchEvidence {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  legalEntityId       String
+  handoffInboxEventId String   @unique
+  sourceDispatchId    String
+  operationalOrderId  String
+  itemId              String
+  warehouseId         String
+  customerId          String
+  salesInvoiceId      String?
+  businessDate        DateTime @db.Date
+  quantity            Decimal  @db.Decimal(18, 6)
+  uom                 String
+  invoiceReference    String   @default("")
+  gatePassNumber      String   @default("")
+  vehicleNumber       String   @default("")
+  evidenceSnapshot    Json
+  evidenceHash        String
+  acceptedBy          String
+  acceptedAt          DateTime @default(now())
+
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity       LegalEntity          @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  handoffInboxEvent ErpHandoffInboxEvent @relation(fields: [handoffInboxEventId], references: [id], onDelete: Restrict)
+  item              ErpItem              @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  warehouse         ErpWarehouse         @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  customer          ErpCustomer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  salesInvoice      ErpDocument?         @relation(fields: [salesInvoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, sourceDispatchId])
+  @@index([organizationId])
+  @@index([legalEntityId, operationalOrderId, businessDate])
+  @@index([salesInvoiceId])
+}
+
+model ErpTdsSection {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  code                 String
+  name                 String
+  natureOfPayment      String
+  status               String    @default("draft") // draft | approved | retired
+  sourceReference      String
+  sourceEvidence       Json
+  effectiveSourceHash  String
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  createdBy            String
+  approvedBy           String    @default("")
+  approvedAt           DateTime?
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization    Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity     LegalEntity                  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  rates           ErpTdsRate[]
+  classifications ErpVendorTdsClassification[]
+  deductions      ErpTdsDeduction[]
+
+  @@unique([organizationId, legalEntityId, code])
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, status])
+}
+
+model ErpTdsRate {
+  id                     String    @id @default(cuid())
+  organizationId         String
+  legalEntityId          String
+  sectionId              String
+  effectiveFrom          DateTime  @db.Date
+  effectiveTo            DateTime? @db.Date
+  standardRate           Decimal   @db.Decimal(7, 4)
+  noPanRate              Decimal   @db.Decimal(7, 4)
+  singlePaymentThreshold Decimal   @default(0) @db.Decimal(18, 2)
+  aggregateThreshold     Decimal   @default(0) @db.Decimal(18, 2)
+  thresholdApplication   String    @default("full_current") // full_current | excess_only
+  status                 String    @default("draft") // draft | approved | retired
+  sourceReference        String
+  sourceEvidence         Json
+  sourceEvidenceHash     String
+  createIdempotencyKey   String?
+  requestHash            String    @default("")
+  createdBy              String
+  approvedBy             String    @default("")
+  approvedAt             DateTime?
+  rowVersion             Int       @default(0)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity       @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  section      ErpTdsSection     @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  deductions   ErpTdsDeduction[]
+
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, sectionId, status, effectiveFrom])
+}
+
+model ErpVendorTdsClassification {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  legalEntityId        String
+  vendorId             String
+  sectionId            String
+  effectiveFrom        DateTime  @db.Date
+  effectiveTo          DateTime? @db.Date
+  panStatus            String    @default("valid") // valid | missing | invalid
+  overrideRate         Decimal?  @db.Decimal(7, 4)
+  certificateReference String    @default("")
+  evidence             Json      @default("{}")
+  evidenceHash         String
+  status               String    @default("draft") // draft | approved | retired
+  createIdempotencyKey String?
+  requestHash          String    @default("")
+  createdBy            String
+  approvedBy           String    @default("")
+  approvedAt           DateTime?
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity       @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  vendor       ErpVendor         @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  section      ErpTdsSection     @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  deductions   ErpTdsDeduction[]
+
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, vendorId, sectionId, status, effectiveFrom])
+}
+
+model ErpTdsDeduction {
+  id                     String    @id @default(cuid())
+  organizationId         String
+  legalEntityId          String
+  financialYearId        String
+  vendorId               String
+  sectionId              String
+  rateId                 String
+  vendorClassificationId String
+  payableVoucherId       String
+  paymentVoucherId       String?
+  businessDate           DateTime  @db.Date
+  grossAmount            Decimal   @db.Decimal(18, 2)
+  priorAggregateBase     Decimal   @default(0) @db.Decimal(18, 2)
+  taxableBase            Decimal   @default(0) @db.Decimal(18, 2)
+  appliedRate            Decimal   @db.Decimal(7, 4)
+  deductionAmount        Decimal   @default(0) @db.Decimal(18, 2)
+  status                 String    @default("draft") // draft | submitted | approved
+  calculationSnapshot    Json
+  evidenceHash           String
+  createIdempotencyKey   String?
+  requestHash            String    @default("")
+  createdBy              String
+  approvedBy             String    @default("")
+  submittedAt            DateTime?
+  approvedAt             DateTime?
+  rowVersion             Int       @default(0)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity          LegalEntity                @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  financialYear        FinancialYear              @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+  vendor               ErpVendor                  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  section              ErpTdsSection              @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  rate                 ErpTdsRate                 @relation(fields: [rateId], references: [id], onDelete: Restrict)
+  vendorClassification ErpVendorTdsClassification @relation(fields: [vendorClassificationId], references: [id], onDelete: Restrict)
+  payableVoucher       ErpVoucher                 @relation("TdsPayableVoucher", fields: [payableVoucherId], references: [id], onDelete: Restrict)
+  paymentVoucher       ErpVoucher?                @relation("TdsPaymentVoucher", fields: [paymentVoucherId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, legalEntityId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([legalEntityId, businessDate, status])
+  @@index([vendorId, sectionId, financialYearId])
+  @@index([payableVoucherId])
+  @@index([paymentVoucherId])
+}
+
+model SourceLink {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  legalEntityId      String?
+  sourceService      String
+  sourceType         String
+  sourceId           String
+  destinationService String
+  destinationType    String
+  destinationId      String?
+  correlationId      String
+  sourceSnapshotHash String
+  sourceSnapshot     Json
+  state              String    @default("unlinked") // linked | stale | conflict | unlinked
+  conflictReason     String    @default("")
+  lastEventAt        DateTime?
+  rowVersion         Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity       LegalEntity?       @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  operationalOrders OperationalOrder[]
+
+  @@unique([organizationId, sourceService, sourceType, sourceId, destinationService, destinationType])
+  @@unique([organizationId, correlationId])
+  @@index([organizationId])
+  @@index([destinationService, destinationType, destinationId])
+  @@index([state])
+}
+
+model IntegrationOutboxEvent {
+  id             String    @id @default(cuid())
+  organizationId String
+  legalEntityId  String?
+  serviceId      String
+  aggregateType  String
+  aggregateId    String
+  eventType      String
+  schemaVersion  Int       @default(1)
+  correlationId  String
+  causationId    String    @default("")
+  payload        Json
+  payloadHash    String
+  occurredAt     DateTime  @default(now())
+  publishedAt    DateTime?
+  attempts       Int       @default(0)
+  nextAttemptAt  DateTime?
+  lastError      String    @default("")
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, serviceId, id])
+  @@index([organizationId])
+  @@index([publishedAt, nextAttemptAt])
+  @@index([aggregateType, aggregateId])
+}
+
+model IntegrationInboxReceipt {
+  id             String    @id @default(cuid())
+  organizationId String
+  legalEntityId  String?
+  consumer       String
+  eventId        String
+  eventType      String
+  payloadHash    String
+  status         String    @default("received") // received | processed | retry | conflict | rejected
+  attemptCount   Int       @default(0)
+  lastError      String    @default("")
+  receivedAt     DateTime  @default(now())
+  processedAt    DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, consumer, eventId])
+  @@index([organizationId])
+  @@index([consumer, status])
+}
+
+// MesaOps owns this demand record. It can stand alone or retain an immutable
+// link to a MesaERP sales-order snapshot; machine assignment remains on plans.
+model OperationalOrder {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  plantCode            String    @default("PRIMARY")
+  orderNumber          String
+  sourceType           String    @default("local_customer") // local_customer | internal | forecast | replenishment | trial | rework | import | mesaerp
+  sourceReference      String    @default("")
+  sourceLinkId         String?
+  legacySalesOrderId   String?   @unique
+  customerId           String?
+  customerName         String    @default("")
+  productCode          String    @default("")
+  productName          String
+  quantity             Decimal   @db.Decimal(18, 6)
+  uom                  String    @default("units")
+  dueDate              DateTime? @db.Date
+  priority             String    @default("medium")
+  requirements         Json      @default("{}")
+  originMetadata       Json      @default("{}")
+  sourceSnapshotHash   String    @default("")
+  status               String    @default("ready_to_plan")
+  createIdempotencyKey String?
+  rowVersion           Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  sourceLink       SourceLink?      @relation(fields: [sourceLinkId], references: [id], onDelete: Restrict)
+  customer         Customer?        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  legacySalesOrder SalesOrder?      @relation(fields: [legacySalesOrderId], references: [id], onDelete: Restrict)
+  productionPlans  ProductionPlan[]
+  dispatches       DispatchRecord[]
+
+  @@unique([organizationId, orderNumber])
+  @@unique([organizationId, createIdempotencyKey])
+  @@index([organizationId])
+  @@index([organizationId, plantCode, status])
+  @@index([organizationId, sourceType, status])
+  @@index([sourceLinkId])
+}
+
+// Durable response ledger for retry-safe MesaOps lifecycle writes. A scope and
+// key identify one logical request; the request hash prevents key reuse with a
+// different payload.
+model MesaOpsIdempotencyRecord {
+  id             String   @id @default(cuid())
+  organizationId String
+  scope          String
+  key            String
+  requestHash    String
+  response       Json
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, scope, key])
+  @@index([organizationId, createdAt])
 }

@@ -3,6 +3,8 @@ import { tenantContext } from '../../lib/tenantContext';
 import { audit } from '../../lib/audit';
 import { nextNumber } from '../../lib/ids';
 import { ApiError } from '../../middleware/error';
+import { hashCanonical } from '../../mesaerp/repository';
+import { plantCodeFilter, resolveMesaOpsPlantScope } from '../../lib/mesaOpsScope';
 import type { CustomerCreate, InquiryCreate, Quote, OrderConfirm } from './schemas';
 
 function org(): string {
@@ -76,13 +78,19 @@ export async function quoteInquiry(id: string, input: Quote) {
 
 /* ------------------------------------------------------------------ orders */
 
-export function listOrders() {
-  return prisma.salesOrder.findMany({ orderBy: { createdAt: 'desc' } });
+export async function listOrders() {
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
+  return prisma.salesOrder.findMany({
+    where: plants ? { operationalOrder: { is: { plantCode: plants } } } : undefined,
+    orderBy: { createdAt: 'desc' },
+  });
 }
 
 export async function confirmOrder(input: OrderConfirm) {
   const inquiry = await prisma.inquiry.findUnique({ where: { id: input.inquiryId } });
   if (!inquiry) throw new ApiError(404, 'not_found', 'Inquiry not found.');
+  const customer = await prisma.customer.findUnique({ where: { id: inquiry.customerId } });
+  if (!customer) throw new ApiError(422, 'bad_customer', 'The inquiry customer no longer exists.');
   if (!['quotation', 'approved'].includes(inquiry.status)) {
     throw new ApiError(409, 'not_quotable', `Inquiry must be quoted before it can become an order (status: ${inquiry.status}).`);
   }
@@ -108,6 +116,39 @@ export async function confirmOrder(input: OrderConfirm) {
         status: 'pending',
       },
     });
+    const dueDate = /^\d{4}-\d{2}-\d{2}/.test(order.deliveryDate)
+      ? new Date(`${order.deliveryDate.slice(0, 10)}T00:00:00.000Z`)
+      : null;
+    const operationalSnapshot = {
+      orderNumber: order.soNumber,
+      customerId: order.customerId,
+      customerName: customer.name,
+      productName: order.product,
+      quantity: String(order.quantity),
+      dueDate: order.deliveryDate,
+      priority: order.priority,
+    };
+    await tx.operationalOrder.create({
+      data: {
+        id: order.id,
+        organizationId: org(),
+        orderNumber: order.soNumber,
+        sourceType: 'local_customer',
+        sourceReference: order.soNumber,
+        legacySalesOrderId: order.id,
+        customerId: order.customerId,
+        customerName: customer.name,
+        productName: order.product,
+        quantity: String(order.quantity),
+        uom: 'units',
+        dueDate,
+        priority: order.priority,
+        requirements: { specialInstructions: order.specialInstructions },
+        originMetadata: { createdFrom: 'MesaOps SalesOrder' },
+        sourceSnapshotHash: hashCanonical(operationalSnapshot),
+        status: 'ready_to_plan',
+      },
+    });
     await tx.inquiry.update({ where: { id: inquiry.id }, data: { status: 'ordered', version: { increment: 1 } } });
     await audit(tx, { action: 'order.confirm', entity: 'SalesOrder', entityId: order.id, after: order });
     return order;
@@ -115,12 +156,17 @@ export async function confirmOrder(input: OrderConfirm) {
 }
 
 export async function cancelOrder(id: string) {
-  const order = await prisma.salesOrder.findUnique({ where: { id } });
-  if (!order) throw new ApiError(404, 'not_found', 'Order not found.');
-  if (order.status !== 'pending') {
-    throw new ApiError(409, 'not_cancellable', `Only a pending order can be cancelled (status: ${order.status}).`);
-  }
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
   return tenantTx(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "SalesOrder" WHERE "id" = ${id} FOR UPDATE`;
+    const order = await tx.salesOrder.findFirst({
+      where: { id, ...(plants ? { operationalOrder: { is: { plantCode: plants } } } : {}) },
+    });
+    if (!order) throw new ApiError(404, 'not_found', 'Order not found.');
+    if (order.status !== 'pending') {
+      throw new ApiError(409, 'not_cancellable', `Only a pending order can be cancelled (status: ${order.status}).`);
+    }
+    await tx.operationalOrder.deleteMany({ where: { legacySalesOrderId: order.id } });
     await tx.salesOrder.delete({ where: { id } });
     // Return the inquiry to the quotation queue so it can be re-ordered.
     await tx.inquiry.update({ where: { id: order.inquiryId }, data: { status: 'quotation', version: { increment: 1 } } });

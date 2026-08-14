@@ -2,8 +2,23 @@ import express, { type RequestHandler } from 'express';
 import { requirePermission } from '../../middleware/authz';
 import { validateBody } from '../../middleware/validate';
 import { ALL_SCREENS } from '../../lib/permissions';
-import { employeeCreateSchema, employeeUpdateSchema, roleCreateSchema, roleUpdateSchema, grantsSetSchema, passwordSetSchema } from './schemas';
+import { ApiError } from '../../middleware/error';
+import {
+  employeeCreateSchema,
+  employeeUpdateSchema,
+  roleCreateSchema,
+  roleUpdateSchema,
+  grantsSetSchema,
+  passwordSetSchema,
+  mesaOpsRoleAssignmentCreateSchema,
+  mesaOpsRoleAssignmentRevokeSchema,
+} from './schemas';
 import * as svc from './service';
+import {
+  mesaOpsStatutoryRuleProfileApproveSchema,
+  mesaOpsStatutoryRuleProfileCreateSchema,
+} from '../dispatch/statutoryProfileSchemas';
+import * as statutoryProfiles from '../dispatch/statutoryProfileService';
 
 const ah = (fn: (req: express.Request, res: express.Response) => Promise<unknown>): RequestHandler =>
   (req, res, next) => {
@@ -15,6 +30,14 @@ const ah = (fn: (req: express.Request, res: express.Response) => Promise<unknown
 const USERS = 'screen:users';
 const ACL = 'screen:acl';
 export const adminRouter = express.Router();
+
+function idempotencyKey(req: express.Request): string {
+  const key = (req.header('idempotency-key') || '').trim();
+  if (!/^[A-Za-z0-9._:-]{8,128}$/.test(key)) {
+    throw new ApiError(400, 'idempotency_key_required', 'A valid Idempotency-Key header is required.');
+  }
+  return key;
+}
 
 // The caller's own effective access — the client uses this to gate its menu.
 adminRouter.get('/me/permissions', ah(async (req) => ({ isAdmin: req.user?.isAdmin ?? false, screens: req.user?.screens ?? [] })));
@@ -45,3 +68,32 @@ adminRouter.delete('/roles/:id', requirePermission(ACL), ah((req) => svc.deleteR
 adminRouter.get('/employees/:id/grants', requirePermission(ACL), ah((req) => svc.listGrants(req.params.id)));
 adminRouter.put('/employees/:id/grants', requirePermission(ACL), validateBody(grantsSetSchema),
   ah((req) => svc.setGrants(req.params.id, req.body)));
+
+// Explicit MesaOps scope administration. The service id is fixed server-side;
+// this surface cannot create, edit or revoke a MesaERP role assignment.
+adminRouter.get('/mesaops/role-assignments', requirePermission(ACL),
+  ah(() => svc.listMesaOpsRoleAssignments()));
+adminRouter.post('/mesaops/role-assignments', requirePermission(ACL), validateBody(mesaOpsRoleAssignmentCreateSchema),
+  ah(async (req, res) => {
+    res.status(201);
+    return svc.createMesaOpsRoleAssignment(req.body, idempotencyKey(req));
+  }));
+adminRouter.post('/mesaops/role-assignments/:id/revoke', requirePermission(ACL), validateBody(mesaOpsRoleAssignmentRevokeSchema),
+  ah((req) => svc.revokeMesaOpsRoleAssignment(req.params.id, req.body, idempotencyKey(req))));
+
+// Independent MesaOps statutory applicability register. These exact action
+// permissions all map to Plant Administration/ACL server-side; the approval
+// action still requires a checker membership distinct from the draft maker.
+adminRouter.get('/mesaops/admin/statutory-rule-profiles', requirePermission('action:mesaops.statutory_rule_profile.view'),
+  ah(() => statutoryProfiles.listMesaOpsStatutoryRuleProfiles()));
+adminRouter.get('/mesaops/admin/statutory-rule-profiles/:id', requirePermission('action:mesaops.statutory_rule_profile.view'),
+  ah((req) => statutoryProfiles.getMesaOpsStatutoryRuleProfile(req.params.id)));
+adminRouter.post('/mesaops/admin/statutory-rule-profiles', requirePermission('action:mesaops.statutory_rule_profile.create'),
+  validateBody(mesaOpsStatutoryRuleProfileCreateSchema),
+  ah(async (req, res) => {
+    res.status(201);
+    return statutoryProfiles.createMesaOpsStatutoryRuleProfile(req.body, idempotencyKey(req));
+  }));
+adminRouter.post('/mesaops/admin/statutory-rule-profiles/:id/approve', requirePermission('action:mesaops.statutory_rule_profile.approve'),
+  validateBody(mesaOpsStatutoryRuleProfileApproveSchema),
+  ah((req) => statutoryProfiles.approveMesaOpsStatutoryRuleProfile(req.params.id, req.body, idempotencyKey(req))));

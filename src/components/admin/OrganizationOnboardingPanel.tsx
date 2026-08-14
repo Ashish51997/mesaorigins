@@ -94,7 +94,7 @@ export default function OrganizationOnboardingPanel({ onCreated }: { onCreated?:
     /^[a-z0-9-]+$/.test(form.organizationSlug.trim()) &&
     form.adminName.trim().length >= 2 &&
     /.+@.+/.test(form.adminEmail) &&
-    form.password.length >= 8 &&
+    form.password.length >= 12 &&
     form.serviceIds.length > 0
   ), [form]);
 
@@ -209,7 +209,7 @@ export default function OrganizationOnboardingPanel({ onCreated }: { onCreated?:
         </label>
         <label className="block sm:col-span-2">
           <span className="text-[13px] font-semibold text-slate-700">Temporary password</span>
-          <input type="password" value={form.password} onChange={(event) => patch({ password: event.target.value })} required minLength={8} placeholder="At least 8 characters" className={inputClass} />
+          <input type="password" value={form.password} onChange={(event) => patch({ password: event.target.value })} required minLength={12} maxLength={128} placeholder="At least 12 characters" className={inputClass} />
         </label>
         <fieldset className="sm:col-span-2">
           <legend className="text-[13px] font-semibold text-slate-700">Services</legend>

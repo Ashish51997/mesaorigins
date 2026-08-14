@@ -41,7 +41,8 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : 'Something went wrong — please try again.');
 
 // API-backed: orders whose production is complete (submitted logbook) and not yet
-// shipped. Dispatching creates the record + invoice and flips the order.
+// shipped. Dispatching creates a gate-pass record + document reference and
+// flips the order; invoiceNumber remains the legacy API field name.
 export function ReadyToDispatch(p: DispatchData) {
   const readyQ = useReadyOrders();
   const [dispatching, setDispatching] = useState<ApiReadyOrder | null>(null);
@@ -58,7 +59,7 @@ export function ReadyToDispatch(p: DispatchData) {
           { key: 'so', header: 'SO', cell: (o) => <TraceLink id={o.soNumber} onTrace={p.onTrace} className="font-bold font-mono" /> },
           { key: 'product', header: 'Product', cell: (o) => <span className="font-semibold">{o.product}</span> },
           { key: 'customer', header: 'Customer', cell: (o) => o.customer.name },
-          { key: 'qty', header: 'Qty', align: 'right', className: 'font-mono', cell: (o) => o.quantity.toLocaleString('en-IN') },
+          { key: 'qty', header: 'QA released', align: 'right', className: 'font-mono', cell: (o) => `${Number(o.dispatchableQuantity).toLocaleString('en-IN')} ${o.uom}` },
           { key: 'due', header: 'Due', className: 'whitespace-nowrap', cell: (o) => o.deliveryDate },
           { key: 'act', header: '', align: 'right', cell: (o) => (
             <button onClick={() => setDispatching(o)} className="h-9 px-4 rounded-lg bg-indigo-600 text-white font-bold text-xs inline-flex items-center gap-1 hover:bg-indigo-500"><Truck className="w-3.5 h-3.5" /> Dispatch</button>
@@ -77,16 +78,24 @@ function DispatchModal({ order, onClose }: { order: ApiReadyOrder; onClose: () =
   const [transporter, setTransporter] = useState('');
   const [driver, setDriver] = useState('');
   const [eta, setEta] = useState('');
-  const valid = vehicle.trim() !== '';
+  const [quantity, setQuantity] = useState(order.dispatchableQuantity);
+  const quantityNumber = Number(quantity);
+  const valid = vehicle.trim() !== '' && Number.isFinite(quantityNumber) && quantityNumber > 0 && quantityNumber <= Number(order.dispatchableQuantity);
 
   const submit = () => {
     if (!valid || !canDispatch || create.isPending) return;
     create.mutate(
-      { salesOrderId: order.id, vehicleNumber: vehicle.trim(), transporter: transporter.trim(), driverName: driver.trim(), etaDate: eta },
+      {
+        operationalOrderId: order.operationalOrderId || order.id,
+        quantity,
+        expectedOrderVersion: order.rowVersion,
+        movementType: 'supply',
+        vehicleNumber: vehicle.trim(), transporter: transporter.trim(), driverName: driver.trim(), etaDate: eta,
+      },
       {
         onSuccess: (d) => {
-          pushNudge('good', `${order.soNumber} dispatched — invoice ${d.invoiceNumber}, vehicle ${vehicle}. Sales is updated.`);
-          pushToast(`${order.soNumber} dispatched · ${d.invoiceNumber}.`);
+          pushNudge('good', `${order.soNumber} dispatched — dispatch reference ${d.invoiceNumber}, vehicle ${vehicle}.`);
+          pushToast(`${order.soNumber} dispatched · dispatch reference ${d.invoiceNumber}.`);
           onClose();
         },
         onError: (e) => pushToast(errMsg(e)),
@@ -97,15 +106,16 @@ function DispatchModal({ order, onClose }: { order: ApiReadyOrder; onClose: () =
   return (
     <ResponsiveOverlay open onClose={onClose} title={`Dispatch ${order.soNumber}`}>
       <div className="space-y-4">
-          <div className="text-[12px] text-slate-500">{order.product} · {order.quantity} units · {order.customer.name}</div>
+          <div className="text-[12px] text-slate-500">{order.product} · {order.dispatchableQuantity} {order.uom} QA released · {order.customer.name}</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Vehicle plate" value={vehicle} onChange={setVehicle} ph="KA-01-AB-1234" />
             <Field label="Transporter" value={transporter} onChange={setTransporter} ph="e.g. Blue Dart" />
             <Field label="Driver name" value={driver} onChange={setDriver} ph="Driver" />
             <Field label="ETA date" value={eta} onChange={setEta} ph="YYYY-MM-DD" />
+            <Field label={`Dispatch quantity (${order.uom})`} value={quantity} onChange={setQuantity} ph={order.dispatchableQuantity} />
           </div>
           <button onClick={submit} disabled={!valid || !canDispatch || create.isPending} title={canDispatch ? undefined : 'No access — ask your administrator'} className="w-full h-14 rounded-lg bg-indigo-600 text-white font-bold text-base hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1">
-            <Truck className="w-5 h-5" /> {canDispatch ? 'Dispatch & raise invoice' : 'No access to dispatch'}
+            <Truck className="w-5 h-5" /> {canDispatch ? 'Record gate pass & dispatch' : 'No access to dispatch'}
           </button>
       </div>
     </ResponsiveOverlay>
@@ -141,12 +151,12 @@ export function DispatchHistory(p: DispatchData) {
       loading={dispQ.isLoading}
       rows={done}
       rowKey={(d) => d.id}
-      empty={<EmptyState icon={<Truck className="w-8 h-8" />} title="No dispatches yet." hint="Dispatched orders land here with their invoice." />}
+      empty={<EmptyState icon={<Truck className="w-8 h-8" />} title="No dispatches yet." hint="Dispatched orders land here with their dispatch reference." />}
       onRowClick={(d) => p.onTrace(d.invoiceNumber)}
       columns={[
         { key: 'ok', header: '', className: 'w-8', cell: () => <CheckCircle2 className="w-4 h-4 text-emerald-600" /> },
         { key: 'so', header: 'SO', cell: (d) => <span className="font-bold font-mono">{d.salesOrder.soNumber}</span> },
-        { key: 'inv', header: 'Invoice', cell: (d) => <span className="font-mono text-[12px] text-slate-500">{d.invoiceNumber}</span> },
+        { key: 'inv', header: 'Dispatch reference', cell: (d) => <span className="font-mono text-[12px] text-slate-500">{d.invoiceNumber}</span> },
         { key: 'customer', header: 'Customer', cell: (d) => d.salesOrder.customer.name },
         { key: 'vehicle', header: 'Vehicle', cell: (d) => d.vehicleNumber || '—' },
         { key: 'trace', header: '', align: 'right', cell: () => <span className="text-[11px] font-bold text-indigo-600">Trace</span> },

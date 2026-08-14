@@ -11,8 +11,11 @@ type Snapshot = {
   organizationStatus: string;
   mesaOpsStatus: string;
   mesaLeadsStatus: string;
+  mesaErpStatus: string;
   mesaOpsAssignmentStatus: string;
   mesaLeadsAssignmentStatus: string;
+  mesaErpAssignmentStatus: string;
+  mesaErpAssignmentExisted: boolean;
 };
 
 let snapshot: Snapshot;
@@ -23,9 +26,15 @@ async function setEntitlementsActive(): Promise<void> {
     basePrisma.organization.update({ where: { id: snapshot.organizationId }, data: { status: 'active' } }),
     basePrisma.service.update({ where: { id: 'mesaops' }, data: { status: 'active' } }),
     basePrisma.service.update({ where: { id: 'mesaleads' }, data: { status: 'active' } }),
+    basePrisma.service.update({ where: { id: 'mesaerp' }, data: { status: 'active' } }),
     basePrisma.organizationService.update({
       where: { organizationId_serviceId: { organizationId: snapshot.organizationId, serviceId: 'mesaops' } },
       data: { status: 'active' },
+    }),
+    basePrisma.organizationService.upsert({
+      where: { organizationId_serviceId: { organizationId: snapshot.organizationId, serviceId: 'mesaerp' } },
+      create: { organizationId: snapshot.organizationId, serviceId: 'mesaerp', status: 'active' },
+      update: { status: 'active' },
     }),
     basePrisma.organizationService.update({
       where: { organizationId_serviceId: { organizationId: snapshot.organizationId, serviceId: 'mesaleads' } },
@@ -44,18 +53,22 @@ beforeAll(async () => {
   });
   if (!membership) throw new Error(`Seed membership for ${ADMIN_EMAIL} is required.`);
 
-  const [mesaOps, mesaLeads, mesaOpsAssignment, mesaLeadsAssignment] = await Promise.all([
+  const [mesaOps, mesaLeads, mesaErp, mesaOpsAssignment, mesaLeadsAssignment, mesaErpAssignment] = await Promise.all([
     basePrisma.service.findUnique({ where: { id: 'mesaops' } }),
     basePrisma.service.findUnique({ where: { id: 'mesaleads' } }),
+    basePrisma.service.findUnique({ where: { id: 'mesaerp' } }),
     basePrisma.organizationService.findUnique({
       where: { organizationId_serviceId: { organizationId: membership.organizationId, serviceId: 'mesaops' } },
     }),
     basePrisma.organizationService.findUnique({
       where: { organizationId_serviceId: { organizationId: membership.organizationId, serviceId: 'mesaleads' } },
     }),
+    basePrisma.organizationService.findUnique({
+      where: { organizationId_serviceId: { organizationId: membership.organizationId, serviceId: 'mesaerp' } },
+    }),
   ]);
-  if (!mesaOps || !mesaLeads || !mesaOpsAssignment || !mesaLeadsAssignment) {
-    throw new Error('The seeded organization must be assigned both MesaOps and MesaLeads.');
+  if (!mesaOps || !mesaLeads || !mesaErp || !mesaOpsAssignment || !mesaLeadsAssignment) {
+    throw new Error('The seeded organization must be assigned both MesaOps and MesaLeads, and the MesaERP catalogue must exist.');
   }
 
   snapshot = {
@@ -63,8 +76,11 @@ beforeAll(async () => {
     organizationStatus: membership.organization.status,
     mesaOpsStatus: mesaOps.status,
     mesaLeadsStatus: mesaLeads.status,
+    mesaErpStatus: mesaErp.status,
     mesaOpsAssignmentStatus: mesaOpsAssignment.status,
     mesaLeadsAssignmentStatus: mesaLeadsAssignment.status,
+    mesaErpAssignmentStatus: mesaErpAssignment?.status ?? 'active',
+    mesaErpAssignmentExisted: Boolean(mesaErpAssignment),
   };
   await setEntitlementsActive();
 });
@@ -82,6 +98,7 @@ afterAll(async () => {
       }),
       basePrisma.service.update({ where: { id: 'mesaops' }, data: { status: snapshot.mesaOpsStatus } }),
       basePrisma.service.update({ where: { id: 'mesaleads' }, data: { status: snapshot.mesaLeadsStatus } }),
+      basePrisma.service.update({ where: { id: 'mesaerp' }, data: { status: snapshot.mesaErpStatus } }),
       basePrisma.organizationService.update({
         where: { organizationId_serviceId: { organizationId: snapshot.organizationId, serviceId: 'mesaops' } },
         data: { status: snapshot.mesaOpsAssignmentStatus },
@@ -90,7 +107,16 @@ afterAll(async () => {
         where: { organizationId_serviceId: { organizationId: snapshot.organizationId, serviceId: 'mesaleads' } },
         data: { status: snapshot.mesaLeadsAssignmentStatus },
       }),
+      ...(snapshot.mesaErpAssignmentExisted ? [basePrisma.organizationService.update({
+        where: { organizationId_serviceId: { organizationId: snapshot.organizationId, serviceId: 'mesaerp' } },
+        data: { status: snapshot.mesaErpAssignmentStatus },
+      })] : []),
     ]);
+    if (!snapshot.mesaErpAssignmentExisted) {
+      await basePrisma.organizationService.delete({
+        where: { organizationId_serviceId: { organizationId: snapshot.organizationId, serviceId: 'mesaerp' } },
+      });
+    }
   }
   if (previousAllowedEmails === undefined) delete process.env.ONBOARDING_ALLOWED_EMAILS;
   else process.env.ONBOARDING_ALLOWED_EMAILS = previousAllowedEmails;
@@ -101,10 +127,16 @@ describe('MesaOps service entitlement gate', () => {
     const activeSummary = await request(app).get('/api/summary').set('x-dev-user', ADMIN_EMAIL);
     expect(activeSummary.status).toBe(200);
 
-    // No identity header deliberately exercises the local Administrator
-    // fallback while still passing through authentication and entitlement.
-    const activeLegacy = await request(app).get('/api/data');
-    expect(activeLegacy.status).toBe(200);
+    // The shared filesystem bridge is permanently retired. Both methods must
+    // remain unavailable even while MesaOps itself is active.
+    const [retiredRead, retiredWrite] = await Promise.all([
+      request(app).get('/api/data').set('x-dev-user', ADMIN_EMAIL),
+      request(app).post('/api/data').set('x-dev-user', ADMIN_EMAIL).send({ customers: [] }),
+    ]);
+    for (const retired of [retiredRead, retiredWrite]) {
+      expect(retired.status).toBe(404);
+      expect(retired.body.error.code).toBe('not_found');
+    }
 
     const stop = await request(app)
       .put('/api/onboarding/services/mesaops/status')
@@ -113,26 +145,43 @@ describe('MesaOps service entitlement gate', () => {
     expect(stop.status).toBe(200);
     expect(stop.body).toMatchObject({ id: 'mesaops', status: 'stopped' });
 
-    const [summary, legacy, health, publicQuestionnaire, me, onboarding, mesaLeads] = await Promise.all([
+    const [summary, health, publicQuestionnaire, me, onboarding, mesaLeads, mesaErp] = await Promise.all([
       request(app).get('/api/summary').set('x-dev-user', ADMIN_EMAIL),
-      request(app).get('/api/data'),
       request(app).get('/api/health'),
       request(app).get('/api/public/mesaleads/forms/not-a-real-token'),
       request(app).get('/api/me').set('x-dev-user', ADMIN_EMAIL),
       request(app).get('/api/onboarding/services').set('x-dev-user', ADMIN_EMAIL),
       request(app).get('/api/mesaleads/summary').set('x-dev-user', ADMIN_EMAIL),
+      request(app).get('/api/mesaerp/v1/entities').set('x-dev-user', ADMIN_EMAIL),
     ]);
 
-    for (const blocked of [summary, legacy]) {
-      expect(blocked.status).toBe(403);
-      expect(blocked.body.error.code).toBe('service_not_enabled');
-    }
+    expect(summary.status).toBe(403);
+    expect(summary.body.error.code).toBe('service_not_enabled');
     expect(health.status).toBe(200);
     expect(publicQuestionnaire.status).toBe(404);
     expect(publicQuestionnaire.body.error.code).toBe('not_found');
     expect(me.status).toBe(200);
     expect(onboarding.status).toBe(200);
     expect(mesaLeads.status).toBe(200);
+    expect(mesaErp.status).toBe(200);
+  });
+
+  it('stops MesaERP without blocking MesaOps or MesaLeads', async () => {
+    const stop = await request(app)
+      .put('/api/onboarding/services/mesaerp/status')
+      .set('x-dev-user', ADMIN_EMAIL)
+      .send({ status: 'stopped' });
+    expect(stop.status).toBe(200);
+
+    const [erp, ops, leads] = await Promise.all([
+      request(app).get('/api/mesaerp/v1/entities').set('x-dev-user', ADMIN_EMAIL),
+      request(app).get('/api/summary').set('x-dev-user', ADMIN_EMAIL),
+      request(app).get('/api/mesaleads/summary').set('x-dev-user', ADMIN_EMAIL),
+    ]);
+    expect(erp.status).toBe(403);
+    expect(erp.body.error.code).toBe('service_not_enabled');
+    expect(ops.status).toBe(200);
+    expect(leads.status).toBe(200);
   });
 
   it('also fails closed for an inactive assignment or suspended organization', async () => {

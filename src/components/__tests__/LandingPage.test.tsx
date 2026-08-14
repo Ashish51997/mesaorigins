@@ -36,6 +36,14 @@ const mesaLeads = {
   sortOrder: 20,
 };
 
+const mesaErp = {
+  id: 'mesaerp',
+  name: 'MesaERP',
+  description: 'Manufacturing business ERP and finance workspace.',
+  status: 'active',
+  sortOrder: 30,
+};
+
 const multiOrganizations = [
   {
     organizationId: 'org-acme',
@@ -170,8 +178,9 @@ describe('MesaDesk landing page', () => {
   it.each([
     ['MesaOps', 'mesaops'],
     ['MesaLeads', 'mesaleads'],
+    ['MesaERP', 'mesaerp'],
   ])('lets a multi-service organization enter %s', async (serviceName, serviceId) => {
-    mockSignedOutLanding(authResponse([mesaOps, mesaLeads]));
+    mockSignedOutLanding(authResponse([mesaOps, mesaLeads, mesaErp]));
     openOrganizationLogin();
     submitOrganizationLogin();
 

@@ -6,6 +6,7 @@ import LandingPage, { servicePath, type OrganizationSession } from './components
 import ServiceAdminPortal from './components/admin/ServiceAdminPortal.tsx';
 import CustomerQuestionnaire from './components/mesaleads/CustomerQuestionnaire.tsx';
 import MesaLeadsApp from './components/mesaleads/MesaLeadsApp.tsx';
+import { MesaErpRoute, SupplierPortalRoute } from './components/mesaerp';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -19,6 +20,12 @@ function RootRoute() {
     return <CustomerQuestionnaire token={token} />;
   }
   if (path === '/mesaleads' || path.startsWith('/mesaleads/')) return <MesaLeadsApp />;
+  if (path === '/supplier-portal' || path.startsWith('/supplier-portal/')) {
+    return <SupplierPortalRoute onExit={() => window.location.assign('/')} />;
+  }
+  if (path === '/mesaerp' || path.startsWith('/mesaerp/')) {
+    return <MesaErpRoute onExit={() => window.location.assign('/')} />;
+  }
   if (path === '/admin') return <ServiceAdminPortal />;
   if (path === '/') {
     const hasMachineDeepLink = new URLSearchParams(window.location.search).has('machine');

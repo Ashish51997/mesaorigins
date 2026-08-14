@@ -10,8 +10,10 @@
  * duplicate sales orders the new per-tenant constraints reject).
  */
 import { Prisma, PrismaClient } from '@prisma/client';
+import { createHash } from 'node:crypto';
 import { ROLE_DEFAULT_SCREENS, ADMIN_ROLES } from '../src/lib/permissions';
 import { hashPassword } from '../src/lib/password';
+import { canonicalHash } from '../src/lib/canonical';
 import {
   initialCustomers,
   initialInquiries,
@@ -34,6 +36,7 @@ const prisma = new PrismaClient({
 });
 
 const DEMO_ORG_ID = 'org-demo';
+const DEMO_MESAOPS_PLANT_ACCESS_ROLE_ID = `mesaops-plant-access-${createHash('md5').update(DEMO_ORG_ID).digest('hex')}`;
 /** Default password for every seeded user (override with SEED_USER_PASSWORD). */
 const SEED_PASSWORD = process.env.SEED_USER_PASSWORD || 'mesadesk123';
 const PRODUCT_OWNER_EMAIL = 'aroul303@gmail.com';
@@ -131,7 +134,64 @@ const IMM_QUESTIONS: Array<{
   { key: 'additional_notes', type: 'long_text', label: 'Additional requirements or notes' },
 ];
 
+const ERP_PERMISSIONS = [
+  ['mesaerp.legal_entity.manage', 'Manage legal entities', 'high'],
+  ['mesaerp.vendor.read', 'View vendors', 'standard'],
+  ['mesaerp.vendor.manage', 'Manage vendor lifecycle', 'sensitive'],
+  ['mesaerp.vendor.bank.verify', 'Verify vendor bank changes', 'high'],
+  ['mesaerp.sourcing.manage', 'Manage sourcing and RFQs', 'sensitive'],
+  ['mesaerp.procurement.manage', 'Manage procurement', 'sensitive'],
+  ['mesaerp.purchase.match', 'Approve three-way matches', 'high'],
+  ['mesaerp.sales.manage', 'Manage sales documents', 'sensitive'],
+  ['mesaerp.inventory.manage', 'Manage valued inventory', 'high'],
+  ['mesaerp.manufacturing.manage', 'Manage manufacturing accounting', 'high'],
+  ['mesaerp.mrp.manage', 'Manage manufacturing planning', 'high'],
+  ['mesaerp.voucher.read', 'View accounting vouchers', 'standard'],
+  ['mesaerp.voucher.create', 'Create accounting vouchers', 'sensitive'],
+  ['mesaerp.voucher.edit', 'Edit draft vouchers', 'sensitive'],
+  ['mesaerp.voucher.submit', 'Submit vouchers', 'sensitive'],
+  ['mesaerp.voucher.approve', 'Approve vouchers', 'high'],
+  ['mesaerp.voucher.post', 'Post vouchers', 'high'],
+  ['mesaerp.voucher.reverse', 'Reverse posted vouchers', 'high'],
+  ['mesaerp.banking.manage', 'Manage banking and reconciliation', 'high'],
+  ['mesaerp.tax.manage', 'Manage tax and statutory documents', 'high'],
+  ['mesaerp.asset.manage', 'Manage fixed assets', 'sensitive'],
+  ['mesaerp.budget.manage', 'Manage budgets', 'sensitive'],
+  ['mesaerp.reports.read', 'View financial reports', 'standard'],
+  ['mesaerp.handoff.manage', 'Resolve service handoffs', 'high'],
+  ['mesaerp.tds.manage', 'Manage TDS evidence', 'high'],
+  ['mesaerp.access.manage', 'Manage MesaERP roles and access', 'high'],
+  ['mesaerp.period.reopen', 'Reopen an accounting period', 'high'],
+  ['mesaerp.account.manage', 'Manage chart of accounts', 'high'],
+  ['mesaerp.period.manage', 'Close accounting periods', 'high'],
+  ['mesaerp.intercompany.manage', 'Manage intercompany pairs', 'high'],
+  ['mesaerp.consolidation.manage', 'Run consolidation reports', 'high'],
+] as const;
+
+const ERP_ACCOUNTS = [
+  ['1000', 'Cash', 'asset'], ['1010', 'Bank', 'asset'], ['1100', 'Trade receivables', 'asset'],
+  ['1200', 'Raw material inventory', 'asset'], ['1210', 'Work in progress', 'asset'],
+  ['1220', 'Finished goods inventory', 'asset'], ['1300', 'GST input credit', 'asset'],
+  ['2000', 'Trade payables', 'liability'], ['2010', 'Goods received not invoiced', 'liability'], ['2100', 'GST output payable', 'liability'],
+  ['3000', 'Retained earnings', 'equity'], ['4000', 'Sales', 'income'],
+  ['5000', 'Purchases and material consumption', 'expense'], ['5100', 'Cost of goods sold', 'expense'],
+  ['5200', 'Direct labour', 'expense'], ['5300', 'Machine and factory overhead', 'expense'],
+] as const;
+
 const ALL_TABLES = [
+  'ErpTdsDeduction', 'ErpVendorTdsClassification', 'ErpTdsRate', 'ErpTdsSection',
+  'ErpPlantDispatchEvidence', 'ErpPlantQaEvidence', 'ErpHandoffInboxEvent', 'ErpHandoffEventRoute', 'ErpHandoffMapping',
+  'ErpIdempotencyRecord', 'IntegrationInboxReceipt', 'IntegrationOutboxEvent', 'SourceLink',
+  'ErpTransferProposal', 'ErpMrpSuggestion', 'ErpMrpRequirement', 'ErpMrpRun', 'ErpStockReservation',
+  'ErpDemandForecast', 'ErpPlanningBomComponent', 'ErpPlanningBomRevision', 'ErpPlanningBom',
+  'ErpTaxDocument', 'ErpBatchCost', 'ErpManufacturingVoucher', 'ErpProductionDemand',
+  'ErpValuationConsumption', 'ErpValuationLayer', 'ErpInventoryCount', 'ErpPostingLink',
+  'ErpStockMovement', 'ErpAssetEvent', 'ErpIntercompanyPair', 'ErpVoucherLine', 'ErpVoucher', 'ErpMatchCase', 'ErpDocumentLink',
+  'ErpDocumentLine', 'ErpDocument', 'ErpNumberSeries', 'ErpBudget', 'ErpAsset',
+  'ErpBankReconciliation', 'SupplierPortalUser', 'ErpVendorDocument', 'ErpVendorBankAccount',
+  'ErpVendor', 'ErpCustomer', 'ErpItem', 'RoleAssignment', 'RolePermission', 'ApprovalPolicy',
+  'Delegation', 'ErpWarehouse', 'ErpAccount', 'AccountingPeriod', 'FinancialYear', 'LegalEntity',
+  'Permission', 'OperationalOrder',
   'Organization', 'Service', 'OrganizationService', 'User', 'Membership', 'Role', 'EmployeeGrant', 'Customer', 'Inquiry', 'SalesOrder', 'ProductionPlan', 'LogbookTemplate',
   'MachineLogbook', 'QualityInspection', 'InventoryTransaction', 'DispatchRecord', 'Complaint',
   'CAPARecord', 'Formulation', 'MaintenanceTask', 'Machine', 'AuditEvent',
@@ -147,7 +207,13 @@ async function main(): Promise<void> {
     data: [
       { id: 'mesaops', name: 'MesaOps', description: 'Manufacturing operations, planning, quality, inventory and dispatch.', status: 'active', sortOrder: 10 },
       { id: 'mesaleads', name: 'MesaLeads', description: 'Lead management and sales pipeline workspace.', status: 'active', sortOrder: 20 },
+      { id: 'mesaerp', name: 'MesaERP', description: 'Manufacturing business ERP, procurement, costing, accounting and statutory control.', status: 'active', sortOrder: 30 },
     ],
+  });
+  await prisma.permission.createMany({
+    data: ERP_PERMISSIONS.map(([key, label, riskLevel]) => ({
+      id: key, serviceId: 'mesaerp', key, label, riskLevel,
+    })),
   });
 
   console.log('[seed] provisioning demo organization…');
@@ -159,6 +225,7 @@ async function main(): Promise<void> {
     data: [
       { organizationId: O, serviceId: 'mesaops' },
       { organizationId: O, serviceId: 'mesaleads' },
+      { organizationId: O, serviceId: 'mesaerp' },
     ],
   });
 
@@ -206,10 +273,119 @@ async function main(): Promise<void> {
         organizationId: O, name, screens: ROLE_DEFAULT_SCREENS[name] ?? [], isAdmin: ADMIN_ROLES.has(name), isSystem: true,
       })),
     });
+    await tx.role.create({
+      data: {
+        id: DEMO_MESAOPS_PLANT_ACCESS_ROLE_ID, organizationId: O,
+        name: 'MesaOps Plant Access', screens: [], isAdmin: false, isSystem: true,
+      },
+    });
+    await tx.role.create({
+      data: {
+        id: 'role-mesaerp-finance-admin', organizationId: O,
+        name: 'MesaERP Finance Administrator', screens: [], isAdmin: false, isSystem: false,
+      },
+    });
+    await tx.role.create({
+      data: {
+        id: 'role-mesaerp-platform-admin', organizationId: O,
+        name: 'MesaERP Platform Administrator', screens: [], isAdmin: false, isSystem: true,
+      },
+    });
     const roleIdByName = new Map((await tx.role.findMany({ where: { organizationId: O }, select: { id: true, name: true } })).map((r) => [r.name, r.id]));
     for (const e of EMPLOYEES) {
       await tx.membership.update({ where: { id: `mem-${e.id}` }, data: { roleId: roleIdByName.get(e.role) } });
     }
+    // Production plant access is assignment-driven. Seed active demo users
+    // with the same explicit all-plant evidence and permissionless scope role
+    // used by the additive migration; inactive/on-leave users remain unassigned
+    // until an administrator deliberately grants a scope.
+    await tx.roleAssignment.createMany({
+      data: EMPLOYEES.filter((employee) => employee.status === 'active').map((employee) => ({
+        id: `mesaops-seed-all-plant-${employee.id}`,
+        organizationId: O,
+        membershipId: `mem-${employee.id}`,
+        roleId: DEMO_MESAOPS_PLANT_ACCESS_ROLE_ID,
+        serviceId: 'mesaops',
+        legalEntityId: null,
+        plantCode: null,
+        warehouseId: null,
+        status: 'active',
+      })),
+    });
+
+    const erpRoleId = 'role-mesaerp-finance-admin';
+    const legalEntityId = 'entity-demo';
+    const financialYearId = 'fy-demo-2026-27';
+    await tx.legalEntity.create({
+      data: {
+        id: legalEntityId, organizationId: O, code: 'DEMO01', legalName: 'Mesadesk Demo Manufacturing Private Limited',
+        countryCode: 'IN', baseCurrency: 'INR', fiscalYearStartMonth: 4,
+      },
+    });
+    await tx.role.update({ where: { id: erpRoleId }, data: { erpLegalEntityId: legalEntityId } });
+    await tx.financialYear.create({
+      data: {
+        id: financialYearId, organizationId: O, legalEntityId, code: '2026-27',
+        startsOn: new Date('2026-04-01T00:00:00.000Z'), endsOn: new Date('2027-03-31T00:00:00.000Z'),
+      },
+    });
+    await tx.accountingPeriod.createMany({
+      data: Array.from({ length: 12 }, (_, index) => {
+        const startsOn = new Date(Date.UTC(2026, 3 + index, 1));
+        const endsOn = new Date(Date.UTC(2026, 4 + index, 0));
+        return {
+          organizationId: O, legalEntityId, financialYearId, periodNumber: index + 1,
+          name: startsOn.toLocaleString('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' }),
+          startsOn, endsOn,
+        };
+      }),
+    });
+    await tx.erpAccount.createMany({
+      data: ERP_ACCOUNTS.map(([code, name, accountType]) => ({
+        id: `erp-acct-${code}`, organizationId: O, legalEntityId, code, name, accountType, currency: 'INR',
+        classification: code === '1000' ? 'cash' : code === '1010' ? 'bank' : code === '1100' ? 'receivable'
+          : code === '2000' ? 'payable' : code === '3000' ? 'equity' : code === '4000' ? 'revenue'
+            : code === '5100' ? 'cogs' : accountType === 'expense' ? 'operating_expense' : code.startsWith('12') ? 'inventory' : code.startsWith('13') || code.startsWith('21') ? 'tax' : 'other',
+        cashFlowClass: code === '1000' || code === '1010' ? 'cash' : code.startsWith('12') || code.startsWith('11') || code.startsWith('20') || code.startsWith('4') || code.startsWith('5') ? 'operating' : 'non_cash',
+        reconciliationRequired: code === '1010',
+      })),
+    });
+    await tx.rolePermission.createMany({
+      data: ERP_PERMISSIONS.map(([permissionId]) => ({
+        organizationId: O, roleId: erpRoleId, permissionId, effect: 'allow',
+      })),
+    });
+    await tx.rolePermission.create({
+      data: {
+        organizationId: O,
+        roleId: 'role-mesaerp-platform-admin',
+        permissionId: 'mesaerp.legal_entity.manage',
+        effect: 'allow',
+      },
+    });
+    await tx.roleAssignment.createMany({
+      data: EMPLOYEES.filter((employee) => ['Owner', 'Administrator'].includes(employee.role)).map((employee) => ({
+        organizationId: O, membershipId: `mem-${employee.id}`, roleId: erpRoleId,
+        serviceId: 'mesaerp', legalEntityId,
+      })),
+    });
+    const owner = EMPLOYEES.find((employee) => employee.role === 'Owner');
+    if (owner) {
+      await tx.roleAssignment.create({
+        data: {
+          organizationId: O,
+          membershipId: `mem-${owner.id}`,
+          roleId: 'role-mesaerp-platform-admin',
+          serviceId: 'mesaerp',
+        },
+      });
+    }
+    await tx.approvalPolicy.create({
+      data: {
+        organizationId: O, legalEntityId, serviceId: 'mesaerp', action: 'voucher.approve', currency: 'INR',
+        steps: [{ sequence: 1, permission: 'mesaerp.voucher.approve' }], allowSelfApproval: false,
+      },
+    });
 
     await tx.customer.createMany({ data: withOrg(initialCustomers) });
     await tx.logbookTemplate.createMany({ data: withOrg(initialLogbookTemplates) });
@@ -219,14 +395,67 @@ async function main(): Promise<void> {
 
     await tx.inquiry.createMany({ data: withOrg(keptInquiries) });
     await tx.salesOrder.createMany({ data: withOrg(keptOrders) });
+    await tx.operationalOrder.createMany({
+      data: keptOrders.map((order) => ({
+        id: order.id,
+        organizationId: O,
+        orderNumber: order.soNumber,
+        sourceType: 'local_customer',
+        sourceReference: order.soNumber,
+        legacySalesOrderId: order.id,
+        customerId: order.customerId,
+        customerName: initialCustomers.find((customer) => customer.id === order.customerId)?.name ?? '',
+        productName: order.product,
+        quantity: String(order.quantity),
+        uom: 'units',
+        dueDate: /^\d{4}-\d{2}-\d{2}/.test(order.deliveryDate) ? new Date(`${order.deliveryDate.slice(0, 10)}T00:00:00.000Z`) : null,
+        priority: order.priority,
+        requirements: { specialInstructions: order.specialInstructions },
+        originMetadata: { seededFrom: 'SalesOrder' },
+        status: order.status === 'planned' ? 'planned' : order.status === 'dispatched' ? 'dispatched' : 'ready_to_plan',
+      })),
+    });
     // Plans reference a real machine — resolve the seed's machine code → id.
     await tx.productionPlan.createMany({
-      data: keptPlans.filter((p) => machineIdByCode.has(p.machineId)).map((p) => ({ ...p, organizationId: O, machineId: machineIdByCode.get(p.machineId)! })),
+      data: keptPlans.filter((p) => machineIdByCode.has(p.machineId)).map((p) => ({
+        ...p,
+        organizationId: O,
+        operationalOrderId: p.salesOrderId,
+        plannedQuantity: String(keptOrders.find((order) => order.id === p.salesOrderId)?.quantity ?? 1),
+        machineId: machineIdByCode.get(p.machineId)!,
+      })),
     });
     await tx.machineLogbook.createMany({ data: withOrg(keptLogbooks) });
     await tx.qualityInspection.createMany({ data: withOrg(initialQualityInspections) });
     await tx.inventoryTransaction.createMany({ data: withOrg(initialInventoryTransactions) });
-    await tx.dispatchRecord.createMany({ data: withOrg(keptDispatches) });
+    await tx.dispatchRecord.createMany({
+      data: keptDispatches.map((dispatch) => {
+        const order = keptOrders.find((candidate) => candidate.id === dispatch.salesOrderId)!;
+        const quantity = String(order.quantity);
+        const evidenceSnapshot = {
+          policy: 'seeded-legacy-dispatch:v1',
+          historical: true,
+          operationalOrderId: dispatch.salesOrderId,
+          completedQuantity: quantity,
+          packedQuantity: quantity,
+          qaReleasedQuantity: quantity,
+          previouslyDispatchedQuantity: '0',
+          availableQuantity: quantity,
+          dispatchQuantity: quantity,
+        };
+        return {
+          ...dispatch,
+          organizationId: O,
+          operationalOrderId: dispatch.salesOrderId,
+          gatePassNumber: `GP-${dispatch.id}`,
+          quantity,
+          uom: 'units',
+          evidenceSnapshot,
+          evidenceHash: canonicalHash(evidenceSnapshot),
+          statutoryProfileVersion: 'MESAOPS-STATUTORY-BOOTSTRAP-1',
+        };
+      }),
+    });
     await tx.complaint.createMany({ data: withOrg(keptComplaints) });
     await tx.cAPARecord.createMany({ data: withOrg(initialCapaRecords) });
     await tx.formulation.createMany({ data: FORMULATIONS.map((f) => ({ ...f, organizationId: O })) });

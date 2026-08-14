@@ -29,7 +29,7 @@ import OrganizationOnboardingPanel, {
 
 type ServiceStatus = 'running' | 'paused' | 'stopped';
 type ServiceCatalogStatus = 'active' | 'paused' | 'stopped';
-type ServiceId = 'mesaops' | 'mesaleads';
+type ServiceId = 'mesaops' | 'mesaleads' | 'mesaerp';
 type ServiceStates = Record<ServiceId, ServiceStatus>;
 
 type ServiceDefinition = {
@@ -51,7 +51,7 @@ type ActivityEntry = {
 
 const ADMIN_SESSION_KEY = 'mesadesk_admin_session';
 const SERVICE_STATE_KEY = 'mesadesk_service_states';
-const DEFAULT_SERVICE_STATES: ServiceStates = { mesaops: 'running', mesaleads: 'running' };
+const DEFAULT_SERVICE_STATES: ServiceStates = { mesaops: 'running', mesaleads: 'running', mesaerp: 'running' };
 const ADMIN_ONBOARDING_IDENTITY = 'aroul303@gmail.com';
 
 const SERVICES: ServiceDefinition[] = [
@@ -73,6 +73,15 @@ const SERVICES: ServiceDefinition[] = [
     href: '/mesaleads',
     icon: CloudCog,
   },
+  {
+    id: 'mesaerp',
+    name: 'MesaERP',
+    description: 'Manufacturing ERP for vendors, procurement, valued inventory, costing, finance and statutory control.',
+    category: 'Business ERP',
+    version: 'V1',
+    href: '/mesaerp',
+    icon: Building2,
+  },
 ];
 
 const STATUS_META: Record<ServiceStatus, { label: string; className: string; dot: string }> = {
@@ -89,6 +98,7 @@ function readServiceStates(): ServiceStates {
     return {
       mesaops: parsed.mesaops ?? DEFAULT_SERVICE_STATES.mesaops,
       mesaleads: parsed.mesaleads ?? DEFAULT_SERVICE_STATES.mesaleads,
+      mesaerp: parsed.mesaerp ?? DEFAULT_SERVICE_STATES.mesaerp,
     };
   } catch {
     return DEFAULT_SERVICE_STATES;
@@ -158,12 +168,12 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
             </div>
             <div className="relative grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
-                <p className="text-2xl font-bold">02</p>
-                <p className="mt-1 text-xs text-blue-200">Registered services</p>
+                <p className="text-2xl font-bold">03</p>
+                <p className="mt-1 text-xs text-blue-200">Service families</p>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
                 <p className="text-2xl font-bold">01</p>
-                <p className="mt-1 text-xs text-blue-200">Live workspace</p>
+                <p className="mt-1 text-xs text-blue-200">Control center</p>
               </div>
             </div>
           </section>
@@ -262,7 +272,7 @@ export default function ServiceAdminPortal() {
         setServiceStates((current) => {
           const next = { ...current };
           for (const service of services) {
-            if (service.id === 'mesaops' || service.id === 'mesaleads') {
+            if (service.id === 'mesaops' || service.id === 'mesaleads' || service.id === 'mesaerp') {
               next[service.id] = toDisplayStatus(service.status);
             }
           }
@@ -431,7 +441,7 @@ export default function ServiceAdminPortal() {
           </section>
 
           <section aria-label="Service summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard icon={<Server className="h-5 w-5" />} label="All services" value="2" detail="Registered with MesaDesk" />
+            <MetricCard icon={<Server className="h-5 w-5" />} label="All services" value={String(SERVICES.length)} detail="Registered with MesaDesk" />
             <MetricCard icon={<CheckCircle2 className="h-5 w-5" />} label="Operational" value={String(runningCount)} detail="Available right now" />
             <MetricCard icon={<CirclePause className="h-5 w-5" />} label="Not running" value={String(SERVICES.length - runningCount)} detail="Paused or stopped" />
             <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Control plane" value="Online" detail="Admin session active" />
@@ -443,7 +453,7 @@ export default function ServiceAdminPortal() {
                 <h2 className="text-lg font-bold text-slate-900">Services</h2>
                 <p className="mt-0.5 text-xs text-slate-500">Global platform controls. Start, stop, restart or open a registered workspace.</p>
               </div>
-              <span className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500">2 total</span>
+              <span className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500">{SERVICES.length} total</span>
             </div>
             {serviceControlError && (
               <div role="alert" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700">
@@ -486,7 +496,7 @@ export default function ServiceAdminPortal() {
                         </div>
                         <div>
                           <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Environment</dt>
-                          <dd className="mt-1 text-xs font-semibold text-slate-700">{service.id === 'mesaops' ? 'Production' : 'Beta'}</dd>
+                          <dd className="mt-1 text-xs font-semibold text-slate-700">{service.version}</dd>
                         </div>
                       </dl>
                     </div>

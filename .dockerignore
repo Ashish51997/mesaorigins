@@ -6,6 +6,7 @@ dist
 !.env.example
 data.json
 *.log
+*.pptx
 .DS_Store
 coverage
 .cursor

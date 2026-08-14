@@ -4,7 +4,8 @@ import { tenantContext } from './lib/tenantContext';
 // Global models are part of the identity/tenancy plane — they are queried before
 // a tenant is known (during auth), so they are NOT tenant-scoped and have no RLS.
 const GLOBAL_MODELS = new Set([
-  'Organization', 'OrganizationService', 'Service', 'LeadFormLink', 'LeadPortalLink',
+  'Organization', 'OrganizationService', 'Service', 'Permission', 'LeadFormLink', 'LeadPortalLink',
+  'SupplierPortalInvite', 'SupplierPortalSession',
   'User', 'Membership', 'Account', 'Session', 'VerificationToken',
 ]);
 

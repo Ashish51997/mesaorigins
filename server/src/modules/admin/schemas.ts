@@ -38,6 +38,29 @@ export const grantsSetSchema = z.object({
 export type GrantsSet = z.infer<typeof grantsSetSchema>;
 
 export const passwordSetSchema = z.object({
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(12, 'Password must be at least 12 characters').max(128),
 });
 export type PasswordSet = z.infer<typeof passwordSetSchema>;
+
+const plantCode = z.string().trim().min(1).max(40).regex(/^[A-Za-z0-9._-]+$/);
+const isoDateTime = z.string().datetime({ offset: true });
+
+/**
+ * MesaOps assignments are deliberately narrower than MesaERP assignments:
+ * they can only carry an optional plant scope. Company and warehouse scopes
+ * belong to MesaERP's independently authorized access desk.
+ */
+export const mesaOpsRoleAssignmentCreateSchema = z.object({
+  membershipId: z.string().trim().min(1),
+  roleId: z.string().trim().min(1),
+  plantCode: plantCode.nullable().optional(),
+  validFrom: isoDateTime.nullable().optional(),
+  validTo: isoDateTime.nullable().optional(),
+}).strict();
+export type MesaOpsRoleAssignmentCreate = z.infer<typeof mesaOpsRoleAssignmentCreateSchema>;
+
+export const mesaOpsRoleAssignmentRevokeSchema = z.object({
+  expectedVersion: z.number().int().min(0),
+  reason: z.string().trim().min(3).max(500),
+}).strict();
+export type MesaOpsRoleAssignmentRevoke = z.infer<typeof mesaOpsRoleAssignmentRevokeSchema>;

@@ -726,6 +726,87 @@ describe('MesaLeads organization quotation workspace', () => {
 });
 
 describe('MesaLeads questionnaire builder', () => {
+  const editablePreviewForm: LeadForm = {
+    id: 'form-preview',
+    name: 'Original qualification form',
+    description: 'Original customer introduction.',
+    status: 'draft',
+    revision: 1,
+    questions: [
+      question({
+        key: 'application',
+        type: 'short_text',
+        label: 'Application',
+        placeholder: 'Describe the application',
+        sortOrder: 10,
+      }),
+      question({
+        key: 'conditional_detail',
+        type: 'long_text',
+        label: 'Conditional detail',
+        visibilityRule: { questionKey: 'application', operator: 'equals', value: 'custom' },
+        sortOrder: 20,
+      }),
+    ],
+  };
+
+  it('keeps a live customer preview beside the editor on desktop', () => {
+    render(<FormBuilder form={editablePreviewForm} onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    const preview = screen.getByRole('complementary', { name: 'Live customer form preview' });
+    expect(preview).toBeTruthy();
+    expect(preview?.previousElementSibling?.tagName).toBe('FIELDSET');
+    expect(preview?.parentElement?.className).toContain('grid');
+    expect(preview?.parentElement?.className).toContain('lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]');
+    expect(preview?.className).toContain('lg:sticky');
+
+    const previewView = within(preview as HTMLElement);
+    expect(previewView.getByRole('heading', { name: 'Original qualification form' })).toBeTruthy();
+    expect(previewView.getByText('Original customer introduction.')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Questionnaire name'), { target: { value: 'Live crate qualification' } });
+    fireEvent.change(screen.getByLabelText('Customer introduction'), { target: { value: 'Tell us about your crate project.' } });
+
+    expect(previewView.getByRole('heading', { name: 'Live crate qualification' })).toBeTruthy();
+    expect(previewView.getByText('Tell us about your crate project.')).toBeTruthy();
+  });
+
+  it('updates question content and control appearance in the preview as the template changes', () => {
+    render(<FormBuilder form={editablePreviewForm} onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    const preview = screen.getByText('Customer preview').closest('aside') as HTMLElement;
+    const previewView = within(preview);
+    const questionLabel = screen.getAllByLabelText('Question label')[0];
+    const questionType = screen.getAllByLabelText('Type')[0];
+
+    fireEvent.change(questionLabel, { target: { value: 'Crate application' } });
+    fireEvent.change(screen.getAllByLabelText('Helper text')[0], { target: { value: 'Describe where this crate will be used.' } });
+    fireEvent.change(screen.getAllByLabelText('Placeholder')[0], { target: { value: 'For example, cold storage' } });
+    fireEvent.click(screen.getAllByLabelText('Required')[0]);
+
+    expect(previewView.getByText('Describe where this crate will be used.')).toBeTruthy();
+    const previewTextField = previewView.getByRole('textbox', { name: 'Crate application *' }) as HTMLInputElement;
+    expect(previewTextField.disabled).toBe(true);
+    expect(previewTextField.placeholder).toBe('For example, cold storage');
+    expect(previewView.getByText('Conditional question')).toBeTruthy();
+
+    fireEvent.change(questionType, { target: { value: 'single_select' } });
+    expect(previewView.getByText('Option 1')).toBeTruthy();
+    expect(previewView.getByText('Option 2')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Options, one per line'), {
+      target: { value: 'Material handling\nAutomotive component' },
+    });
+    expect(previewView.getByText('Material Handling')).toBeTruthy();
+    expect(previewView.getByText('Automotive Component')).toBeTruthy();
+    expect(previewView.queryByText('Option 1')).toBeNull();
+    expect((previewView.getByRole('radio', { name: 'Material Handling' }) as HTMLInputElement).disabled).toBe(true);
+
+    // Conditional questions remain visible to the template author even though
+    // their customer-facing visibility depends on a future answer.
+    expect(previewView.getByText('Conditional detail')).toBeTruthy();
+  });
+
   it('saves the configured draft before publishing a versioned public form', async () => {
     let draft: LeadForm | undefined;
     post.mockImplementation(async (path: string, body?: { name: string; description: string; questions: LeadQuestion[] }) => {

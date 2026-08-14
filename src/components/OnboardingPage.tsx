@@ -99,7 +99,7 @@ export default function OnboardingPage({ onLogin }: { onLogin: (session: LoginSe
     /^[a-z0-9-]+$/.test(form.organizationSlug.trim()) &&
     form.adminName.trim().length >= 2 &&
     /.+@.+/.test(form.adminEmail) &&
-    form.password.length >= 8
+    form.password.length >= 12
   ), [form]);
 
   const set = (patch: Partial<BootstrapForm>) => setForm((prev) => ({ ...prev, ...patch }));
@@ -165,7 +165,7 @@ export default function OnboardingPage({ onLogin }: { onLogin: (session: LoginSe
               <label className="block sm:col-span-2"><span className="block text-[13px] font-medium text-slate-600 mb-1">Organization slug</span><input value={form.organizationSlug} onChange={(e) => set({ organizationSlug: slugify(e.target.value) })} className={inCls} placeholder="acme-plastics" /></label>
               <label className="block"><span className="block text-[13px] font-medium text-slate-600 mb-1">First owner name</span><input value={form.adminName} onChange={(e) => set({ adminName: e.target.value })} className={inCls} placeholder="e.g. Priya Sharma" /></label>
               <label className="block"><span className="block text-[13px] font-medium text-slate-600 mb-1">Owner email</span><input type="email" value={form.adminEmail} onChange={(e) => set({ adminEmail: e.target.value })} className={inCls} placeholder="owner@client.com" /></label>
-              <label className="block sm:col-span-2"><span className="block text-[13px] font-medium text-slate-600 mb-1">Temporary password</span><input type="password" value={form.password} onChange={(e) => set({ password: e.target.value })} className={inCls} placeholder="At least 8 characters" /></label>
+              <label className="block sm:col-span-2"><span className="block text-[13px] font-medium text-slate-600 mb-1">Temporary password</span><input type="password" minLength={12} maxLength={128} value={form.password} onChange={(e) => set({ password: e.target.value })} className={inCls} placeholder="At least 12 characters" /></label>
             </div>
             {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
             <div className="flex justify-end">

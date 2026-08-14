@@ -36,6 +36,7 @@ export const ADMIN_ROLES = new Set(['Owner', 'Administrator', 'Admin', 'Manageme
 // Each high-stakes action → the screen it lives on. A role may perform the
 // action only if it may open that screen. (Mirrors accessCatalog WIRED_ACTIONS.)
 const ACTION_SCREEN: Record<string, string> = {
+  'operational_order.create': 'orders_to_plan',
   'order.approve': 'orders',
   'order.setPriority': 'orders',
   'order.plan': 'plan_board',
@@ -52,6 +53,9 @@ const ACTION_SCREEN: Record<string, string> = {
   'gatepass.release': 'ready',
   'gatepass.print': 'ready',
   'dispatch.mark': 'ready',
+  'mesaops.statutory_rule_profile.view': 'acl',
+  'mesaops.statutory_rule_profile.create': 'acl',
+  'mesaops.statutory_rule_profile.approve': 'acl',
   'logbook.edit': 'logbooks',
   'breakdown.close': 'preventive',
 };

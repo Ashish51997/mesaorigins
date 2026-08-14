@@ -76,7 +76,7 @@ describe('MachineTasks QR → hub', () => {
     const onConsumed = vi.fn();
     renderTasks({ initialMachineCode: 'M08', onMachineCodeConsumed: onConsumed });
     expect(await screen.findByTestId('machine-hub')).toBeTruthy();
-    expect(screen.getByText('M08')).toBeTruthy();
+    expect(screen.getAllByText('M08').length).toBeGreaterThan(0);
     expect(screen.getByTestId('machine-hub-log-cta')).toBeTruthy();
     await waitFor(() => expect(onConsumed).toHaveBeenCalled());
   });

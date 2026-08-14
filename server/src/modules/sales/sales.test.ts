@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { buildApp } from '../../app';
+import { withTenant } from '../../db';
 
 // Integration tests against a live Postgres (seeded demo tenant). No auth header
 // → dev-stub resolves the demo Administrator, who can do everything.
@@ -31,6 +32,68 @@ describe('sales slice — validation & authz', () => {
     expect(r.status).toBe(200);
     expect(Array.isArray(r.body)).toBe(true);
     expect(r.body.length).toBeGreaterThan(0);
+  });
+
+  it('hides and cannot cancel a legacy sales order assigned to another plant', async () => {
+    const suffix = `${Date.now().toString(36)}${uniq()}`.toUpperCase();
+    const allowedPlant = `PLANT-A-${suffix}`;
+    const hiddenPlant = `PLANT-B-${suffix}`;
+    const fixture = await withTenant('org-demo', async (tx) => {
+      const role = await tx.role.findFirstOrThrow({ where: { organizationId: 'org-demo', name: 'Administrator' } });
+      const user = await tx.user.create({
+        data: { email: `sales-scope-${suffix.toLowerCase()}@fixture.invalid`, name: 'Sales Scope Fixture' },
+      });
+      const membership = await tx.membership.create({
+        data: {
+          organizationId: 'org-demo', userId: user.id, employeeCode: `SALES-SCOPE-${suffix}`,
+          department: 'Administration', role: role.name, roleId: role.id, status: 'active',
+        },
+      });
+      const customer = await tx.customer.findFirstOrThrow();
+      const inquiry = await tx.inquiry.create({
+        data: {
+          organizationId: 'org-demo', inquiryNumber: `INQ-SCOPE-${suffix}`, customerId: customer.id,
+          product: `Hidden product ${suffix}`, quantity: 1, status: 'quotation',
+        },
+      });
+      const order = await tx.salesOrder.create({
+        data: {
+          organizationId: 'org-demo', soNumber: `SO-SCOPE-${suffix}`, inquiryId: inquiry.id,
+          customerId: customer.id, product: inquiry.product, quantity: 1, status: 'pending',
+        },
+      });
+      const operationalOrder = await tx.operationalOrder.create({
+        data: {
+          organizationId: 'org-demo', plantCode: hiddenPlant, orderNumber: `OP-SCOPE-${suffix}`,
+          sourceType: 'local_customer', legacySalesOrderId: order.id, customerId: customer.id,
+          customerName: customer.name, productName: inquiry.product, quantity: '1', uom: 'units', status: 'ready_to_plan',
+        },
+      });
+      const assignment = await tx.roleAssignment.create({
+        data: { organizationId: 'org-demo', membershipId: membership.id, roleId: role.id, serviceId: 'mesaops', plantCode: allowedPlant },
+      });
+      return { assignment, inquiry, order, operationalOrder, membership, user };
+    });
+    const scoped = request.agent(app).set('x-dev-user', fixture.membership.employeeCode);
+
+    try {
+      const orders = await scoped.get('/api/orders');
+      expect(orders.status).toBe(200);
+      expect(orders.body.some((order: { id: string }) => order.id === fixture.order.id)).toBe(false);
+      const cancel = await scoped.post(`/api/orders/${fixture.order.id}/cancel`);
+      expect(cancel.status).toBe(404);
+      const retained = await withTenant('org-demo', (tx) => tx.salesOrder.findUnique({ where: { id: fixture.order.id } }));
+      expect(retained).toBeTruthy();
+    } finally {
+      await withTenant('org-demo', async (tx) => {
+        await tx.roleAssignment.delete({ where: { id: fixture.assignment.id } });
+        await tx.operationalOrder.delete({ where: { id: fixture.operationalOrder.id } });
+        await tx.salesOrder.delete({ where: { id: fixture.order.id } });
+        await tx.inquiry.delete({ where: { id: fixture.inquiry.id } });
+        await tx.membership.delete({ where: { id: fixture.membership.id } });
+        await tx.user.delete({ where: { id: fixture.user.id } });
+      });
+    }
   });
 });
 

@@ -30,36 +30,6 @@ import {
   BookOpen
 } from 'lucide-react';
 
-import {
-  Customer,
-  Inquiry,
-  SalesOrder,
-  ProductionPlan,
-  MachineLogbook,
-  QualityInspection,
-  PackingRecord,
-  InventoryTransaction,
-  DispatchRecord,
-  CustomerComplaint,
-  CAPARecord,
-  LogbookTemplate
-} from './types';
-
-import {
-  initialCustomers,
-  initialInquiries,
-  initialSalesOrders,
-  initialProductionPlans,
-  initialMachineLogbooks,
-  initialQualityInspections,
-  initialPackingRecords,
-  initialInventoryTransactions,
-  initialDispatchRecords,
-  initialCustomerComplaints,
-  initialCapaRecords,
-  initialLogbookTemplates
-} from './mockData';
-
 // Component imports — only real, API-backed screens survive.
 import LoginScreen from './components/LoginScreen';
 import Logo from './components/Logo';
@@ -119,21 +89,6 @@ type ModuleType =
   | 'machines'
   | 'acl'
   | 'users';
-
-type LegacyDataState = {
-  customers?: Customer[];
-  inquiries?: Inquiry[];
-  salesOrders?: SalesOrder[];
-  productionPlans?: ProductionPlan[];
-  templates?: LogbookTemplate[];
-  machineLogbooks?: MachineLogbook[];
-  inspections?: QualityInspection[];
-  packingRecords?: PackingRecord[];
-  inventory?: InventoryTransaction[];
-  dispatches?: DispatchRecord[];
-  complaints?: CustomerComplaint[];
-  capas?: CAPARecord[];
-};
 
 export default function App() {
   const onboardingRoute = typeof window !== 'undefined' && (
@@ -199,20 +154,6 @@ export default function App() {
   // Start the live simulation ticker once.
   React.useEffect(() => { startSimulation(); }, []);
 
-  // Global lifted state
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-  const [inquiries, setInquiries] = useState<Inquiry[]>(initialInquiries);
-  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>(initialSalesOrders);
-  const [productionPlans, setProductionPlans] = useState<ProductionPlan[]>(initialProductionPlans);
-  const [templates, setTemplates] = useState<LogbookTemplate[]>(initialLogbookTemplates);
-  const [machineLogbooks, setMachineLogbooks] = useState<MachineLogbook[]>(initialMachineLogbooks);
-  const [inspections, setInspections] = useState<QualityInspection[]>(initialQualityInspections);
-  const [packingRecords, setPackingRecords] = useState<PackingRecord[]>(initialPackingRecords);
-  const [inventory, setInventory] = useState<InventoryTransaction[]>(initialInventoryTransactions);
-  const [dispatches, setDispatches] = useState<DispatchRecord[]>(initialDispatchRecords);
-  const [complaints, setComplaints] = useState<CustomerComplaint[]>(initialCustomerComplaints);
-  const [capas, setCapas] = useState<CAPARecord[]>(initialCapaRecords);
-
   const [isLoaded, setIsLoaded] = useState(false);
   const [serviceAccessError, setServiceAccessError] = useState<'unauthenticated' | 'forbidden' | null>(null);
   const [user, setUser] = useState<{
@@ -223,8 +164,6 @@ export default function App() {
     isFirebase?: boolean;
     role?: string;
   } | null>(null); // Always start on the login page — pick a role to begin the flow.
-
-  const lastSavedState = React.useRef<any>(null);
 
   // Access state lives in accessStore; subscribe so the shell re-renders when the admin
   // changes anything. Bind the signed-in session to its directory employee so a
@@ -345,7 +284,9 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // Fetch ERP state from the API once signed in (Postgres / legacy blob).
+  // Verify MesaOps from the server-authoritative organization/service context.
+  // Every screen then reads its own tenant-scoped Postgres resource; there is
+  // deliberately no application-wide state document to load or auto-save.
   React.useEffect(() => {
     if (!user) {
       // Allow LoginScreen to render — do not stay on the splash forever.
@@ -356,31 +297,17 @@ export default function App() {
     let cancelled = false;
     setServiceAccessError(null);
     setIsLoaded(false);
-    api.get<LegacyDataState>('/data')
-      .then(async (res) => {
-        return res;
-      })
-      .then((data) => {
+    api.get<{ user: { services?: Array<{ id: string; status: string }> } }>('/me')
+      .then(({ user: sessionUser }) => {
         if (cancelled) return;
-        if (data) {
-          if (data.customers) setCustomers(data.customers);
-          if (data.inquiries) setInquiries(data.inquiries);
-          if (data.salesOrders) setSalesOrders(data.salesOrders);
-          if (data.productionPlans) setProductionPlans(data.productionPlans);
-          if (data.templates) setTemplates(data.templates);
-          if (data.machineLogbooks) setMachineLogbooks(data.machineLogbooks);
-          if (data.inspections) setInspections(data.inspections);
-          if (data.packingRecords) setPackingRecords(data.packingRecords);
-          if (data.inventory) setInventory(data.inventory);
-          if (data.dispatches) setDispatches(data.dispatches);
-          if (data.complaints) setComplaints(data.complaints);
-          if (data.capas) setCapas(data.capas);
-          lastSavedState.current = data;
-        }
+        const mesaOpsActive = sessionUser.services?.some((service) => (
+          service.id === 'mesaops' && service.status === 'active'
+        ));
+        setServiceAccessError(mesaOpsActive ? null : 'forbidden');
         setIsLoaded(true);
       })
       .catch((err) => {
-        console.error('Error fetching backend ERP state:', err);
+        console.error('Error verifying MesaOps access:', err);
         const status = typeof err === 'object' && err && 'status' in err ? Number(err.status) : 0;
         if (!cancelled && status === 401) setServiceAccessError('unauthenticated');
         if (!cancelled && status === 403) setServiceAccessError('forbidden');
@@ -388,57 +315,6 @@ export default function App() {
       });
     return () => { cancelled = true; };
   }, [user?.uid]);
-
-  // Backend auto-save for legacy /api/data collections still on the blob store.
-  React.useEffect(() => {
-    if (!isLoaded || !user) return;
-
-    const currentState = {
-      customers, inquiries, salesOrders, productionPlans, templates,
-      machineLogbooks, inspections, packingRecords, inventory, dispatches,
-      complaints, capas,
-    };
-
-    const changed: Record<string, unknown> = {};
-    if (lastSavedState.current) {
-      (Object.keys(currentState) as (keyof typeof currentState)[]).forEach((key) => {
-        if (JSON.stringify(currentState[key]) !== JSON.stringify(lastSavedState.current[key])) {
-          changed[key] = currentState[key];
-        }
-      });
-    } else {
-      Object.assign(changed, currentState);
-    }
-
-    if (Object.keys(changed).length === 0) return;
-
-    const saveState = async () => {
-      try {
-        await api.post('/data', changed);
-        lastSavedState.current = currentState;
-      } catch (err) {
-        console.error('Failed to sync ERP state to backend:', err);
-      }
-    };
-
-    const timer = setTimeout(saveState, 1000);
-    return () => clearTimeout(timer);
-  }, [
-    user?.uid,
-    isLoaded,
-    customers,
-    inquiries,
-    salesOrders,
-    productionPlans,
-    templates,
-    machineLogbooks,
-    inspections,
-    packingRecords,
-    inventory,
-    dispatches,
-    complaints,
-    capas,
-  ]);
 
   // Switch to a role's seeded stand-in (clears any specific-employee identity).
   const handleRoleSwitch = (role: string) => {
@@ -563,7 +439,6 @@ export default function App() {
   // Surviving screens read from the API via hooks; they only need navigation
   // callbacks, so the legacy data arrays are stubbed empty.
   const nav = (m: string) => setActiveModule(m as ModuleType);
-  const noop = () => {};
 
   // The menu the current role naturally offers…
   // Effective access comes from the server (the actor's DB role ± per-employee
@@ -624,8 +499,8 @@ export default function App() {
     }
     if (dbAllows(homeModule)) setActiveModule(homeModule);
   };
-  const salesData: SalesData = { inquiries: [], setInquiries: noop, salesOrders: [], setSalesOrders: noop, complaints: [], setComplaints: noop, customers: [], setCustomers: noop, onOpen: nav, onTrace: handleTraceOpen };
-  const plannerData: PlannerData = { salesOrders: [], setSalesOrders: noop, productionPlans: [], setProductionPlans: noop, customers: [], onOpen: nav, onTrace: handleTraceOpen };
+  const salesData: SalesData = { onOpen: nav, onTrace: handleTraceOpen };
+  const plannerData: PlannerData = { onOpen: nav, onTrace: handleTraceOpen };
   const qualityData: QualityData = { onOpen: nav, onTrace: handleTraceOpen };
   const storeData: StoreData = { onOpen: nav, onTrace: handleTraceOpen };
   const dispatchData: DispatchData = { onOpen: nav, onTrace: handleTraceOpen };

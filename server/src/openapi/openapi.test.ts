@@ -8,7 +8,12 @@ import { isKnownModel, scalarFieldsOf } from './models';
 
 const routes = discoverRoutes();
 const spec = buildOpenApiSpec(routes) as {
-  paths: Record<string, Record<string, { operationId: string; tags: string[]; responses: Record<string, unknown> }>>;
+  paths: Record<string, Record<string, {
+    operationId: string;
+    tags: string[];
+    responses: Record<string, unknown>;
+    parameters?: Array<{ name: string; in: string; required: boolean }>;
+  }>>;
   tags: { name: string }[];
   components: { schemas: Record<string, unknown> };
 };
@@ -47,6 +52,12 @@ describe('openapi document', () => {
     }
   });
 
+  it('does not publish the retired shared data document', () => {
+    expect(routes.some((route) => route.path === '/api/data')).toBe(false);
+    expect(spec.paths['/api/data']).toBeUndefined();
+    expect(spec.tags.map((tag) => tag.name)).not.toContain('Legacy');
+  });
+
   it('references only real Prisma models and fields', () => {
     for (const [key, doc] of Object.entries(ROUTE_DOCS)) {
       if (!doc.responseModel) continue;
@@ -77,6 +88,19 @@ describe('openapi document', () => {
     for (const route of routes.filter((r) => r.bodySchema)) {
       const op = spec.paths[toOpenApiPath(route.path)][route.method];
       expect(Object.keys(op.responses), routeKey(route)).toContain('422');
+    }
+  });
+
+  it('marks every documented idempotency key as a required request header', () => {
+    for (const [path, methods] of Object.entries(spec.paths)) {
+      for (const [method, operation] of Object.entries(methods)) {
+        const idempotency = operation.parameters?.find((parameter) => (
+          parameter.in === 'header' && parameter.name.toLowerCase() === 'idempotency-key'
+        ));
+        if (idempotency) {
+          expect(idempotency.required, `${method.toUpperCase()} ${path}`).toBe(true);
+        }
+      }
     }
   });
 });

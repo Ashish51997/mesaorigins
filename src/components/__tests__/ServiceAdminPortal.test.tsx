@@ -27,6 +27,13 @@ const serviceCatalog = [
     status: 'preview',
     sortOrder: 20,
   },
+  {
+    id: 'mesaerp',
+    name: 'MesaERP',
+    description: 'Manufacturing business ERP, accounting and procurement.',
+    status: 'active',
+    sortOrder: 30,
+  },
 ];
 const createdOrganization = {
   organization: {
@@ -105,7 +112,7 @@ describe('MesaDesk service admin portal', () => {
     expect(screen.queryByText('Good to see you, Admin')).toBeNull();
   });
 
-  it('shows MesaOps and MesaLeads after a successful sign in', () => {
+  it('shows MesaOps, MesaLeads and MesaERP after a successful sign in', () => {
     render(<ServiceAdminPortal />);
 
     fireEvent.change(screen.getByLabelText('User ID'), { target: { value: 'admin' } });
@@ -115,10 +122,13 @@ describe('MesaDesk service admin portal', () => {
     expect(screen.getByText('Good to see you, Admin')).toBeTruthy();
     const mesaOpsCard = screen.getByRole('heading', { name: 'MesaOps' }).closest('article');
     const mesaLeadsCard = screen.getByRole('heading', { name: 'MesaLeads' }).closest('article');
+    const mesaErpCard = screen.getByRole('heading', { name: 'MesaERP' }).closest('article');
     expect(mesaOpsCard).toBeTruthy();
     expect(mesaLeadsCard).toBeTruthy();
+    expect(mesaErpCard).toBeTruthy();
     expect(within(mesaOpsCard!).getByRole('link', { name: 'Open service' }).getAttribute('href')).toBe('/mesaops');
     expect(within(mesaLeadsCard!).getByRole('link', { name: 'Open service' }).getAttribute('href')).toBe('/mesaleads');
+    expect(within(mesaErpCard!).getByRole('link', { name: 'Open service' }).getAttribute('href')).toBe('/mesaerp');
   });
 
   it('updates the live backend and persists a successful service control action', async () => {

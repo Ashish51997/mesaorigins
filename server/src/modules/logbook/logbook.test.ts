@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { buildApp } from '../../app';
+import { withTenant } from '../../db';
+import { canonicalHash } from '../../lib/canonical';
 
 // Integration tests against a live Postgres (seeded demo tenant). No auth header
 // → demo Administrator. Self-contained: builds its own order → plan so it does
 // not consume the seed's shared pending orders.
 const app = buildApp();
 const uniq = () => Math.random().toString(36).slice(2, 7);
+const idem = (prefix: string) => `${prefix}-${Date.now()}-${uniq()}`;
 
 async function freshPlan(machineCode: string, day: string): Promise<string> {
   const c = await request(app).post('/api/customers').send({ name: `LB ${uniq()}` });
@@ -15,8 +18,49 @@ async function freshPlan(machineCode: string, day: string): Promise<string> {
   const ord = await request(app).post('/api/orders').send({ inquiryId: inq.body.id });
   const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
   const machineId = machines.find((m) => m.code === machineCode)!.id;
-  const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
+  const plan = await request(app).post('/api/plans').set('Idempotency-Key', idem('logbook-plan')).send({ salesOrderId: ord.body.id, expectedOrderVersion: 0, machineId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
   return plan.body.id as string;
+}
+
+async function freshOperationalPlan(machineCode: string, day: string) {
+  const suffix = uniq().toUpperCase();
+  const productName = `Trial compound ${suffix}`;
+  const orderNumber = `OP-LB-${suffix}`;
+  const demand = await request(app)
+    .post('/api/operational-orders')
+    .set('Idempotency-Key', `logbook-operational-${Date.now()}-${suffix}`)
+    .send({
+      orderNumber,
+      sourceType: 'trial',
+      productName,
+      productCode: `TR-${suffix}`,
+      quantity: '250.5',
+      uom: 'kg',
+      dueDate: day,
+    });
+  expect(demand.status).toBe(201);
+  expect(demand.body.legacySalesOrderId).toBeNull();
+
+  const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
+  const machineId = machines.find((machine) => machine.code === machineCode)?.id;
+  expect(machineId).toBeTruthy();
+
+  const plan = await request(app).post('/api/plans').set('Idempotency-Key', idem('operational-plan')).send({
+    operationalOrderId: demand.body.id,
+    expectedOrderVersion: demand.body.rowVersion,
+    plannedQuantity: '250.5',
+    machineId,
+    shift: 'D',
+    scheduledStartDate: `${day}T08:00:00`,
+    supervisor: 'Nandlal',
+    drawingNo: 'DRW-OP-1',
+    formulaNo: 'RF03 · Rev 2',
+    moldNo: 'MLD-OP-1',
+  });
+  expect(plan.status).toBe(201);
+  expect(plan.body.salesOrderId).toBeNull();
+
+  return { planId: plan.body.id as string, orderNumber, productName };
 }
 
 describe('logbook slice', () => {
@@ -70,6 +114,13 @@ describe('logbook slice', () => {
     const submit = await request(app).post(`/api/logbooks/${id}/submit`);
     expect(submit.status).toBe(200);
     expect(submit.body.status).toBe('submitted');
+    const returnEvents = await withTenant('org-demo', (tx) => tx.integrationOutboxEvent.findMany({ where: {
+      aggregateId: id, eventType: 'mesaops.production-actuals.submitted.v1',
+    } }));
+    expect(returnEvents).toHaveLength(1);
+    expect(returnEvents[0].schemaVersion).toBe(1);
+    expect(returnEvents[0].payloadHash).toBe(canonicalHash(returnEvents[0].payload));
+    expect(returnEvents[0].legalEntityId).toBeNull();
 
     // The plan advanced to running, and its logbook shows submitted.
     const plans = (await request(app).get('/api/logbook/plans')).body as Array<{ id: string; status: string; logbook: { status: string } | null }>;
@@ -138,7 +189,7 @@ describe('logbook slice', () => {
     const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
     const mId = machines.find((m) => m.code === 'M01')!.id;
     const day = `2027-0${1 + (Math.floor(Math.random() * 8))}-${String(10 + Math.floor(Math.random() * 18)).padStart(2, '0')}`;
-    const plan = await request(app).post('/api/plans').send({ salesOrderId: ord.body.id, machineId: mId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, logbookTemplateId: pipe.id, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
+    const plan = await request(app).post('/api/plans').set('Idempotency-Key', idem('pipe-plan')).send({ salesOrderId: ord.body.id, expectedOrderVersion: 0, machineId: mId, shift: 'D', scheduledStartDate: `${day}T08:00:00`, logbookTemplateId: pipe.id, supervisor: 'Nandlal', drawingNo: 'DRW-1', formulaNo: 'RF03 · Rev 2', moldNo: 'MLD-1', productName: 'RPVC' });
     expect(plan.status).toBe(201);
 
     const lb = await request(app).post('/api/logbooks').send({ productionPlanId: plan.body.id });
@@ -167,6 +218,68 @@ describe('logbook slice', () => {
     expect(Array.isArray(r.body.logbooks)).toBe(true);
     expect(Array.isArray(r.body.maintenance)).toBe(true);
     expect(Array.isArray(r.body.activePlans)).toBe(true);
+  });
+
+  it('keeps logbook order labels compatible for an OperationalOrder-only plan', async () => {
+    const machineCode = `OL${uniq().toUpperCase()}`.slice(0, 8);
+    const machine = await request(app).post('/api/machines').send({
+      code: machineCode,
+      line: 'Operational-order logbook test',
+      family: 'PVC',
+      status: 'running',
+    });
+    expect(machine.status).toBe(201);
+
+    const { planId, orderNumber, productName } = await freshOperationalPlan(machineCode, '2028-04-19');
+
+    const tasks = await request(app).get('/api/logbook/tasks');
+    expect(tasks.status).toBe(200);
+    const task = tasks.body
+      .find((group: { machine: string }) => group.machine === machineCode)
+      ?.tasks.find((entry: { id: string }) => entry.id === planId);
+    expect(task?.operationalOrder.orderNumber).toBe(orderNumber);
+    expect(task?.salesOrder).toEqual({ soNumber: orderNumber, product: productName });
+
+    const plans = await request(app).get('/api/logbook/plans');
+    expect(plans.status).toBe(200);
+    const plan = plans.body.find((entry: { id: string }) => entry.id === planId);
+    expect(plan?.operationalOrder.orderNumber).toBe(orderNumber);
+    expect(plan?.salesOrder).toEqual({ soNumber: orderNumber, product: productName });
+
+    const beforeSubmit = await request(app).get('/api/logbook/machine-hub').query({ machine: machineCode });
+    expect(beforeSubmit.status).toBe(200);
+    expect(beforeSubmit.body.activePlan.operationalOrder.orderNumber).toBe(orderNumber);
+    expect(beforeSubmit.body.activePlan.salesOrder).toEqual({ soNumber: orderNumber, product: productName });
+
+    const open = await request(app).post('/api/logbooks').send({ productionPlanId: planId });
+    expect(open.status).toBe(201);
+    expect(open.body.productName).toBe(productName);
+    await request(app).patch(`/api/logbooks/${open.body.id}`).send({
+      date: '2028-04-19',
+      shift: 'D',
+      supervisor: 'Nandlal',
+      formulaNo: 'RF03',
+      operatorSignature: 'Nandlal',
+      supervisorSignature: 'Suresh',
+    });
+    const submitted = await request(app).post(`/api/logbooks/${open.body.id}/submit`);
+    expect(submitted.status).toBe(200);
+
+    const ledger = await request(app).get('/api/logbook/ledger');
+    expect(ledger.status).toBe(200);
+    const ledgerRow = ledger.body.rows.find((row: { productionPlanId: string }) => row.productionPlanId === planId);
+    expect(ledgerRow?.operationalOrder.orderNumber).toBe(orderNumber);
+    expect(ledgerRow?.orderNumber).toBe(orderNumber);
+    expect(ledgerRow?.soNumber).toBe(orderNumber);
+    expect(ledgerRow?.productName).toBe(productName);
+
+    const afterSubmit = await request(app).get('/api/logbook/machine-hub').query({ machine: machineCode });
+    expect(afterSubmit.status).toBe(200);
+    const recent = afterSubmit.body.logbooks.find((entry: { productionPlanId: string }) => entry.productionPlanId === planId);
+    expect(recent?.operationalOrder.orderNumber).toBe(orderNumber);
+    expect(recent?.orderNumber).toBe(orderNumber);
+    expect(recent?.soNumber).toBe(orderNumber);
+    expect(recent?.productName).toBe(productName);
   });
 
   it('returns 404 for an unknown machine hub code', async () => {

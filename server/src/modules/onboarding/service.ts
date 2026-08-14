@@ -114,6 +114,88 @@ async function createBuiltInRoles(tx: Parameters<Parameters<typeof basePrisma.$t
   return new Map(roles.map((r) => [r.name, r.id]));
 }
 
+/**
+ * MesaERP deliberately does not inherit the legacy organization-admin bypass.
+ * A newly onboarded organization therefore needs one narrow, explicit global
+ * role that can create its first legal entity. Company roles are created by the
+ * legal-entity workflow after that; this bootstrap role carries no finance,
+ * vendor, tax, posting, or access-administration grants.
+ */
+async function ensureMesaErpPlatformAccess(
+  tx: Parameters<Parameters<typeof basePrisma.$transaction>[0]>[0],
+  organizationId: string,
+) {
+  const permission = await tx.permission.findUnique({
+    where: { serviceId_key: { serviceId: 'mesaerp', key: 'mesaerp.legal_entity.manage' } },
+    select: { id: true },
+  });
+  if (!permission) throw new ApiError(500, 'mesaerp_permission_missing', 'MesaERP platform permission is not registered.');
+
+  const role = await tx.role.upsert({
+    where: { organizationId_name: { organizationId, name: 'MesaERP Platform Administrator' } },
+    create: {
+      organizationId,
+      name: 'MesaERP Platform Administrator',
+      screens: [],
+      isAdmin: false,
+      isSystem: true,
+    },
+    update: {
+      erpLegalEntityId: null,
+      isAdmin: false,
+      isSystem: true,
+    },
+    select: { id: true },
+  });
+  await tx.rolePermission.upsert({
+    where: {
+      organizationId_roleId_permissionId: {
+        organizationId,
+        roleId: role.id,
+        permissionId: permission.id,
+      },
+    },
+    create: {
+      organizationId,
+      roleId: role.id,
+      permissionId: permission.id,
+      effect: 'allow',
+    },
+    update: { effect: 'allow' },
+  });
+
+  const owners = await tx.membership.findMany({
+    where: { organizationId, role: 'Owner', status: { not: 'inactive' } },
+    select: { id: true },
+  });
+  for (const owner of owners) {
+    const existing = await tx.roleAssignment.findFirst({
+      where: {
+        organizationId,
+        membershipId: owner.id,
+        roleId: role.id,
+        serviceId: 'mesaerp',
+        legalEntityId: null,
+        plantCode: null,
+        warehouseId: null,
+        status: 'active',
+      },
+      select: { id: true },
+    });
+    if (!existing) {
+      await tx.roleAssignment.create({
+        data: {
+          organizationId,
+          membershipId: owner.id,
+          roleId: role.id,
+          serviceId: 'mesaerp',
+          status: 'active',
+        },
+      });
+    }
+  }
+}
+
 export async function listOrganizations() {
   const organizations = await basePrisma.organization.findMany({
     orderBy: { createdAt: 'desc' },
@@ -216,6 +298,10 @@ export async function bootstrapOrganization(input: BootstrapOrg) {
       include: { user: true, organization: true },
     });
 
+    if (input.serviceIds.includes('mesaerp')) {
+      await ensureMesaErpPlatformAccess(tx, organization.id);
+    }
+
     return {
       organization: {
         id: organization.id,
@@ -255,6 +341,10 @@ export async function setOrganizationServices(organizationId: string, input: Org
     await tx.organizationService.createMany({
       data: input.serviceIds.map((serviceId) => ({ organizationId, serviceId })),
     });
+    if (input.serviceIds.includes('mesaerp')) {
+      await tx.$executeRaw`SELECT set_config('app.current_tenant', ${organizationId}, true)`;
+      await ensureMesaErpPlatformAccess(tx, organizationId);
+    }
   });
 
   return {

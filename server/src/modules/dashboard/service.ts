@@ -1,31 +1,43 @@
 import { prisma } from '../../db';
+import { plantCodeFilter, resolveMesaOpsPlantScope } from '../../lib/mesaOpsScope';
 import { listQueue } from '../quality/service';
 import { listReady } from '../dispatch/service';
+import { listCapas, listComplaints } from '../capa/service';
 
 /** Real, tenant-scoped KPI aggregates that back every role's dashboard. All
  *  counts come from the live value-chain tables (no mock data). */
 export async function summary() {
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
   const [
     ordersPending, ordersPlanned, ordersDispatched,
     inquiriesOpen, plansScheduled, plansRunning,
-    logbooksSubmitted, complaintsOpen, capasOpen,
+    logbooksSubmitted, complaints, capas,
     customers, maintenanceOpen,
   ] = await Promise.all([
-    prisma.salesOrder.count({ where: { status: 'pending' } }),
-    prisma.salesOrder.count({ where: { status: 'planned' } }),
-    prisma.salesOrder.count({ where: { status: 'dispatched' } }),
+    plants
+      ? prisma.operationalOrder.count({ where: { plantCode: plants, status: { in: ['ready_to_plan', 'partially_planned'] } } })
+      : prisma.salesOrder.count({ where: { status: 'pending' } }),
+    plants
+      ? prisma.operationalOrder.count({ where: { plantCode: plants, status: 'planned' } })
+      : prisma.salesOrder.count({ where: { status: 'planned' } }),
+    plants
+      ? prisma.operationalOrder.count({ where: { plantCode: plants, status: 'dispatched' } })
+      : prisma.salesOrder.count({ where: { status: 'dispatched' } }),
     prisma.inquiry.count({ where: { status: { in: ['submitted', 'quotation'] } } }),
-    prisma.productionPlan.count({ where: { status: 'scheduled' } }),
-    prisma.productionPlan.count({ where: { status: 'running' } }),
-    prisma.machineLogbook.count({ where: { status: 'submitted' } }),
-    prisma.complaint.count({ where: { status: { not: 'resolved' } } }),
-    prisma.cAPARecord.count({ where: { status: { not: 'closed' } } }),
+    prisma.productionPlan.count({ where: { status: 'scheduled', ...(plants ? { operationalOrder: { plantCode: plants } } : {}) } }),
+    prisma.productionPlan.count({ where: { status: 'running', ...(plants ? { operationalOrder: { plantCode: plants } } : {}) } }),
+    prisma.machineLogbook.count({ where: { status: 'submitted', ...(plants ? { productionPlan: { operationalOrder: { plantCode: plants } } } : {}) } }),
+    listComplaints(),
+    listCapas(),
     prisma.customer.count(),
-    prisma.maintenanceTask.count({ where: { status: { in: ['scheduled', 'overdue'] } } }),
+    prisma.maintenanceTask.count({ where: { status: { in: ['scheduled', 'overdue'] }, ...(plants ? { machine: { plantCode: plants } } : {}) } }),
   ]);
 
   // RM / FG on-hand from the append-only inventory ledger (in − out).
-  const txns = await prisma.inventoryTransaction.findMany({ select: { type: true, direction: true, quantity: true } });
+  const txns = await prisma.inventoryTransaction.findMany({
+    where: plants ? { plantCode: plants } : undefined,
+    select: { type: true, direction: true, quantity: true },
+  });
   const net = (type: string) =>
     txns.filter((t) => t.type === type).reduce((s, t) => s + (t.direction === 'in' ? t.quantity : -t.quantity), 0);
 
@@ -34,8 +46,8 @@ export async function summary() {
     inquiriesOpen,
     plans: { scheduled: plansScheduled, running: plansRunning },
     logbooksSubmitted,
-    complaintsOpen,
-    capasOpen,
+    complaintsOpen: complaints.filter((complaint) => complaint.status !== 'resolved').length,
+    capasOpen: capas.filter((capa) => capa.status !== 'closed').length,
     customers,
     maintenanceOpen,
     stock: { rawMaterialKg: Math.round(net('raw_material')), finishedGoodsKg: Math.round(net('finished_goods')) },
@@ -108,9 +120,9 @@ type LogbookSlice = {
   totalRollKgs: string;
 };
 
-async function submittedLogbooks(): Promise<LogbookSlice[]> {
+async function submittedLogbooks(plants?: { in: string[] }): Promise<LogbookSlice[]> {
   return prisma.machineLogbook.findMany({
-    where: { status: 'submitted' },
+    where: { status: 'submitted', ...(plants ? { productionPlan: { operationalOrder: { plantCode: plants } } } : {}) },
     select: {
       date: true,
       scrapKg: true,
@@ -127,14 +139,19 @@ function filterByDate(lbs: LogbookSlice[], date: string): LogbookSlice[] {
   return lbs.filter((lb) => lb.date === date);
 }
 
-async function otdForWindow(fromDate: string, toDate: string): Promise<number | null> {
+async function otdForWindow(fromDate: string, toDate: string, plants?: { in: string[] }): Promise<number | null> {
   const rows = await prisma.dispatchRecord.findMany({
-    where: { dispatchDate: { gte: fromDate, lte: toDate } },
-    select: { dispatchDate: true, salesOrder: { select: { deliveryDate: true } } },
+    where: { dispatchDate: { gte: fromDate, lte: toDate }, ...(plants ? { operationalOrder: { plantCode: plants } } : {}) },
+    select: {
+      dispatchDate: true,
+      operationalOrder: { select: { dueDate: true } },
+      salesOrder: { select: { deliveryDate: true } },
+    },
   });
   if (rows.length === 0) return null;
   const onTime = rows.filter((r) => {
-    const due = (r.salesOrder.deliveryDate || '').trim();
+    const due = r.operationalOrder.dueDate?.toISOString().slice(0, 10)
+      ?? (r.salesOrder?.deliveryDate || '').trim();
     if (!due) return true;
     return r.dispatchDate <= due;
   }).length;
@@ -143,27 +160,25 @@ async function otdForWindow(fromDate: string, toDate: string): Promise<number | 
 
 /** Managing Director plant overview — live aggregates, no finance figures. */
 export async function managementOverview() {
+  const plants = plantCodeFilter(await resolveMesaOpsPlantScope());
   const asOf = todayIso();
   const yesterday = daysAgoIso(1);
   const shift = currentShift();
   const seriesStart = daysAgoIso(6);
 
   const [lbs, complaints, qaQueue, readyOrders, holds, overdueMaint, stockSummary] = await Promise.all([
-    submittedLogbooks(),
-    prisma.complaint.findMany({
-      where: { status: { not: 'resolved' } },
-      select: { id: true, description: true, product: true, severity: true, status: true },
-    }),
+    submittedLogbooks(plants),
+    listComplaints().then((rows) => rows.filter((complaint) => complaint.status !== 'resolved')),
     listQueue(),
     listReady(),
     prisma.qualityInspection.findMany({
-      where: { decision: 'hold' },
+      where: { decision: 'hold', ...(plants ? { plantCode: plants } : {}) },
       select: { id: true, lotNumber: true, remarks: true },
       take: 10,
       orderBy: { createdAt: 'desc' },
     }),
     prisma.maintenanceTask.findMany({
-      where: { status: 'overdue' },
+      where: { status: 'overdue', ...(plants ? { machine: { plantCode: plants } } : {}) },
       select: { id: true, taskName: true, machineId: true },
       take: 5,
     }),
@@ -184,9 +199,9 @@ export async function managementOverview() {
     : lbs.reduce((s, lb) => s + num(lb.totalRollKgs), 0);
   const scrapValue = todayLbs.length > 0 ? scrapToday : scrapRateOf(lbs);
 
-  const otdToday = await otdForWindow(asOf, asOf);
-  const otdYday = await otdForWindow(yesterday, yesterday);
-  const otdWeek = await otdForWindow(seriesStart, asOf);
+  const otdToday = await otdForWindow(asOf, asOf, plants);
+  const otdYday = await otdForWindow(yesterday, yesterday, plants);
+  const otdWeek = await otdForWindow(seriesStart, asOf, plants);
   const otdValue = otdToday ?? otdWeek ?? 0;
 
   const sev = (s: string) => s.trim().toLowerCase();

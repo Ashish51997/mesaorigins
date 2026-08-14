@@ -60,6 +60,7 @@ const inputClass = 'mt-1.5 min-h-11 w-full rounded-lg border border-slate-200 bg
 const serviceIcons: Record<string, typeof Boxes> = {
   mesaops: Boxes,
   mesaleads: CloudCog,
+  mesaerp: Building2,
 };
 
 function toSession(user: AuthenticatedOrganization): OrganizationSession {
@@ -75,6 +76,7 @@ function toSession(user: AuthenticatedOrganization): OrganizationSession {
 export function servicePath(serviceId: string): string | null {
   if (serviceId === 'mesaops') return '/mesaops';
   if (serviceId === 'mesaleads') return '/mesaleads';
+  if (serviceId === 'mesaerp') return '/mesaerp';
   return null;
 }
 

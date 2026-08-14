@@ -55,20 +55,99 @@ function messageFor(error: unknown): string {
 function PreviewField({ question }: { question: LeadQuestion }) {
   if (question.type === 'section') {
     return (
-      <div className="border-b border-slate-200 pb-2 pt-2 first:pt-0">
-        <p className="text-sm font-bold text-slate-900">{question.label || 'Untitled section'}</p>
-        {question.helpText && <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{question.helpText}</p>}
+      <div className="border-b border-slate-200 pb-3 pt-2 first:pt-0">
+        <p className="text-sm font-extrabold text-slate-900">{question.label || 'Untitled section'}</p>
+        {question.helpText && <p className="mt-1 text-[11px] leading-4 text-slate-500">{question.helpText}</p>}
       </div>
     );
   }
-  const label = <p className="text-xs font-bold text-slate-700">{question.label || 'Untitled question'} {question.required && <span className="text-rose-600">*</span>}</p>;
-  if (question.type === 'long_text') return <div>{label}<div className="mt-1.5 h-16 rounded-lg border border-slate-200 bg-slate-50" /></div>;
+
+  const label = (
+    <span className="text-xs font-bold text-slate-700">
+      {question.label || 'Untitled question'} {question.required && <span className="text-rose-600">*</span>}
+    </span>
+  );
+  const support = (
+    <>
+      {question.helpText && <p className="mt-1 text-[10px] leading-4 text-slate-500">{question.helpText}</p>}
+      {question.visibilityRule && (
+        <p className="mt-1.5 inline-flex rounded-md bg-amber-50 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-amber-700">
+          Conditional question
+        </p>
+      )}
+    </>
+  );
+  const previewControlClass = 'mt-2 min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-400 shadow-sm';
+  const controlId = `preview-${question.key}-${question.sortOrder}`;
+
+  if (question.type === 'long_text') {
+    return (
+      <div>
+        <label htmlFor={controlId}>{label}</label>
+        {support}
+        <textarea id={controlId} disabled rows={3} placeholder={question.placeholder} className={`${previewControlClass} resize-none disabled:opacity-100`} />
+      </div>
+    );
+  }
   if (question.type === 'single_select' || question.type === 'multi_select' || question.type === 'yes_no') {
     const options = question.type === 'yes_no' ? ['Yes', 'No'] : question.options;
-    return <div>{label}<div className="mt-1.5 flex flex-wrap gap-1.5">{options.map((option) => <span key={option} className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] text-slate-500">{humanize(option)}</span>)}</div></div>;
+    return (
+      <fieldset disabled>
+        <legend>{label}</legend>
+        {support}
+        <div className="mt-2 grid gap-2">
+          {options.map((option) => (
+            <label key={option} className="flex min-h-10 items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-600 shadow-sm">
+              <input
+                type={question.type === 'multi_select' ? 'checkbox' : 'radio'}
+                name={`preview-${question.key}`}
+                disabled
+                className="h-3.5 w-3.5 border-slate-300 text-blue-700"
+              />
+              {humanize(option)}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    );
   }
-  if (question.type === 'file') return <div>{label}<div className="mt-1.5 flex h-14 items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-500"><FileUp className="h-4 w-4" /> Choose attachment</div></div>;
-  return <div>{label}<div className="mt-1.5 h-9 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-[10px] text-slate-400">{question.placeholder || QUESTION_TYPES.find((item) => item.id === question.type)?.label}</div></div>;
+  if (question.type === 'file') {
+    return (
+      <div>
+        {label}
+        {support}
+        <button type="button" disabled aria-label={`Choose a file for ${question.label || 'Untitled question'}`} className="mt-2 flex min-h-20 w-full flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 text-center text-[10px] text-slate-500 disabled:opacity-100">
+          <FileUp className="mb-1.5 h-4 w-4 text-blue-700" />
+          <span className="font-bold text-slate-600">Choose a file</span>
+          <span className="mt-0.5">JPG, PNG or PDF</span>
+        </button>
+      </div>
+    );
+  }
+
+  const inputType = question.type === 'email'
+    ? 'email'
+    : question.type === 'phone'
+      ? 'tel'
+      : question.type === 'number'
+        ? 'number'
+        : question.type === 'date'
+          ? 'date'
+          : 'text';
+
+  return (
+    <div>
+      <label htmlFor={controlId}>{label}</label>
+      {support}
+      <input
+        id={controlId}
+        type={inputType}
+        disabled
+        placeholder={question.placeholder || QUESTION_TYPES.find((item) => item.id === question.type)?.label}
+        className={`${previewControlClass} disabled:opacity-100`}
+      />
+    </div>
+  );
 }
 
 export default function FormBuilder({
@@ -223,7 +302,7 @@ export default function FormBuilder({
         </div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr),minmax(360px,0.85fr)]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
         <fieldset disabled={locked} className="min-w-0 space-y-4 disabled:opacity-70">
           <legend className="sr-only">Questionnaire editor</legend>
           <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
@@ -257,7 +336,7 @@ export default function FormBuilder({
                     <div className="flex items-start gap-2">
                       <GripVertical className="mt-2 h-4 w-4 shrink-0 text-slate-300" />
                       <div className="min-w-0 flex-1 space-y-3">
-                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr),170px]">
+                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_170px]">
                           <label><span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{question.type === 'section' ? 'Section title' : 'Question label'}</span><input value={question.label} onChange={(event) => update(question.key, { label: event.target.value })} className={`mt-1 ${inputClass}`} /></label>
                           <label><span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Type</span><select value={question.type} onChange={(event) => update(question.key, { type: event.target.value as QuestionType, options: ['single_select', 'multi_select'].includes(event.target.value) && question.options.length === 0 ? ['Option 1', 'Option 2'] : question.options })} className={`mt-1 ${inputClass}`}>{QUESTION_TYPES.map((type) => <option key={type.id} value={type.id}>{type.label}</option>)}</select></label>
                         </div>
@@ -318,18 +397,25 @@ export default function FormBuilder({
           </div>
         </fieldset>
 
-        <aside className="xl:sticky xl:top-20 xl:self-start">
+        <aside aria-label="Live customer form preview" className="lg:sticky lg:top-20 lg:self-start">
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-bold text-slate-900"><Eye className="h-4 w-4 text-blue-700" /> Customer preview</div>
-              <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">MOBILE FIRST</span>
+              <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">LIVE</span>
             </div>
-            <div className="bg-slate-50 p-4">
-              <div className="mx-auto max-w-sm rounded-xl border border-slate-200 bg-white p-4">
+            <div className="bg-slate-50 p-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+              <div className="pointer-events-none mx-auto max-w-sm select-none rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-blue-700">Requirement form</p>
                 <h2 className="mt-1 text-lg font-extrabold text-slate-900">{name || 'Untitled questionnaire'}</h2>
                 <p className="mt-1 text-[11px] leading-4 text-slate-500">{description}</p>
                 <div className="mt-4 space-y-4">{ordered.map((question) => <PreviewField key={question.key} question={question} />)}</div>
+                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <label className="flex items-start gap-2.5">
+                    <input type="checkbox" disabled className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-slate-300 bg-white disabled:opacity-100" />
+                    <span className="text-[10px] leading-4 text-slate-500">I confirm these details are accurate. {privacyNotice}</span>
+                  </label>
+                </div>
+                <button type="button" disabled className="mt-3 flex min-h-10 w-full items-center justify-center rounded-lg bg-blue-700 px-4 text-xs font-bold text-white disabled:opacity-100">Submit requirement</button>
               </div>
             </div>
           </div>

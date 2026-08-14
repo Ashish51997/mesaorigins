@@ -2,6 +2,7 @@ import { prisma, tenantTx } from '../../db';
 import { tenantContext } from '../../lib/tenantContext';
 import { audit } from '../../lib/audit';
 import { ApiError } from '../../middleware/error';
+import { assertMesaOpsPlantAccess, plantCodeFilter, resolveMesaOpsPlantScope } from '../../lib/mesaOpsScope';
 import type { ReceiveInput, IssueInput } from './schemas';
 
 function ctx() {
@@ -15,8 +16,8 @@ export interface StockRow { itemName: string; unit: string; onHand: number }
 
 // On-hand balances derived from the ledger (in − out) — fixes the audit's
 // static stock that never moved. Grouped by material + unit within each type.
-async function computeStock() {
-  const txns = await prisma.inventoryTransaction.findMany({ select: { type: true, direction: true, itemName: true, unit: true, quantity: true } });
+async function computeStockForWhere(where?: { plantCode: { in: string[] } } | { plantCode: string }) {
+  const txns = await prisma.inventoryTransaction.findMany({ where, select: { type: true, direction: true, itemName: true, unit: true, quantity: true } });
   const map = new Map<string, { type: string } & StockRow>();
   for (const t of txns) {
     const key = `${t.type}::${t.itemName}::${t.unit}`;
@@ -30,19 +31,28 @@ async function computeStock() {
       .sort((a, b) => a.itemName.localeCompare(b.itemName));
   return { rawMaterials: pick('raw_material'), finishedGoods: pick('finished_goods') };
 }
-export const listStock = computeStock;
+export async function listStock() {
+  const scope = await resolveMesaOpsPlantScope();
+  const plants = plantCodeFilter(scope);
+  return computeStockForWhere(plants ? { plantCode: plants } : undefined);
+}
 
-export function listTransactions() {
-  return prisma.inventoryTransaction.findMany({ orderBy: { createdAt: 'desc' }, take: 50 });
+export async function listTransactions() {
+  const scope = await resolveMesaOpsPlantScope();
+  const plants = plantCodeFilter(scope);
+  return prisma.inventoryTransaction.findMany({ where: plants ? { plantCode: plants } : undefined, orderBy: { createdAt: 'desc' }, take: 50 });
 }
 
 /** Receive raw material into store (a ledger IN). */
 export async function receive(input: ReceiveInput) {
   const c = ctx();
+  const scope = await resolveMesaOpsPlantScope();
+  const plantCode = input.plantCode.toUpperCase();
+  assertMesaOpsPlantAccess(scope, plantCode);
   return tenantTx(async (tx) => {
     const t = await tx.inventoryTransaction.create({
       data: {
-        organizationId: c.organizationId, type: 'raw_material', direction: 'in',
+        organizationId: c.organizationId, plantCode, type: 'raw_material', direction: 'in',
         itemCode: input.itemCode || input.itemName, itemName: input.itemName, quantity: input.quantity, unit: input.unit,
         lotNumber: input.lotNumber, reference: input.reference || 'Goods receipt', date: today(), handler: c.email,
       },
@@ -56,9 +66,13 @@ export async function receive(input: ReceiveInput) {
  *  must be enough stock (fixes the audit's unconnected, unchecked issue). */
 export async function issue(input: IssueInput) {
   const c = ctx();
-  const machine = await prisma.machine.findUnique({ where: { id: input.machineId } });
+  const scope = await resolveMesaOpsPlantScope();
+  const plants = plantCodeFilter(scope);
+  const machine = await prisma.machine.findFirst({
+    where: { id: input.machineId, ...(plants ? { plantCode: plants } : {}) },
+  });
   if (!machine) throw new ApiError(422, 'bad_machine', 'That machine does not exist.');
-  const stock = await computeStock();
+  const stock = await computeStockForWhere({ plantCode: machine.plantCode });
   const onHand = stock.rawMaterials.find((r) => r.itemName === input.itemName && r.unit === input.unit)?.onHand ?? 0;
   if (onHand < input.quantity) {
     throw new ApiError(409, 'insufficient_stock', `Only ${onHand} ${input.unit} of ${input.itemName} in store — cannot issue ${input.quantity}.`);
@@ -66,7 +80,7 @@ export async function issue(input: IssueInput) {
   return tenantTx(async (tx) => {
     const t = await tx.inventoryTransaction.create({
       data: {
-        organizationId: c.organizationId, type: 'raw_material', direction: 'out',
+        organizationId: c.organizationId, plantCode: machine.plantCode, type: 'raw_material', direction: 'out',
         itemCode: input.itemName, itemName: input.itemName, quantity: input.quantity, unit: input.unit,
         reference: `Issued to ${machine.code}`, date: today(), handler: c.email,
       },

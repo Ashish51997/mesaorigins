@@ -10,11 +10,14 @@ services:
       NODE_ENV: development
       PORT: 3000
       DEV_AUTH: "1"
+      APP_URL: http://localhost:${MESADESK_APP_PORT:-3000}
+      AUTH_URL: ""
+      AUTH_SECRET: ""
+      TRUST_PROXY_HOPS: "0"
       DISABLE_HMR: "false"
     volumes:
       - .:/app
       - mesadesk-node-modules:/app/node_modules
-      - mesadesk-legacy-data:/app/storage
     command: ["npm", "run", "dev"]
 
 volumes:

@@ -10,12 +10,31 @@ export interface ApiRole {
   _count?: { memberships: number };
 }
 export interface ApiGrant { id: string; screen: string; state: 'on' | 'off' }
+export interface ApiMesaOpsRoleAssignment {
+  id: string;
+  organizationId: string;
+  membershipId: string;
+  roleId: string;
+  serviceId: 'mesaops';
+  legalEntityId: null;
+  plantCode: string | null;
+  warehouseId: null;
+  validFrom: string | null;
+  validTo: string | null;
+  status: 'active' | 'revoked';
+  revokedAt: string | null;
+  revocationReason: string | null;
+  rowVersion: number;
+  membership: { user: { name: string; email: string } };
+  role: { id: string; name: string; isSystem: boolean };
+}
 
 const keys = {
   employees: ['employees'] as const,
   roles: ['roles'] as const,
   screens: ['screen-catalog'] as const,
   grants: (id: string) => ['grants', id] as const,
+  mesaOpsAssignments: ['mesaops-role-assignments'] as const,
 };
 
 export interface ApiDirectoryEntry { id: string; name: string; email: string; role: string; employeeCode: string; department: string }
@@ -47,6 +66,12 @@ export function useEmployeeGrants(membershipId: string | null) {
     queryKey: keys.grants(membershipId ?? ''),
     queryFn: () => api.get<ApiGrant[]>(`/employees/${membershipId}/grants`),
     enabled: !!membershipId,
+  });
+}
+export function useMesaOpsRoleAssignments() {
+  return useQuery({
+    queryKey: keys.mesaOpsAssignments,
+    queryFn: () => api.get<ApiMesaOpsRoleAssignment[]>('/mesaops/role-assignments'),
   });
 }
 
@@ -94,5 +119,28 @@ export function useSetGrants() {
     mutationFn: ({ id, grants }: { id: string; grants: { screen: string; state: 'on' | 'off' }[] }) =>
       api.put<ApiGrant[]>(`/employees/${id}/grants`, { grants }),
     onSuccess: (_d, v) => { qc.invalidateQueries({ queryKey: keys.grants(v.id) }); qc.invalidateQueries({ queryKey: keys.employees }); },
+  });
+}
+export function useCreateMesaOpsRoleAssignment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ input, requestKey }: {
+      input: { membershipId: string; roleId: string; plantCode?: string | null; validFrom?: string | null; validTo?: string | null };
+      requestKey: string;
+    }) => api.postIdempotent<ApiMesaOpsRoleAssignment>('/mesaops/role-assignments', input, requestKey),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.mesaOpsAssignments }),
+  });
+}
+export function useRevokeMesaOpsRoleAssignment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ assignmentId, expectedVersion, reason, requestKey }: {
+      assignmentId: string; expectedVersion: number; reason: string; requestKey: string;
+    }) => api.postIdempotent<ApiMesaOpsRoleAssignment>(
+      `/mesaops/role-assignments/${assignmentId}/revoke`,
+      { expectedVersion, reason },
+      requestKey,
+    ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.mesaOpsAssignments }),
   });
 }
