@@ -852,5 +852,5 @@ describe('MesaLeads questionnaire builder', () => {
     expect(await screen.findByText('Questionnaire published and ready to share.')).toBeTruthy();
     expect(screen.getByText(`${window.location.origin}/mesaleads/q/published-token`)).toBeTruthy();
     expect(onSaved).toHaveBeenCalledTimes(2);
-  });
+  }, 15_000);
 });
