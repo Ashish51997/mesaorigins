@@ -25,7 +25,13 @@ declare global {
   }
 }
 
-const isDevAuth = (): boolean => process.env.DEV_AUTH === '1';
+/**
+ * Development impersonation is deliberately impossible in a production
+ * process, even if a deployment accidentally sets DEV_AUTH=1. This keeps an
+ * environment-variable typo from turning x-dev-user into a public bypass.
+ */
+const isDevAuth = (): boolean =>
+  process.env.DEV_AUTH === '1' && process.env.NODE_ENV !== 'production';
 
 function organizationHint(req: Request): string {
   // x-org is the production organization selector. Keep x-dev-org as a local
@@ -175,7 +181,6 @@ export const isDevAuthEnabled = (): boolean => isDevAuth();
 
 /** Auth mode advertised on /api/health for the login UI. */
 export const authMode = (): 'authjs' | 'dev' => {
-  if (authSecretConfigured()) return 'authjs';
   if (isDevAuth()) return 'dev';
   return 'authjs';
 };

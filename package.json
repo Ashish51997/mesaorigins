@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "docs:openapi": "tsx server/scripts/emitOpenApi.ts",
     "provision:aone": "tsx server/scripts/provisionAone.ts",
+    "provision:platform-admin": "tsx server/scripts/provisionPlatformAdmin.ts",
     "db:generate": "prisma generate",
     "db:preflight:mesaerp": "tsx server/scripts/preflightMesaErpMigration.ts",
     "release:migrate": "npm run db:apply-runtime-role && npm run db:preflight:mesaerp && prisma migrate deploy && prisma migrate status",

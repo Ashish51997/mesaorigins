@@ -9,6 +9,7 @@ vi.mock('../../lib/apiClient', () => ({
 import { api } from '../../lib/apiClient';
 import ServiceAdminPortal from '../admin/ServiceAdminPortal';
 
+const fetchMock = vi.fn();
 const get = api.get as ReturnType<typeof vi.fn>;
 const post = api.post as ReturnType<typeof vi.fn>;
 const put = api.put as ReturnType<typeof vi.fn>;
@@ -75,6 +76,10 @@ const onboardedOrganizations = [{
   }],
 }];
 
+function jsonResponse(body: unknown, ok = true, status = ok ? 200 : 401): Response {
+  return { ok, status, json: async () => body } as Response;
+}
+
 describe('MesaDesk service admin portal', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
@@ -82,6 +87,17 @@ describe('MesaDesk service admin portal', () => {
     get.mockReset();
     post.mockReset();
     put.mockReset();
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === '/api/health') return jsonResponse({ auth: 'dev' });
+      if (url === '/api/auth/logout') return jsonResponse({ ok: true });
+      if (url === '/api/auth/admin-login') return jsonResponse({
+        user: { userId: 'admin-user', email: 'platform.admin@mesadesk.test', name: 'Platform Admin' },
+      });
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
     get.mockImplementation(async (path: string) => {
       if (path === '/onboarding/access') return { allowed: true };
       if (path === '/onboarding/organizations') return { organizations: onboardedOrganizations };
@@ -101,25 +117,25 @@ describe('MesaDesk service admin portal', () => {
     });
   });
 
-  it('guards the service console with the temporary admin credentials', () => {
+  it('guards the local-development service console with the temporary admin credentials', async () => {
     render(<ServiceAdminPortal />);
 
-    fireEvent.change(screen.getByLabelText('User ID'), { target: { value: 'wrong' } });
+    fireEvent.change(await screen.findByLabelText('User ID'), { target: { value: 'wrong' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong' } });
     fireEvent.click(screen.getByRole('button', { name: 'Open control center' }));
 
-    expect(screen.getByRole('alert').textContent).toContain('incorrect');
+    expect((await screen.findByRole('alert')).textContent).toContain('incorrect');
     expect(screen.queryByText('Good to see you, Admin')).toBeNull();
   });
 
-  it('shows MesaOps, MesaLeads and MesaERP after a successful sign in', () => {
+  it('shows MesaOps, MesaLeads and MesaERP after a successful local-development sign in', async () => {
     render(<ServiceAdminPortal />);
 
-    fireEvent.change(screen.getByLabelText('User ID'), { target: { value: 'admin' } });
+    fireEvent.change(await screen.findByLabelText('User ID'), { target: { value: 'admin' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'admin' } });
     fireEvent.click(screen.getByRole('button', { name: 'Open control center' }));
 
-    expect(screen.getByText('Good to see you, Admin')).toBeTruthy();
+    expect(await screen.findByText('Good to see you, Admin')).toBeTruthy();
     const mesaOpsCard = screen.getByRole('heading', { name: 'MesaOps' }).closest('article');
     const mesaLeadsCard = screen.getByRole('heading', { name: 'MesaLeads' }).closest('article');
     const mesaErpCard = screen.getByRole('heading', { name: 'MesaERP' }).closest('article');
@@ -135,7 +151,7 @@ describe('MesaDesk service admin portal', () => {
     window.sessionStorage.setItem('mesadesk_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Stop MesaOps' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop MesaOps' }));
 
     await waitFor(() => expect(put).toHaveBeenCalledWith(
       '/onboarding/services/mesaops/status',
@@ -150,7 +166,7 @@ describe('MesaDesk service admin portal', () => {
     put.mockRejectedValueOnce(new Error('Control plane unavailable'));
     render(<ServiceAdminPortal />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Stop MesaOps' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop MesaOps' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('Its previous status was kept');
     expect((screen.getByRole('button', { name: 'Stop MesaOps' }) as HTMLButtonElement).disabled).toBe(false);
@@ -161,7 +177,7 @@ describe('MesaDesk service admin portal', () => {
     window.sessionStorage.setItem('mesadesk_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
-    expect(screen.getByRole('heading', { name: 'Organization onboarding' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Organization onboarding' })).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Organization name'), { target: { value: 'Acme Plastics' } });
     expect((screen.getByLabelText('Organization slug') as HTMLInputElement).value).toBe('acme-plastics');
     fireEvent.change(screen.getByLabelText('First owner name'), { target: { value: 'Priya Sharma' } });
@@ -186,7 +202,7 @@ describe('MesaDesk service admin portal', () => {
     window.sessionStorage.setItem('mesadesk_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
-    expect(screen.getByRole('link', { name: 'Organizations' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Organizations' })).toBeTruthy();
     expect(await screen.findByRole('heading', { name: 'Northstar Manufacturing' })).toBeTruthy();
     expect(screen.getByText('nina@northstar.test')).toBeTruthy();
     expect(screen.getByText('Customer-facing')).toBeTruthy();
@@ -222,5 +238,132 @@ describe('MesaDesk service admin portal', () => {
     expect((onlyService as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(onlyService);
     expect(put).not.toHaveBeenCalled();
+  });
+
+  it('restores a production admin session only after server authorization succeeds', async () => {
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === '/api/health') return jsonResponse({ auth: 'authjs' });
+      if (url === '/api/auth/logout') return jsonResponse({ ok: true });
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+
+    render(<ServiceAdminPortal />);
+
+    expect(await screen.findByText('Good to see you, Admin')).toBeTruthy();
+    expect(get).toHaveBeenCalledWith('/onboarding/access');
+    expect(window.sessionStorage.getItem('mesadesk_admin_session')).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === '/api/auth/admin-login')).toBe(false);
+  });
+
+  it('does not let the legacy browser marker bypass production authentication', async () => {
+    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === '/api/health') return jsonResponse({ auth: 'authjs' });
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    get.mockRejectedValueOnce(new Error('Sign-in required'));
+
+    render(<ServiceAdminPortal />);
+
+    expect(await screen.findByLabelText('Email address')).toBeTruthy();
+    expect(screen.queryByText('Good to see you, Admin')).toBeNull();
+    expect(window.sessionStorage.getItem('mesadesk_admin_session')).toBeNull();
+    expect(get).toHaveBeenCalledWith('/onboarding/access');
+  });
+
+  it('uses the cookie-backed password endpoint and verifies platform access in production', async () => {
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === '/api/health') return jsonResponse({ auth: 'authjs' });
+      if (url === '/api/auth/admin-login') return jsonResponse({
+        user: { userId: 'admin-user', email: 'platform.admin@mesadesk.test', name: 'Platform Admin' },
+      });
+      if (url === '/api/auth/logout') return jsonResponse({ ok: true });
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    get.mockRejectedValueOnce(new Error('Sign-in required'));
+
+    render(<ServiceAdminPortal />);
+
+    fireEvent.change(await screen.findByLabelText('Email address'), {
+      target: { value: 'Platform.Admin@MesaDesk.Test' },
+    });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'strong-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Open control center' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/auth/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: 'platform.admin@mesadesk.test', password: 'strong-password' }),
+    }));
+    expect(await screen.findByText('Good to see you, Admin')).toBeTruthy();
+    expect(get.mock.calls.filter(([path]) => path === '/onboarding/access').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('fails closed without creating a session when the account is not a platform admin', async () => {
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === '/api/health') return jsonResponse({ auth: 'authjs' });
+      if (url === '/api/auth/admin-login') return jsonResponse({
+        error: { code: 'platform_admin_required', message: 'Platform administrator access is required.' },
+      }, false, 403);
+      if (url === '/api/auth/logout') return jsonResponse({ ok: true });
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    get.mockRejectedValueOnce(new Error('Sign-in required'));
+
+    render(<ServiceAdminPortal />);
+
+    fireEvent.change(await screen.findByLabelText('Email address'), { target: { value: 'owner@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'valid-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Open control center' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain('administrator access is required');
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === '/api/auth/logout')).toBe(false);
+    expect(screen.queryByText('Good to see you, Admin')).toBeNull();
+  });
+
+  it('clears the new session if the defense-in-depth access check no longer allows it', async () => {
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === '/api/health') return jsonResponse({ auth: 'authjs' });
+      if (url === '/api/auth/admin-login') return jsonResponse({ user: { userId: 'admin-user' } });
+      if (url === '/api/auth/logout') return jsonResponse({ ok: true });
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    get
+      .mockRejectedValueOnce(new Error('Sign-in required'))
+      .mockRejectedValueOnce(new Error('Platform administrator access was removed.'));
+
+    render(<ServiceAdminPortal />);
+
+    fireEvent.change(await screen.findByLabelText('Email address'), { target: { value: 'admin@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'valid-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Open control center' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain('access was removed');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    }));
+    expect(screen.queryByText('Good to see you, Admin')).toBeNull();
+  });
+
+  it('posts logout and clears the local admin marker', async () => {
+    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    render(<ServiceAdminPortal />);
+
+    const signOutButtons = await screen.findAllByRole('button', { name: 'Sign out' });
+    fireEvent.click(signOutButtons[0]);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    }));
+    expect(await screen.findByLabelText('User ID')).toBeTruthy();
+    expect(window.sessionStorage.getItem('mesadesk_admin_session')).toBeNull();
   });
 });

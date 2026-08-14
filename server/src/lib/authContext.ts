@@ -15,6 +15,7 @@ export interface OrganizationAccessSummary {
   organizationName: string;
   organizationSlug: string;
   membershipId: string;
+  membershipStatus: string;
   employeeCode: string;
   role: string;
   isAdmin: boolean;
@@ -111,6 +112,7 @@ async function organizationAccess(membership: MembershipWithIdentity): Promise<O
     organizationName: membership.organization.name,
     organizationSlug: membership.organization.slug,
     membershipId: membership.id,
+    membershipStatus: membership.status,
     employeeCode: membership.employeeCode,
     role: membership.role,
     isAdmin: access.isAdmin,

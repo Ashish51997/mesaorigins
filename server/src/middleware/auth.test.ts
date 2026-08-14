@@ -4,6 +4,7 @@ import { buildApp } from '../app';
 import { basePrisma } from '../db';
 import { hashPassword, newSessionToken } from '../lib/password';
 import { SESSION_MAX_AGE_SEC, sessionCookieName } from '../auth/config';
+import { allowedPlatformAdminEmails } from '../lib/platformAdmin';
 
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'test-auth-secret-min-32-characters!!';
 
@@ -17,10 +18,16 @@ function cookieHeaderFromSetCookie(setCookie: string | string[] | undefined): st
 
 describe('auth middleware (Auth.js sessions)', () => {
   const prev = process.env.DEV_AUTH;
+  const prevNodeEnv = process.env.NODE_ENV;
+  const prevAllowedEmails = process.env.ONBOARDING_ALLOWED_EMAILS;
 
   afterEach(() => {
     if (prev === undefined) delete process.env.DEV_AUTH;
     else process.env.DEV_AUTH = prev;
+    if (prevNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = prevNodeEnv;
+    if (prevAllowedEmails === undefined) delete process.env.ONBOARDING_ALLOWED_EMAILS;
+    else process.env.ONBOARDING_ALLOWED_EMAILS = prevAllowedEmails;
   });
 
   it('still accepts x-dev-user when DEV_AUTH is on and no session cookie', async () => {
@@ -157,6 +164,109 @@ describe('auth middleware (Auth.js sessions)', () => {
       expect(me.body.user.email).toBe(email);
       expect(me.body.user.services).toEqual(login.body.user.services);
       expect(me.body.user.organizations).toEqual(login.body.user.organizations);
+    } finally {
+      await basePrisma.session.deleteMany({ where: { userId: existing.id } });
+      await basePrisma.user.update({ where: { id: existing.id }, data: { passwordHash: existing.passwordHash } });
+    }
+  });
+
+  it('admin login creates a session only after platform authorization succeeds', async () => {
+    process.env.DEV_AUTH = '0';
+    process.env.NODE_ENV = 'test';
+    const email = 'deepak.bansal@masspolymer.in';
+    const password = 'test-platform-admin-pass-99';
+    process.env.ONBOARDING_ALLOWED_EMAILS = email;
+    const existing = await basePrisma.user.findUniqueOrThrow({
+      where: { email },
+      select: { id: true, passwordHash: true },
+    });
+
+    try {
+      await basePrisma.user.update({
+        where: { id: existing.id },
+        data: { passwordHash: await hashPassword(password) },
+      });
+
+      const login = await request(app)
+        .post('/api/auth/admin-login')
+        .set('x-org', 'not-an-owned-organization')
+        .send({ email, password });
+
+      expect(login.status).toBe(200);
+      expect(login.body.user.email).toBe(email);
+      expect(login.body.user.organizations.some((organization: { isAdmin: boolean }) => organization.isAdmin)).toBe(true);
+      const cookie = cookieHeaderFromSetCookie(login.headers['set-cookie']);
+      expect(cookie).toContain(sessionCookieName());
+
+      const access = await request(app)
+        .get('/api/onboarding/access')
+        .set('Cookie', cookie);
+      expect(access.status).toBe(200);
+      expect(access.body.allowed).toBe(true);
+    } finally {
+      await basePrisma.session.deleteMany({ where: { userId: existing.id } });
+      await basePrisma.user.update({ where: { id: existing.id }, data: { passwordHash: existing.passwordHash } });
+    }
+  });
+
+  it('admin login rejects a valid ordinary account without creating a session', async () => {
+    process.env.DEV_AUTH = '0';
+    process.env.NODE_ENV = 'test';
+    const email = 'nandlal@masspolymer.in';
+    const password = 'test-non-platform-pass-99';
+    process.env.ONBOARDING_ALLOWED_EMAILS = email;
+    const existing = await basePrisma.user.findUniqueOrThrow({
+      where: { email },
+      select: { id: true, passwordHash: true },
+    });
+
+    try {
+      await basePrisma.user.update({
+        where: { id: existing.id },
+        data: { passwordHash: await hashPassword(password) },
+      });
+      const sessionsBefore = await basePrisma.session.count({ where: { userId: existing.id } });
+
+      const login = await request(app)
+        .post('/api/auth/admin-login')
+        .send({ email, password });
+
+      expect(login.status).toBe(403);
+      expect(login.body.error.code).toBe('platform_admin_required');
+      expect(login.headers['set-cookie']).toBeUndefined();
+      expect(await basePrisma.session.count({ where: { userId: existing.id } })).toBe(sessionsBefore);
+    } finally {
+      await basePrisma.session.deleteMany({ where: { userId: existing.id } });
+      await basePrisma.user.update({ where: { id: existing.id }, data: { passwordHash: existing.passwordHash } });
+    }
+  });
+
+  it('admin login requires the identity allowlist even for an administrator', async () => {
+    process.env.DEV_AUTH = '0';
+    process.env.NODE_ENV = 'production';
+    const email = 'deepak.bansal@masspolymer.in';
+    const password = 'test-not-allowlisted-pass-99';
+    delete process.env.ONBOARDING_ALLOWED_EMAILS;
+    const existing = await basePrisma.user.findUniqueOrThrow({
+      where: { email },
+      select: { id: true, passwordHash: true },
+    });
+
+    try {
+      await basePrisma.user.update({
+        where: { id: existing.id },
+        data: { passwordHash: await hashPassword(password) },
+      });
+      const sessionsBefore = await basePrisma.session.count({ where: { userId: existing.id } });
+
+      const login = await request(app)
+        .post('/api/auth/admin-login')
+        .send({ email, password });
+
+      expect(login.status).toBe(403);
+      expect(login.body.error.code).toBe('platform_admin_required');
+      expect(login.headers['set-cookie']).toBeUndefined();
+      expect(await basePrisma.session.count({ where: { userId: existing.id } })).toBe(sessionsBefore);
     } finally {
       await basePrisma.session.deleteMany({ where: { userId: existing.id } });
       await basePrisma.user.update({ where: { id: existing.id }, data: { passwordHash: existing.passwordHash } });
@@ -396,5 +506,37 @@ describe('auth middleware (Auth.js sessions)', () => {
     const r = await request(app).get('/api/health');
     expect(r.status).toBe(200);
     expect(['dev', 'authjs']).toContain(r.body.auth);
+  });
+
+  it('reports dev mode when the local stub is accepted even with AUTH_SECRET configured', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.DEV_AUTH = '1';
+
+    const r = await request(app).get('/api/health');
+    expect(r.status).toBe(200);
+    expect(r.body.auth).toBe('dev');
+  });
+
+  it('uses the seeded platform-admin fallback only with explicit local DEV_AUTH', () => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.ONBOARDING_ALLOWED_EMAILS;
+    process.env.DEV_AUTH = '0';
+    expect(allowedPlatformAdminEmails()).toEqual([]);
+
+    process.env.DEV_AUTH = '1';
+    expect(allowedPlatformAdminEmails()).toEqual(['aroul303@gmail.com']);
+  });
+
+  it('fails closed when a production deployment accidentally sets DEV_AUTH=1', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DEV_AUTH = '1';
+
+    const health = await request(app).get('/api/health');
+    expect(health.status).toBe(200);
+    expect(health.body.auth).toBe('authjs');
+
+    const impersonated = await request(app).get('/api/me').set('x-dev-user', 'EMP-002');
+    expect(impersonated.status).toBe(401);
+    expect(impersonated.body.error.code).toBe('unauthenticated');
   });
 });

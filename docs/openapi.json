@@ -199,6 +199,14 @@
                         "membershipId": {
                           "type": "string"
                         },
+                        "membershipStatus": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "on_leave",
+                            "inactive"
+                          ]
+                        },
                         "employeeCode": {
                           "type": "string"
                         },
@@ -258,6 +266,14 @@
                               },
                               "membershipId": {
                                 "type": "string"
+                              },
+                              "membershipStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "on_leave",
+                                  "inactive"
+                                ]
                               },
                               "employeeCode": {
                                 "type": "string"
@@ -365,6 +381,240 @@
         }
       }
     },
+    "/api/auth/admin-login": {
+      "post": {
+        "tags": [
+          "Onboarding"
+        ],
+        "operationId": "platformAdminPasswordLogin",
+        "summary": "Platform administrator sign-in",
+        "description": "Verifies the email and password, then requires the identity to be explicitly listed in ONBOARDING_ALLOWED_EMAILS and to hold at least one active admin membership. The Auth.js database Session and httpOnly cookie are created only after both authentication and platform authorization succeed.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The authorized platform administrator context; session cookie is set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "organizationId": {
+                          "type": "string"
+                        },
+                        "organizationName": {
+                          "type": "string"
+                        },
+                        "organizationSlug": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "membershipStatus": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "on_leave",
+                            "inactive"
+                          ]
+                        },
+                        "employeeCode": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        },
+                        "isAdmin": {
+                          "type": "boolean"
+                        },
+                        "screens": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "services": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "paused",
+                                  "stopped"
+                                ]
+                              },
+                              "sortOrder": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "organizations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "organizationId": {
+                                "type": "string"
+                              },
+                              "organizationName": {
+                                "type": "string"
+                              },
+                              "organizationSlug": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "membershipStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "on_leave",
+                                  "inactive"
+                                ]
+                              },
+                              "employeeCode": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "isAdmin": {
+                                "type": "boolean"
+                              },
+                              "screens": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "services": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "active",
+                                        "paused",
+                                        "stopped"
+                                      ]
+                                    },
+                                    "sortOrder": {
+                                      "type": "integer"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "- `invalid_body` — Email or password is missing or outside the accepted bounds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "- `invalid_credentials` — Email or password is wrong, or the user has no passwordHash.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "- `platform_admin_required` — Credentials are valid but the identity is not allowlisted or has no active admin membership. No session is created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "- `rate_limited` — The IP, account, or IP-account attempt budget is exhausted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal` — unhandled server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "- `auth_not_configured` — AUTH_SECRET is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/session-context": {
       "get": {
         "tags": [
@@ -419,6 +669,14 @@
                             },
                             "membershipId": {
                               "type": "string"
+                            },
+                            "membershipStatus": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "on_leave",
+                                "inactive"
+                              ]
                             },
                             "employeeCode": {
                               "type": "string"
@@ -479,6 +737,14 @@
                                   },
                                   "membershipId": {
                                     "type": "string"
+                                  },
+                                  "membershipStatus": {
+                                    "type": "string",
+                                    "enum": [
+                                      "active",
+                                      "on_leave",
+                                      "inactive"
+                                    ]
                                   },
                                   "employeeCode": {
                                     "type": "string"
@@ -3540,6 +3806,14 @@
                         "membershipId": {
                           "type": "string"
                         },
+                        "membershipStatus": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "on_leave",
+                            "inactive"
+                          ]
+                        },
                         "employeeCode": {
                           "type": "string"
                         },
@@ -3599,6 +3873,14 @@
                               },
                               "membershipId": {
                                 "type": "string"
+                              },
+                              "membershipStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "on_leave",
+                                  "inactive"
+                                ]
                               },
                               "employeeCode": {
                                 "type": "string"

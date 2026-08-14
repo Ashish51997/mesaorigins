@@ -3,8 +3,6 @@ import { ApiError } from '../../middleware/error';
 import { ADMIN_ROLES, ROLE_DEFAULT_SCREENS } from '../../lib/permissions';
 import { hashPassword } from '../../lib/password';
 import type { BootstrapOrg, OrganizationServicesInput, ServiceStatusInput } from './schemas';
-
-const DEFAULT_ONBOARDING_OWNER = 'aroul303@gmail.com';
 const BUILT_IN_ROLES = [...new Set(['Owner', 'Administrator', ...Object.keys(ROLE_DEFAULT_SCREENS)])];
 
 const serviceDto = (service: { id: string; name: string; description: string; status: string; sortOrder: number }) => ({
@@ -70,20 +68,6 @@ export function suggestedSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 48);
-}
-
-export function allowedOnboardingEmails(): string[] {
-  const configured = (process.env.ONBOARDING_ALLOWED_EMAILS || '')
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  return configured.length > 0 ? configured : [DEFAULT_ONBOARDING_OWNER];
-}
-
-export function canAccessOnboarding(email: string | undefined, isAdmin: boolean): boolean {
-  if (!email || !isAdmin) return false;
-  const allowed = allowedOnboardingEmails();
-  return allowed.includes(email.trim().toLowerCase());
 }
 
 export async function listServiceCatalog() {

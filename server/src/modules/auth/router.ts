@@ -10,6 +10,7 @@ import {
   verifyPassword,
 } from '../../lib/password';
 import { SESSION_MAX_AGE_SEC, authSecretConfigured, sessionCookieName } from '../../auth/config';
+import { canAccessPlatformAdmin } from '../../lib/platformAdmin';
 
 const bodySchema = z.object({
   email: z.string().trim().email().max(254),
@@ -66,7 +67,12 @@ function rejectRateLimited(res: Response, resetAt: number): void {
  * Email + per-user password → Auth.js database Session + httpOnly cookie.
  * (Auth.js Credentials provider cannot use database sessions natively.)
  */
-authRouter.post('/auth/login', async (req, res, next) => {
+async function passwordLogin(
+  req: import('express').Request,
+  res: Response,
+  next: import('express').NextFunction,
+  platformAdminOnly: boolean,
+): Promise<void> {
   try {
     res.setHeader('Cache-Control', 'no-store');
     if (!authSecretConfigured()) {
@@ -114,11 +120,19 @@ authRouter.post('/auth/login', async (req, res, next) => {
       return;
     }
 
-    const selectedOrganization = (req.header('x-org') || '').trim();
+    // The platform console is cross-tenant. Do not let a stale organization
+    // selector prevent an otherwise valid platform administrator from signing
+    // in; its authorization below considers every active membership.
+    const selectedOrganization = platformAdminOnly ? '' : (req.header('x-org') || '').trim();
     const context = await buildAuthenticatedUserContext(user.id, selectedOrganization);
     if (!context) {
       res.status(403).json({
-        error: selectedOrganization
+        error: platformAdminOnly
+          ? {
+              code: 'platform_admin_required',
+              message: 'This account cannot access MesaDesk administration.',
+            }
+          : selectedOrganization
           ? {
               code: 'organization_not_available',
               message: 'The selected organization is not available for this account.',
@@ -129,6 +143,21 @@ authRouter.post('/auth/login', async (req, res, next) => {
             },
       });
       return;
+    }
+
+    if (platformAdminOnly) {
+      const hasAdminMembership = context.organizations.some((organization) => (
+        organization.membershipStatus === 'active' && organization.isAdmin
+      ));
+      if (!canAccessPlatformAdmin(context.email, hasAdminMembership)) {
+        res.status(403).json({
+          error: {
+            code: 'platform_admin_required',
+            message: 'This account cannot access MesaDesk administration.',
+          },
+        });
+        return;
+      }
     }
 
     const sessionToken = newSessionToken();
@@ -144,6 +173,19 @@ authRouter.post('/auth/login', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+}
+
+authRouter.post('/auth/login', (req, res, next) => {
+  void passwordLogin(req, res, next, false);
+});
+
+/**
+ * Production admin sign-in. Valid credentials alone are insufficient: the
+ * identity must also be explicitly allowlisted and hold an active admin role.
+ * No session row or cookie is created until both checks pass.
+ */
+authRouter.post('/auth/admin-login', (req, res, next) => {
+  void passwordLogin(req, res, next, true);
 });
 
 function readCookie(header: string, name: string): string {

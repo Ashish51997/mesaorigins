@@ -186,6 +186,31 @@ Confirm that secret references show numeric versions, the runtime environment
 has `DEV_AUTH=0`, and `/api/ready` reports a least-privilege database role with
 zero pending migrations.
 
+### Provision a production platform administrator
+
+Run this only through the privileged migration connection after migrations.
+The email must also be in the `ONBOARDING_ALLOWED_EMAILS` value mounted on
+Cloud Run. The utility never prints the password or password hash.
+
+```bash
+umask 077
+openssl rand -base64 24 > /tmp/mesadesk-platform-admin-password
+chmod 600 /tmp/mesadesk-platform-admin-password
+
+DIRECT_DATABASE_URL='postgresql://...' \
+PLATFORM_ADMIN_EMAIL='admin@example.com' \
+PLATFORM_ADMIN_PASSWORD_FILE='/tmp/mesadesk-platform-admin-password' \
+PLATFORM_ADMIN_ORGANIZATION='demo' \
+ONBOARDING_ALLOWED_EMAILS='admin@example.com' \
+npm run provision:platform-admin
+```
+
+If the email already exists, the command stops without changing it. After
+verifying that identity, set `PLATFORM_ADMIN_REUSE_EXISTING=1`. To deliberately
+replace its password, also set `PLATFORM_ADMIN_ROTATE_EXISTING=1`; the password
+update and revocation of all existing sessions are atomic. Remove the temporary
+password file after storing the credential in an approved password manager.
+
 ## 6. Rotation and rollback
 
 Adding a new secret version does not silently change a running revision. Run the

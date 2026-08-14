@@ -24,6 +24,7 @@ function buildTestApp(permissionResolver = async (req: express.Request, permissi
       organizationName: organizationId,
       organizationSlug: organizationId,
       membershipId,
+      membershipStatus: 'active',
       employeeCode: `employee-${organizationId}`,
       role: isAdmin ? 'Administrator' : 'Finance User',
       isAdmin,

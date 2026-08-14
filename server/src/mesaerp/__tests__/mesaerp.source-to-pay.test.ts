@@ -283,6 +283,7 @@ function buildTestApp() {
       organizationName: organizationId,
       organizationSlug: organizationId,
       membershipId: req.header('x-test-member') || 'membership-a',
+      membershipStatus: 'active',
       employeeCode: 'EMP-1',
       role: isAdmin ? 'Administrator' : 'Procurement User',
       isAdmin,

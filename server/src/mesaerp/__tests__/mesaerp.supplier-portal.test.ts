@@ -106,6 +106,7 @@ describe('internal supplier management controls', () => {
     req.user = {
       userId: 'user-a', email: 'buyer@example.test', name: 'Buyer', organizationId: 'org-a', organizationName: 'Org',
       organizationSlug: 'org', membershipId: 'member-a', employeeCode: 'E1', role: 'Buyer', isAdmin: false,
+      membershipStatus: 'active',
       screens: [], services: [{ id: 'mesaerp', name: 'MesaERP', description: '', status: 'active', sortOrder: 1 }], organizations: [],
     };
     next();

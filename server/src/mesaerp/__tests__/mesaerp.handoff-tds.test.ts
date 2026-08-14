@@ -24,6 +24,7 @@ function buildApp(allowed = false) {
     const organization = {
       organizationId: 'org-a', organizationName: 'Org A', organizationSlug: 'org-a',
       membershipId: req.header('x-test-member') || 'maker-a', employeeCode: 'EMP-1',
+      membershipStatus: 'active',
       role: req.header('x-test-admin') === '1' ? 'Administrator' : 'ERP User',
       isAdmin: req.header('x-test-admin') === '1', screens: ['legacy-admin'],
       services: [{ id: 'mesaerp', name: 'MesaERP', description: '', status: 'active', sortOrder: 30 }],

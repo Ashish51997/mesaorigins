@@ -241,7 +241,7 @@ function buildTestApp() {
     const member = req.header('x-test-member') || 'maker-a';
     const admin = req.header('x-test-admin') === '1';
     const organization = {
-      organizationId: 'org-a', organizationName: 'Org A', organizationSlug: 'org-a', membershipId: member,
+      organizationId: 'org-a', organizationName: 'Org A', organizationSlug: 'org-a', membershipId: member, membershipStatus: 'active',
       employeeCode: member, role: admin ? 'Administrator' : 'ERP User', isAdmin: admin, screens: [],
       services: [{ id: 'mesaerp', name: 'MesaERP', description: '', status: req.header('x-test-service') || 'active', sortOrder: 30 }],
     };
