@@ -23,7 +23,7 @@
     "provision:platform-admin": "tsx server/scripts/provisionPlatformAdmin.ts",
     "db:generate": "prisma generate",
     "db:preflight:mesaerp": "tsx server/scripts/preflightMesaErpMigration.ts",
-    "release:migrate": "npm run db:apply-runtime-role && npm run db:preflight:mesaerp && prisma migrate deploy && prisma migrate status",
+    "release:migrate": "npm run db:apply-runtime-role && npm run db:preflight:mesaerp && prisma migrate deploy && npm run db:apply-runtime-role && prisma migrate status",
     "db:apply-runtime-role": "prisma db execute --schema server/prisma/schema.prisma --file server/prisma/setup-roles.sql",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset --force",

@@ -131,8 +131,13 @@ The release migration requires `app_user` to have no Cloud SQL database-role
 assignments. It then applies `setup-roles.sql` idempotently before the read-only
 preflight and migration chain. That SQL can normalize permitted login and role
 attributes, apply runtime grants and fail closed on unsafe protected attributes
-or effective `cloudsqlsuperuser` membership; it cannot substitute for the Admin
-API revocation above. This prevents a first release from accidentally creating
+or effective `cloudsqlsuperuser` membership. It also installs an exact-owner,
+exact-session maintenance policy on every forced-RLS table so the separate
+migration identity can perform reviewed cross-tenant backfills without granting
+that access to `app_user`; it cannot substitute for the Admin API revocation
+above. The release reapplies this bootstrap after `prisma migrate deploy` so
+newly created forced-RLS tables and runtime grants are verified before migration
+status is accepted. This prevents a first release from accidentally creating
 tables without runtime grants. `scripts/gcp/migrate.sh` remains a manual
 operator/recovery path. Do not set `SEED=1` against production.
 
@@ -170,10 +175,12 @@ the complete quality gate is green.
 `cloudbuild.yaml` performs these steps in order:
 
 1. Builds a quality image.
-2. Starts a disposable PostgreSQL 16 database.
-3. Applies the complete migration chain, seeds only that disposable database,
-   then runs frontend/server type checks, unit tests, integration tests, OpenAPI
-   determinism, the production dependency audit and the production build.
+2. Starts disposable PostgreSQL 16 with separate bootstrap, non-super migration
+   owner and least-privilege runtime roles, matching Cloud SQL's RLS behavior.
+3. Proves a two-tenant legacy upgrade and cross-tenant denial, then applies the
+   complete clean migration chain, seeds only the disposable database, and runs
+   frontend/server type checks, unit tests, integration tests, OpenAPI
+   determinism, both dependency audits and the production build.
    `RUN_MESAERP_DB_INTEGRATION=1` is mandatory so database suites cannot skip.
 4. Builds and pushes immutable application and migration images tagged with the
    Cloud Build ID.
@@ -269,5 +276,6 @@ an incident-reviewed recovery procedure.
 | `APP_URL` validation fails | Supply the exact public HTTPS origin with `_APP_URL`; do not use an internal or HTTP address. |
 | Secret version cannot be resolved | Create/enable a version, then rerun. Do not replace numeric pinning with `latest`. |
 | Runtime role is unsafe | Correct `mesadesk-database-url` to use `app_user`, rerun `scripts/gcp/provision.sh` so the Cloud SQL Admin API revokes its default database roles, and rerun the release. `setup-roles.sql` verifies protected attributes and effective `cloudsqlsuperuser` membership but cannot repair that managed state. |
+| Migration owner is blocked by forced RLS | Do not disable RLS or grant runtime bypass. Confirm every forced table is owned by the direct migration identity and has `migration_owner_all_tenants` restricted to that exact owner/session, then recover the failed Prisma migration only after proving `applied_steps_count=0`. |
 | Artifact push is denied | Grant the trigger's actual build service account Artifact Registry writer access. |
 | Migration job cannot connect | Verify its Cloud SQL attachment and the owner socket URL in `mesadesk-direct-database-url`. |

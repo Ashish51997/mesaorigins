@@ -51,17 +51,20 @@ steps:
         docker network create "$${network}"
         docker build --target quality -t "$${quality_image}" .
         docker run -d --name "$${database}" --network "$${network}" \
-          -e POSTGRES_USER=masspolimer \
-          -e POSTGRES_PASSWORD=masspolimer \
-          -e POSTGRES_DB=masspolimer \
-          -v /workspace/server/prisma/setup-roles.sql:/docker-entrypoint-initdb.d/10-setup-roles.sql:ro \
+          -e POSTGRES_USER=postgres \
+          -e POSTGRES_PASSWORD=cloud-build-postgres-bootstrap \
+          -e POSTGRES_DB=postgres \
           postgres:16-alpine
 
         for attempt in $$(seq 1 60); do
-          if docker exec "$${database}" pg_isready -U masspolimer -d masspolimer >/dev/null 2>&1; then break; fi
+          if docker exec "$${database}" pg_isready -U postgres -d postgres >/dev/null 2>&1; then break; fi
           if [[ "$${attempt}" == 60 ]]; then docker logs "$${database}"; exit 1; fi
           sleep 1
         done
+
+        # Keep the ordinary seed/test database clean while a second database
+        # proves the two-tenant legacy upgrade and Cloud SQL RLS boundary.
+        bash scripts/qa/cloudsql-parity-gate.sh "$${database}" "$${network}" "$${quality_image}" /workspace
 
         docker run --rm --network "$${network}" \
           -e DATABASE_URL="postgresql://app_user:app_user@$${database}:5432/masspolimer?schema=public" \
@@ -75,7 +78,7 @@ steps:
           -e MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI= \
           -e MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY=AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM= \
           "$${quality_image}" bash -ceu '
-            npx prisma migrate deploy
+            npm run release:migrate
             npm run db:seed
             npm run lint
             npm run lint:server

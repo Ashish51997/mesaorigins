@@ -199,10 +199,14 @@ store, never in repository environment files.
 
 Production startup validates the public HTTPS origin, proxy-hop count, Auth.js secret and
 four independent cryptographic keys. `/api/ready` additionally verifies database access
-through a non-superuser/non-`BYPASSRLS` runtime role and confirms every migration packaged
-with the image is complete. Cloud Build gates releases on the full test suite, a verified
-Cloud SQL backup, an additive migration job and a no-traffic candidate smoke test before
-traffic promotion. Runtime revisions pin numeric Secret Manager versions.
+through a login-only runtime role with no elevated attributes or managed Cloud SQL role
+membership, confirms every RLS-enabled table remains forced, and confirms every migration
+packaged with the image is complete. Forced RLS stays active during migrations; reviewed
+cross-tenant backfills use a separate policy bound to the exact table-owning migration role
+and session, which `app_user` is forbidden to inherit. Cloud Build gates releases on a
+non-superuser two-tenant upgrade fixture, the full test suite, a verified Cloud SQL backup,
+an additive migration job and a no-traffic candidate smoke test before traffic promotion.
+Runtime revisions pin numeric Secret Manager versions.
 
 ## Change rules
 

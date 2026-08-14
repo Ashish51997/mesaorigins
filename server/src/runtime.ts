@@ -151,13 +151,35 @@ export function isLeastPrivilegeRuntimeRole(role: RuntimeDatabaseRole): boolean 
     && !role.hasCloudSqlSuperuser;
 }
 
+export function hasCompleteForcedRowLevelSecurity(unforcedRlsTables: number): boolean {
+  return unforcedRlsTables === 0;
+}
+
+export type RuntimeRowLevelSecurityState = {
+  unforcedRlsTables: number;
+  forcedRlsTablesMissingTenantIsolationPolicies: number;
+  forcedRlsTablesMissingMigrationOwnerPolicies: number;
+  runtimeApplicableMigrationOwnerPolicies: number;
+};
+
+export function hasCompleteRuntimeRowLevelSecurity(state: RuntimeRowLevelSecurityState): boolean {
+  return hasCompleteForcedRowLevelSecurity(state.unforcedRlsTables)
+    && state.forcedRlsTablesMissingTenantIsolationPolicies === 0
+    && state.forcedRlsTablesMissingMigrationOwnerPolicies === 0
+    && state.runtimeApplicableMigrationOwnerPolicies === 0;
+}
+
 async function databaseState(): Promise<{
   pending: string[];
   unfinished: number;
   expectedLatest: string | null;
   role: RuntimeDatabaseRole;
+  unforcedRlsTables: number;
+  forcedRlsTablesMissingTenantIsolationPolicies: number;
+  forcedRlsTablesMissingMigrationOwnerPolicies: number;
+  runtimeApplicableMigrationOwnerPolicies: number;
 }> {
-  const [expected, applied, roles] = await Promise.all([
+  const [expected, applied, roles, rowLevelSecurityStates] = await Promise.all([
     expectedMigrations(),
     basePrisma.$queryRaw<AppliedMigration[]>`
       SELECT
@@ -186,9 +208,75 @@ async function databaseState(): Promise<{
       FROM "pg_roles"
       WHERE "rolname" = current_user
     `,
+    basePrisma.$queryRaw<RuntimeRowLevelSecurityState[]>`
+      WITH "forcedRlsTables" AS (
+        SELECT "relation"."oid" AS "relationOid"
+        FROM "pg_class" AS "relation"
+        INNER JOIN "pg_namespace" AS "namespace"
+          ON "namespace"."oid" = "relation"."relnamespace"
+        WHERE "namespace"."nspname" = 'public'
+          AND "relation"."relkind" IN ('r', 'p')
+          AND "relation"."relrowsecurity"
+          AND "relation"."relforcerowsecurity"
+      )
+      SELECT
+        (
+          SELECT COUNT(*)
+          FROM "pg_class" AS "relation"
+          INNER JOIN "pg_namespace" AS "namespace"
+            ON "namespace"."oid" = "relation"."relnamespace"
+          WHERE "namespace"."nspname" = 'public'
+            AND "relation"."relkind" IN ('r', 'p')
+            AND "relation"."relrowsecurity"
+            AND NOT "relation"."relforcerowsecurity"
+        )::integer AS "unforcedRlsTables",
+        (
+          SELECT COUNT(*)
+          FROM "forcedRlsTables" AS "tenantTable"
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM "pg_policy" AS "policy"
+            WHERE "policy"."polrelid" = "tenantTable"."relationOid"
+              AND "policy"."polname" = 'tenant_isolation'
+          )
+        )::integer AS "forcedRlsTablesMissingTenantIsolationPolicies",
+        (
+          SELECT COUNT(*)
+          FROM "forcedRlsTables" AS "tenantTable"
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM "pg_policy" AS "policy"
+            WHERE "policy"."polrelid" = "tenantTable"."relationOid"
+              AND "policy"."polname" = 'migration_owner_all_tenants'
+          )
+        )::integer AS "forcedRlsTablesMissingMigrationOwnerPolicies",
+        (
+          SELECT COUNT(*)
+          FROM "pg_policy" AS "policy"
+          INNER JOIN "pg_class" AS "relation"
+            ON "relation"."oid" = "policy"."polrelid"
+          INNER JOIN "pg_namespace" AS "namespace"
+            ON "namespace"."oid" = "relation"."relnamespace"
+          WHERE "namespace"."nspname" = 'public'
+            AND "policy"."polname" = 'migration_owner_all_tenants'
+            AND (
+              0::oid = ANY("policy"."polroles")
+              OR EXISTS (
+                SELECT 1
+                FROM unnest("policy"."polroles") AS "assignedRole"("roleOid")
+                WHERE COALESCE(
+                  pg_has_role(current_user, NULLIF("assignedRole"."roleOid", 0::oid), 'MEMBER'),
+                  false
+                )
+              )
+            )
+        )::integer AS "runtimeApplicableMigrationOwnerPolicies"
+    `,
   ]);
   const role = roles[0];
   if (!role) throw new Error('The current PostgreSQL role could not be resolved.');
+  const rowLevelSecurity = rowLevelSecurityStates[0];
+  if (!rowLevelSecurity) throw new Error('The PostgreSQL row-level security state could not be resolved.');
   const completed = new Set(
     applied.filter((row) => row.finishedAt && !row.rolledBackAt).map((row) => row.migrationName),
   );
@@ -197,6 +285,7 @@ async function databaseState(): Promise<{
     unfinished: applied.filter((row) => !row.finishedAt && !row.rolledBackAt).length,
     expectedLatest: expected.at(-1) ?? null,
     role,
+    ...rowLevelSecurity,
   };
 }
 
@@ -212,10 +301,14 @@ export const readinessHandler: RequestHandler = async (_req, res) => {
     const database = await withTimeout(databaseState(), 4_000);
     const outboxWorker = integrationOutboxWorkerHealth();
     const leastPrivilegeRole = isLeastPrivilegeRuntimeRole(database.role);
+    const rowLevelSecurity = hasCompleteRuntimeRowLevelSecurity(database);
     const unsafeProductionRole = process.env.NODE_ENV === 'production'
       && !leastPrivilegeRole;
+    const unsafeProductionRowLevelSecurity = process.env.NODE_ENV === 'production'
+      && !rowLevelSecurity;
     const ready = configurationErrors.length === 0
       && !unsafeProductionRole
+      && !unsafeProductionRowLevelSecurity
       && database.pending.length === 0
       && database.unfinished === 0
       && outboxWorker.healthy;
@@ -224,8 +317,16 @@ export const readinessHandler: RequestHandler = async (_req, res) => {
       checks: {
         configuration: { ok: configurationErrors.length === 0, errors: configurationErrors },
         database: {
-          ok: !unsafeProductionRole,
+          ok: !unsafeProductionRole && !unsafeProductionRowLevelSecurity,
           leastPrivilegeRole,
+          rowLevelSecurity,
+          unforcedRlsTables: database.unforcedRlsTables,
+          forcedRlsTablesMissingTenantIsolationPolicies:
+            database.forcedRlsTablesMissingTenantIsolationPolicies,
+          forcedRlsTablesMissingMigrationOwnerPolicies:
+            database.forcedRlsTablesMissingMigrationOwnerPolicies,
+          runtimeApplicableMigrationOwnerPolicies:
+            database.runtimeApplicableMigrationOwnerPolicies,
         },
         migrations: {
           ok: database.pending.length === 0 && database.unfinished === 0,

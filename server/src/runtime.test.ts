@@ -3,10 +3,13 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { buildApp } from './app';
 import {
+  hasCompleteForcedRowLevelSecurity,
+  hasCompleteRuntimeRowLevelSecurity,
   isLeastPrivilegeRuntimeRole,
   productionConfigErrors,
   securityHeaders,
   type RuntimeDatabaseRole,
+  type RuntimeRowLevelSecurityState,
 } from './runtime';
 
 const KEY = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
@@ -37,6 +40,26 @@ describe('production runtime controls', () => {
     ['inherits cloudsqlsuperuser', { hasCloudSqlSuperuser: true }],
   ] satisfies Array<[string, Partial<RuntimeDatabaseRole>]>)('rejects a runtime role that %s', (_label, unsafeAttributes) => {
     expect(isLeastPrivilegeRuntimeRole({ ...leastPrivilegeRole, ...unsafeAttributes })).toBe(false);
+  });
+
+  it('requires every RLS-enabled public table to force row-level security', () => {
+    expect(hasCompleteForcedRowLevelSecurity(0)).toBe(true);
+    expect(hasCompleteForcedRowLevelSecurity(1)).toBe(false);
+    expect(hasCompleteForcedRowLevelSecurity(12)).toBe(false);
+  });
+
+  it('accepts only complete RLS policy coverage with no runtime migration bypass', () => {
+    const completeState: RuntimeRowLevelSecurityState = {
+      unforcedRlsTables: 0,
+      forcedRlsTablesMissingTenantIsolationPolicies: 0,
+      forcedRlsTablesMissingMigrationOwnerPolicies: 0,
+      runtimeApplicableMigrationOwnerPolicies: 0,
+    };
+    expect(hasCompleteRuntimeRowLevelSecurity(completeState)).toBe(true);
+
+    for (const unsafeCount of Object.keys(completeState) as Array<keyof RuntimeRowLevelSecurityState>) {
+      expect(hasCompleteRuntimeRowLevelSecurity({ ...completeState, [unsafeCount]: 1 })).toBe(false);
+    }
   });
 
   it('accepts the complete fail-closed production configuration', () => {
