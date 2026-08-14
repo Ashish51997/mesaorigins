@@ -10,14 +10,21 @@ async function stock() {
   return (await request(app).get('/api/inventory/stock')).body as { rawMaterials: Array<{ itemName: string; onHand: number }>; finishedGoods: Array<{ itemName: string; onHand: number }> };
 }
 
+async function primaryPlantMachine() {
+  const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; plantCode: string }>;
+  const machine = machines.find((candidate) => candidate.plantCode === 'PRIMARY');
+  expect(machine).toBeTruthy();
+  return machine!;
+}
+
 describe('inventory slice', () => {
   it('receiving RM increases stock; issuing to a machine decreases it', async () => {
     const material = `Resin-${uniq()}`;
     await request(app).post('/api/inventory/receive').send({ itemName: material, quantity: 1000, unit: 'kg', reference: 'PO-1' });
     expect((await stock()).rawMaterials.find((r) => r.itemName === material)?.onHand).toBe(1000);
 
-    const machines = (await request(app).get('/api/machines')).body as Array<{ id: string }>;
-    const iss = await request(app).post('/api/inventory/issue').send({ itemName: material, quantity: 300, unit: 'kg', machineId: machines[0].id });
+    const machine = await primaryPlantMachine();
+    const iss = await request(app).post('/api/inventory/issue').send({ itemName: material, quantity: 300, unit: 'kg', machineId: machine.id });
     expect(iss.status).toBe(201);
     expect((await stock()).rawMaterials.find((r) => r.itemName === material)?.onHand).toBe(700);
   });
@@ -25,8 +32,8 @@ describe('inventory slice', () => {
   it('refuses to over-issue (409) or issue to an unknown machine (422)', async () => {
     const material = `Filler-${uniq()}`;
     await request(app).post('/api/inventory/receive').send({ itemName: material, quantity: 50, unit: 'kg' });
-    const machines = (await request(app).get('/api/machines')).body as Array<{ id: string }>;
-    const over = await request(app).post('/api/inventory/issue').send({ itemName: material, quantity: 500, unit: 'kg', machineId: machines[0].id });
+    const machine = await primaryPlantMachine();
+    const over = await request(app).post('/api/inventory/issue').send({ itemName: material, quantity: 500, unit: 'kg', machineId: machine.id });
     expect(over.status).toBe(409);
     const bad = await request(app).post('/api/inventory/issue').send({ itemName: material, quantity: 10, unit: 'kg', machineId: 'nope' });
     expect(bad.status).toBe(422);

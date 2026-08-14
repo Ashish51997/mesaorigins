@@ -74,7 +74,9 @@ afterAll(async () => {
 async function companyId() {
   const response = await request(app).get('/api/mesaerp/v1/entities').set('x-dev-user', OWNER);
   expect(response.status).toBe(200);
-  return response.body[0].id as string;
+  const company = (response.body as Array<{ id: string }>).find((candidate) => candidate.id === 'entity-demo');
+  expect(company).toBeTruthy();
+  return company!.id;
 }
 
 async function context(entityId: string) {

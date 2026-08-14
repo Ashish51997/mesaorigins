@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { buildApp } from '../../app';
 import { canonicalHash as hashCanonical } from '../../lib/canonical';
@@ -7,9 +7,18 @@ import { withTenant } from '../../db';
 
 // Integration tests against a live Postgres (seeded demo tenant). No auth header
 // → demo Administrator (can do everything).
-const app = buildApp();
+const previousMesaErpOpsHandoffKey = process.env.MESADESK_ERP_OPS_HANDOFF_HMAC_KEY;
 process.env.MESADESK_ERP_OPS_HANDOFF_HMAC_KEY = Buffer.alloc(32, 7).toString('base64');
+const app = buildApp();
 const idem = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+afterAll(() => {
+  if (previousMesaErpOpsHandoffKey === undefined) {
+    delete process.env.MESADESK_ERP_OPS_HANDOFF_HMAC_KEY;
+  } else {
+    process.env.MESADESK_ERP_OPS_HANDOFF_HMAC_KEY = previousMesaErpOpsHandoffKey;
+  }
+});
 
 const HEADER = {
   supervisor: 'Nandlal',
@@ -26,6 +35,61 @@ async function pendingOrders() {
   }>;
 }
 
+type PlanningOrder = Awaited<ReturnType<typeof createPlanningOrder>>;
+
+function fixtureSuffix() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`.toUpperCase();
+}
+
+async function createPlanningMachine(plantCode: string, prefix: string) {
+  const suffix = fixtureSuffix();
+  const response = await request(app).post('/api/machines').send({
+    code: `${prefix}${suffix}`.replace(/[^A-Z0-9]/g, '').slice(0, 16),
+    plantCode,
+    line: `${prefix} planning test line`,
+    family: 'PVC',
+  });
+  expect(response.status).toBe(201);
+  return response.body as { id: string; code: string; plantCode: string };
+}
+
+async function createPlanningOrder(
+  plantCode: string,
+  prefix: string,
+  options: { quantity?: string; dueDate?: string; productName?: string } = {},
+) {
+  const suffix = fixtureSuffix();
+  const response = await request(app)
+    .post('/api/operational-orders')
+    .set('Idempotency-Key', idem(`planning-order-${prefix}`))
+    .send({
+      orderNumber: `OP-${prefix}-${suffix}`,
+      plantCode,
+      sourceType: 'forecast',
+      productName: options.productName ?? `${prefix} planning test product`,
+      quantity: options.quantity ?? '100',
+      uom: 'kg',
+      dueDate: options.dueDate ?? '2027-12-31',
+      priority: 'medium',
+    });
+  expect(response.status).toBe(201);
+  const order = response.body as {
+    id: string; rowVersion: number; quantity: string; orderNumber: string;
+    status: string; sourceLinkState: string; plantCode: string;
+  };
+  return { ...order, remainingQuantity: order.quantity, soNumber: order.orderNumber };
+}
+
+async function createPlanningFixture(
+  prefix: string,
+  options: { quantity?: string; dueDate?: string; productName?: string } = {},
+): Promise<{ plantCode: string; machine: Awaited<ReturnType<typeof createPlanningMachine>>; order: PlanningOrder }> {
+  const plantCode = `TEST-${prefix}-${fixtureSuffix()}`.replace(/[^A-Z0-9-]/g, '').slice(0, 40);
+  const machine = await createPlanningMachine(plantCode, prefix);
+  const order = await createPlanningOrder(plantCode, prefix, options);
+  return { plantCode, machine, order };
+}
+
 describe('planning slice', () => {
   it('lists only MesaOps operational demand awaiting planning', async () => {
     const r = await request(app).get('/api/planning/orders');
@@ -36,11 +100,7 @@ describe('planning slice', () => {
   });
 
   it('schedules with shift header, seeds a draft logbook, prevents double-booking, and releases', async () => {
-    const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
-    const machine = machines.find((m) => m.code === 'M07') ?? machines[0];
-    const before = await pendingOrders();
-    expect(before.length).toBeGreaterThan(0);
-    const order = before[0];
+    const { plantCode, machine, order } = await createPlanningFixture('SCHEDULE');
     const day = '2027-03-20';
 
     const planKey = idem('plan');
@@ -73,15 +133,13 @@ describe('planning slice', () => {
 
     expect((await pendingOrders()).find((o) => o.id === order.id)).toBeUndefined();
 
-    const rest = await pendingOrders();
-    if (rest.length > 0) {
-      const clash = await request(app).post('/api/plans').set('Idempotency-Key', idem('clash')).send({
-        operationalOrderId: rest[0].id, plannedQuantity: rest[0].remainingQuantity,
-        expectedOrderVersion: rest[0].rowVersion,
-        machineId: machine.id, shift: 'D', scheduledStartDate: `${day}T09:00:00`, ...HEADER,
-      });
-      expect(clash.status).toBe(409);
-    }
+    const clashOrder = await createPlanningOrder(plantCode, 'CLASH');
+    const clash = await request(app).post('/api/plans').set('Idempotency-Key', idem('clash')).send({
+      operationalOrderId: clashOrder.id, plannedQuantity: clashOrder.remainingQuantity,
+      expectedOrderVersion: clashOrder.rowVersion,
+      machineId: machine.id, shift: 'D', scheduledStartDate: `${day}T09:00:00`, ...HEADER,
+    });
+    expect(clash.status).toBe(409);
 
     // PATCH before start is allowed.
     const patched = await request(app).patch(`/api/plans/${plan.body.id}`).set('Idempotency-Key', idem('patch')).send({ expectedVersion: plan.body.version, moldNo: 'MLD-99', drawingNo: 'DRW-99' });
@@ -105,14 +163,11 @@ describe('planning slice', () => {
   });
 
   it('rejects PATCH after the schedule start time', async () => {
-    const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
-    const machine = machines.find((m) => m.code === 'M08') ?? machines[0];
-    const orders = await pendingOrders();
-    if (orders.length === 0) return;
+    const { machine, order } = await createPlanningFixture('PAST');
     const past = '2020-01-01T08:00:00';
     const plan = await request(app).post('/api/plans').set('Idempotency-Key', idem('past-plan')).send({
-      operationalOrderId: orders[0].id, plannedQuantity: orders[0].remainingQuantity,
-      expectedOrderVersion: orders[0].rowVersion,
+      operationalOrderId: order.id, plannedQuantity: order.remainingQuantity,
+      expectedOrderVersion: order.rowVersion,
       machineId: machine.id, shift: 'N',
       scheduledStartDate: past, scheduledEndDate: '2020-01-01T16:00:00', ...HEADER,
     });
@@ -124,23 +179,20 @@ describe('planning slice', () => {
   });
 
   it('requires shift header fields on create (422)', async () => {
-    const orders = await pendingOrders();
-    if (orders.length === 0) return;
-    const machines = (await request(app).get('/api/machines')).body as Array<{ id: string }>;
+    const { machine, order } = await createPlanningFixture('INVALID');
     const r = await request(app).post('/api/plans').set('Idempotency-Key', idem('invalid-plan')).send({
-      operationalOrderId: orders[0].id, plannedQuantity: orders[0].remainingQuantity,
-      expectedOrderVersion: orders[0].rowVersion,
-      machineId: machines[0].id, shift: 'D', scheduledStartDate: '2027-09-02T08:00:00',
+      operationalOrderId: order.id, plannedQuantity: order.remainingQuantity,
+      expectedOrderVersion: order.rowVersion,
+      machineId: machine.id, shift: 'D', scheduledStartDate: '2027-09-02T08:00:00',
     });
     expect(r.status).toBe(422);
   });
 
   it('rejects an unknown machine (422)', async () => {
-    const orders = await pendingOrders();
-    if (orders.length === 0) return;
+    const { order } = await createPlanningFixture('UNKNOWN');
     const r = await request(app).post('/api/plans').set('Idempotency-Key', idem('bad-machine')).send({
-      operationalOrderId: orders[0].id, plannedQuantity: orders[0].remainingQuantity,
-      expectedOrderVersion: orders[0].rowVersion,
+      operationalOrderId: order.id, plannedQuantity: order.remainingQuantity,
+      expectedOrderVersion: order.rowVersion,
       machineId: 'does-not-exist', shift: 'D', scheduledStartDate: '2027-09-02T08:00:00', ...HEADER,
     });
     expect(r.status).toBe(422);
@@ -153,27 +205,19 @@ describe('planning slice', () => {
   });
 
   it('keeps split-machine quantity and source state in the operational queue', async () => {
-    const suffix = Date.now().toString(36);
-    const created = await request(app).post('/api/operational-orders')
-      .set('Idempotency-Key', `split-order-${suffix}`)
-      .send({
-        orderNumber: `OP-SPLIT-${suffix}`, sourceType: 'forecast', productName: 'Split planning test',
-        quantity: '100.5', uom: 'kg', dueDate: '2027-06-01', priority: 'medium',
-      });
-    expect(created.status).toBe(201);
-    const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string; plantCode: string }>;
-    const machine = machines.find((candidate) => candidate.plantCode === created.body.plantCode);
-    expect(machine).toBeTruthy();
+    const { machine, order } = await createPlanningFixture('SPLIT', {
+      quantity: '100.5', dueDate: '2027-06-01', productName: 'Split planning test',
+    });
     const plan = await request(app).post('/api/plans').set('Idempotency-Key', idem('split-plan')).send({
-      operationalOrderId: created.body.id, plannedQuantity: '40.25', machineId: machine!.id,
-      expectedOrderVersion: created.body.rowVersion,
+      operationalOrderId: order.id, plannedQuantity: '40.25', machineId: machine.id,
+      expectedOrderVersion: order.rowVersion,
       shift: 'D', operatorName: 'Nandlal', scheduledStartDate: '2027-05-20T08:00:00',
       scheduledEndDate: '2027-05-20T20:00:00', ...HEADER,
     });
     expect(plan.status).toBe(201);
     expect(plan.body.plannedQuantity).toBe('40.25');
 
-    const queued = (await pendingOrders()).find((order) => order.id === created.body.id);
+    const queued = (await pendingOrders()).find((candidate) => candidate.id === order.id);
     expect(queued).toMatchObject({
       status: 'partially_planned', plannedQuantity: '40.25', remainingQuantity: '60.25', sourceLinkState: 'independent',
     });

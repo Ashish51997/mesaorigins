@@ -17,14 +17,19 @@ const sellerGstin = '29ABCDE1234F1Z5';
 const buyerGstin = '27ABCDE1234F1Z7';
 const now = '2026-08-14T10:00:00.000Z';
 const externalEvidenceKey = Buffer.alloc(32, 19).toString('base64');
-process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY = externalEvidenceKey;
+let originalExternalEvidenceKey: string | undefined;
 
 async function withoutExternalEvidenceKey<T>(work: () => Promise<T>): Promise<T> {
+  const previousExternalEvidenceKey = process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY;
   delete process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY;
   try {
     return await work();
   } finally {
-    process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY = externalEvidenceKey;
+    if (previousExternalEvidenceKey === undefined) {
+      delete process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY;
+    } else {
+      process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY = previousExternalEvidenceKey;
+    }
   }
 }
 
@@ -89,6 +94,8 @@ function profileInput(kind: 'outbound_e_invoice' | 'e_way_bill', version: string
 
 describe.skipIf(!enabled)('MesaERP India compliance database integration', () => {
   beforeAll(async () => {
+    originalExternalEvidenceKey = process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY;
+    process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY = externalEvidenceKey;
     await direct.organization.create({ data: { id: orgId, name: 'India Compliance DB Org', slug: orgId } });
     await direct.user.createMany({ data: [
       { id: `user-${makerId}`, email: `${makerId}@example.test`, name: 'Maker' },
@@ -124,7 +131,15 @@ describe.skipIf(!enabled)('MesaERP India compliance database integration', () =>
   });
 
   afterAll(async () => {
-    await direct.$disconnect();
+    try {
+      await direct.$disconnect();
+    } finally {
+      if (originalExternalEvidenceKey === undefined) {
+        delete process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY;
+      } else {
+        process.env.MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY = originalExternalEvidenceKey;
+      }
+    }
   });
 
   it('activates source-hashed profiles only through a separate checker', async () => {

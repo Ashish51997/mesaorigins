@@ -19,8 +19,19 @@ const context = {
 const verificationBasis = { verifierReference: 'approved-external-verifier:test', verifiedAt: '2026-08-14T10:00:00.000Z' };
 
 describe('MesaERP externally verified compliance evidence', () => {
-  beforeEach(() => { process.env[EXTERNAL_EVIDENCE_HMAC_ENV] = key; });
-  afterEach(() => { delete process.env[EXTERNAL_EVIDENCE_HMAC_ENV]; });
+  let originalExternalEvidenceKey: string | undefined;
+
+  beforeEach(() => {
+    originalExternalEvidenceKey = process.env[EXTERNAL_EVIDENCE_HMAC_ENV];
+    process.env[EXTERNAL_EVIDENCE_HMAC_ENV] = key;
+  });
+  afterEach(() => {
+    if (originalExternalEvidenceKey === undefined) {
+      delete process.env[EXTERNAL_EVIDENCE_HMAC_ENV];
+      return;
+    }
+    process.env[EXTERNAL_EVIDENCE_HMAC_ENV] = originalExternalEvidenceKey;
+  });
 
   it('verifies and retains a canonical tenant, company, kind and source-record envelope', () => {
     const signature = signExternalEvidence({ ...context, ...verificationBasis });

@@ -35,8 +35,9 @@ afterAll(async () => {
 async function companyId() {
   const response = await request(app).get('/api/mesaerp/v1/entities').set('x-dev-user', OWNER);
   expect(response.status).toBe(200);
-  expect(response.body[0]?.id).toBeTruthy();
-  return response.body[0].id as string;
+  const company = (response.body as Array<{ id: string }>).find((candidate) => candidate.id === 'entity-demo');
+  expect(company).toBeTruthy();
+  return company!.id;
 }
 
 async function postAccountingVoucher(
@@ -383,7 +384,7 @@ describe('MesaERP valued inventory and posting engine', () => {
           businessDate: '2026-08-14', reference: `TRACE-${ordinal}-${run}`, reason: 'Discrete assembly trace validation',
           lines: [{ itemId: serialItem.id, warehouseId: warehouse.id, quantity: '1', uom: 'EA', unitCost: '100', ...trace }],
         });
-      expect(response.status).toBe(422);
+      expect(response.status, JSON.stringify(response.body)).toBe(422);
       expect(response.body.error.code).toBe(expectedCode);
     };
     await traceAttempt({}, 'batch_number_required', 'batch');

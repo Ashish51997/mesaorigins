@@ -40,8 +40,9 @@ describe('MesaERP Prisma accounting lifecycle', () => {
     const suffix = uniqueKey('accounting');
     const entities = await request(app).get('/api/mesaerp/v1/entities').set('x-dev-user', OWNER);
     expect(entities.status).toBe(200);
-    const entityId = entities.body[0]?.id as string;
-    expect(entityId).toBeTruthy();
+    const entity = (entities.body as Array<{ id: string }>).find((candidate) => candidate.id === 'entity-demo');
+    expect(entity).toBeTruthy();
+    const entityId = entity!.id;
     const accounts = await request(app).get(`/api/mesaerp/v1/entities/${entityId}/accounts`).set('x-dev-user', OWNER);
     expect(accounts.status).toBe(200);
     const overheadAccountId = accounts.body.find((account: { code: string }) => account.code === '5300')?.id as string;
