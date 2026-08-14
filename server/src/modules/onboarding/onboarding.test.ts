@@ -5,7 +5,7 @@ import { basePrisma, withTenant } from '../../db';
 
 const app = buildApp();
 const uniq = () => Math.random().toString(36).slice(2, 7);
-const prevAllowed = process.env.ONBOARDING_ALLOWED_EMAILS;
+let prevAllowed: string | undefined;
 const ALLOWED_USER = 'deepak.bansal@masspolymer.in';
 const BLOCKED_USER = 'nandlal@masspolymer.in';
 const createdOrganizationIds = new Set<string>();
@@ -30,6 +30,7 @@ const serviceStatus = async (serviceId: string) => (
 )?.status;
 
 beforeAll(() => {
+  prevAllowed = process.env.ONBOARDING_ALLOWED_EMAILS;
   process.env.ONBOARDING_ALLOWED_EMAILS = ALLOWED_USER;
 });
 afterAll(async () => {
@@ -37,7 +38,8 @@ afterAll(async () => {
     await basePrisma.organization.deleteMany({ where: { id: { in: [...createdOrganizationIds] } } });
     await basePrisma.user.deleteMany({ where: { email: { in: [...createdUserEmails] } } });
   } finally {
-    process.env.ONBOARDING_ALLOWED_EMAILS = prevAllowed;
+    if (prevAllowed === undefined) delete process.env.ONBOARDING_ALLOWED_EMAILS;
+    else process.env.ONBOARDING_ALLOWED_EMAILS = prevAllowed;
   }
 });
 

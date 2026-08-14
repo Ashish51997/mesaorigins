@@ -516,7 +516,7 @@ export default function ServiceAdminPortal() {
           </a>
           <a href="#services" className="flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">
             <Server className="h-4 w-4" /> Services
-            <span className="ml-auto rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">2</span>
+            <span className="ml-auto rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">{SERVICES.length}</span>
           </a>
           <a href="#onboarding" className="flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">
             <Building2 className="h-4 w-4" /> Onboarding

@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { buildApp } from '../../app';
-import { withTenant } from '../../db';
+import { sessionCookieName } from '../../auth/config';
+import { basePrisma, withTenant } from '../../db';
 import { canonicalHash } from '../../lib/canonical';
 import { signMesaOpsStatutoryEvidence, type StatutoryEvidenceCore } from './statutory';
 
-// Integration tests against a live Postgres (seeded demo tenant). No auth header
-// → demo Administrator. Self-contained: drives an order through the whole chain.
+// Integration tests against a live Postgres (seeded demo tenant). Local flows
+// use the development Administrator; production-only assertions use a real
+// short-lived database session. Self-contained: drives an order end to end.
 const app = buildApp();
 const uniq = () => Math.random().toString(36).slice(2, 7);
 const idem = (prefix: string) => `${prefix}-${Date.now()}-${uniq()}`;
@@ -79,12 +81,36 @@ async function approveStatutoryProfile(plantCode: string): Promise<string> {
   return approved.body.version as string;
 }
 
-async function inProduction<T>(work: () => Promise<T>): Promise<T> {
-  const previous = process.env.NODE_ENV;
+function restoreEnvironment(name: string, previous: string | undefined): void {
+  if (previous === undefined) delete process.env[name];
+  else process.env[name] = previous;
+}
+
+async function inProduction<T>(work: (cookie: string) => Promise<T>): Promise<T> {
+  const membership = await basePrisma.membership.findFirst({
+    where: { organizationId: 'org-demo', employeeCode: 'EMP-002', status: 'active' },
+    select: { userId: true },
+  });
+  expect(membership).toBeTruthy();
+
+  const sessionToken = idem('dispatch-production-session');
+  await basePrisma.session.create({
+    data: { sessionToken, userId: membership!.userId, expires: new Date(Date.now() + 5 * 60_000) },
+  });
+
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousDevAuth = process.env.DEV_AUTH;
+  const previousAuthSecret = process.env.AUTH_SECRET;
   process.env.NODE_ENV = 'production';
-  try { return await work(); } finally {
-    if (previous === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = previous;
+  process.env.DEV_AUTH = '0';
+  process.env.AUTH_SECRET = 'dispatch-production-test-auth-secret-32-bytes';
+  try {
+    return await work(`${sessionCookieName()}=${sessionToken}`);
+  } finally {
+    restoreEnvironment('NODE_ENV', previousNodeEnv);
+    restoreEnvironment('DEV_AUTH', previousDevAuth);
+    restoreEnvironment('AUTH_SECRET', previousAuthSecret);
+    await basePrisma.session.deleteMany({ where: { sessionToken } });
   }
 }
 
@@ -151,7 +177,8 @@ describe('dispatch slice', () => {
     const plantCode = `MISS-${uniq()}`.toUpperCase();
     const orderId = await independentOrder(plantCode);
     await produce(orderId, 'MS', '2026-12-01', plantCode);
-    const response = await inProduction(() => request(app).post('/api/dispatches')
+    const response = await inProduction((cookie) => request(app).post('/api/dispatches')
+      .set('Cookie', cookie)
       .set('Idempotency-Key', idem('dispatch-profile-missing'))
       .send({ operationalOrderId: orderId, quantity: '500', expectedOrderVersion: 1, movementType: 'supply', vehicleNumber: 'KA01AB1234' }));
     expect(response.status).toBe(409);
@@ -159,44 +186,50 @@ describe('dispatch slice', () => {
   });
 
   it.each(['external_verified', 'mesaerp_snapshot'] as const)('dispatches independently with valid %s statutory evidence', async (source) => {
+    const previousEvidenceKey = process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY;
     process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY = Buffer.alloc(32, 37).toString('base64');
-    const plantCode = `${source === 'external_verified' ? 'EXT' : 'ERP'}-${uniq()}`.toUpperCase();
-    const orderId = await independentOrder(plantCode);
-    await produce(orderId, source === 'external_verified' ? 'EX' : 'ER', '2026-12-02', plantCode);
-    const profileVersion = await approveStatutoryProfile(plantCode);
-    const artifact = { invoice: `INV-${uniq()}`, eWayBill: '123456789012', verifiedSource: source };
-    const core: StatutoryEvidenceCore = {
-      source,
-      profileVersion,
-      verificationId: `verification-${Date.now()}-${uniq()}`,
-      verifiedAt: '2026-08-14T10:00:00.000Z',
-      invoiceReference: String(artifact.invoice),
-      eWayBillReference: String(artifact.eWayBill),
-      validUntil: '2099-08-14T10:00:00.000Z',
-      artifactHash: canonicalHash(artifact),
-      artifact,
-    };
-    const statutoryEvidence = {
-      ...core,
-      signature: signMesaOpsStatutoryEvidence('org-demo', orderId, core),
-    };
-    const response = await inProduction(() => request(app).post('/api/dispatches')
-      .set('Idempotency-Key', idem(`dispatch-${source}`))
-      .send({
-        operationalOrderId: orderId,
-        quantity: '500',
-        expectedOrderVersion: 1,
-        movementType: 'supply',
-        vehicleNumber: 'KA01AB1234',
-        statutoryEvidence,
-      }));
-    expect(response.status).toBe(201);
-    expect(response.body).toMatchObject({
-      invoiceNumber: artifact.invoice,
-      eWayBillNumber: artifact.eWayBill,
-      statutoryRequired: true,
-      statutoryProfileVersion: profileVersion,
-    });
-    expect(response.body.statutoryArtifact.source).toBe(source);
+    try {
+      const plantCode = `${source === 'external_verified' ? 'EXT' : 'ERP'}-${uniq()}`.toUpperCase();
+      const orderId = await independentOrder(plantCode);
+      await produce(orderId, source === 'external_verified' ? 'EX' : 'ER', '2026-12-02', plantCode);
+      const profileVersion = await approveStatutoryProfile(plantCode);
+      const artifact = { invoice: `INV-${uniq()}`, eWayBill: '123456789012', verifiedSource: source };
+      const core: StatutoryEvidenceCore = {
+        source,
+        profileVersion,
+        verificationId: `verification-${Date.now()}-${uniq()}`,
+        verifiedAt: '2026-08-14T10:00:00.000Z',
+        invoiceReference: String(artifact.invoice),
+        eWayBillReference: String(artifact.eWayBill),
+        validUntil: '2099-08-14T10:00:00.000Z',
+        artifactHash: canonicalHash(artifact),
+        artifact,
+      };
+      const statutoryEvidence = {
+        ...core,
+        signature: signMesaOpsStatutoryEvidence('org-demo', orderId, core),
+      };
+      const response = await inProduction((cookie) => request(app).post('/api/dispatches')
+        .set('Cookie', cookie)
+        .set('Idempotency-Key', idem(`dispatch-${source}`))
+        .send({
+          operationalOrderId: orderId,
+          quantity: '500',
+          expectedOrderVersion: 1,
+          movementType: 'supply',
+          vehicleNumber: 'KA01AB1234',
+          statutoryEvidence,
+        }));
+      expect(response.status).toBe(201);
+      expect(response.body).toMatchObject({
+        invoiceNumber: artifact.invoice,
+        eWayBillNumber: artifact.eWayBill,
+        statutoryRequired: true,
+        statutoryProfileVersion: profileVersion,
+      });
+      expect(response.body.statutoryArtifact.source).toBe(source);
+    } finally {
+      restoreEnvironment('MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY', previousEvidenceKey);
+    }
   });
 });

@@ -142,6 +142,7 @@ describe('MesaDesk service admin portal', () => {
     expect(mesaOpsCard).toBeTruthy();
     expect(mesaLeadsCard).toBeTruthy();
     expect(mesaErpCard).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Services/ }).textContent).toContain(String(serviceCatalog.length));
     expect(within(mesaOpsCard!).getByRole('link', { name: 'Open service' }).getAttribute('href')).toBe('/mesaops');
     expect(within(mesaLeadsCard!).getByRole('link', { name: 'Open service' }).getAttribute('href')).toBe('/mesaleads');
     expect(within(mesaErpCard!).getByRole('link', { name: 'Open service' }).getAttribute('href')).toBe('/mesaerp');

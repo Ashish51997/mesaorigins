@@ -161,9 +161,11 @@ describe('planning slice', () => {
         quantity: '100.5', uom: 'kg', dueDate: '2027-06-01', priority: 'medium',
       });
     expect(created.status).toBe(201);
-    const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string }>;
+    const machines = (await request(app).get('/api/machines')).body as Array<{ id: string; code: string; plantCode: string }>;
+    const machine = machines.find((candidate) => candidate.plantCode === created.body.plantCode);
+    expect(machine).toBeTruthy();
     const plan = await request(app).post('/api/plans').set('Idempotency-Key', idem('split-plan')).send({
-      operationalOrderId: created.body.id, plannedQuantity: '40.25', machineId: machines[0].id,
+      operationalOrderId: created.body.id, plannedQuantity: '40.25', machineId: machine!.id,
       expectedOrderVersion: created.body.rowVersion,
       shift: 'D', operatorName: 'Nandlal', scheduledStartDate: '2027-05-20T08:00:00',
       scheduledEndDate: '2027-05-20T20:00:00', ...HEADER,
