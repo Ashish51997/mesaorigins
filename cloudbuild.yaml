@@ -202,8 +202,15 @@ steps:
         statutory_key_version="$$(secret_version mesadesk-ops-statutory-key)"
         external_key_version="$$(secret_version mesadesk-erp-external-evidence-key)"
 
+        service_name='${_SERVICE}'
+        build_id='$BUILD_ID'
         revision='${_SERVICE}-build-$BUILD_ID'
-        tag='candidate-$BUILD_ID'
+        tag="cand-$${build_id%%-*}"
+        (( $${#revision} <= 63 )) || { echo "Revision name is too long: $${revision}" >&2; exit 1; }
+        (( $${#service_name} + $${#tag} + 1 <= 46 )) || {
+          echo "Combined service and candidate tag are too long: ${_SERVICE} + $${tag}" >&2
+          exit 1
+        }
         gcloud run deploy '${_SERVICE}' \
           --project='$PROJECT_ID' --region='${_REGION}' --platform=managed \
           --image='${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID' \
@@ -220,6 +227,7 @@ steps:
         candidate_url="$$(gcloud run services describe '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --format=json | TAG="$${tag}" python3 -c 'import json, os, sys; d=json.load(sys.stdin); print(next((x.get("url", "") for x in d.get("status", {}).get("traffic", []) if x.get("tag") == os.environ["TAG"]), ""))')"
         [[ "$${candidate_url}" == https://* ]] || { echo 'Candidate tag URL was not published.' >&2; exit 1; }
         printf '%s' "$${revision}" > /workspace/.release/revision
+        printf '%s' "$${tag}" > /workspace/.release/candidate-tag
         printf '%s' "$${candidate_url}" > /workspace/.release/candidate-url
 
   - id: smoke-candidate
@@ -264,7 +272,8 @@ steps:
           fi
           exit 1
         fi
-        gcloud run services update-traffic '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --remove-tags="candidate-$BUILD_ID"
+        candidate_tag="$$(cat /workspace/.release/candidate-tag)"
+        gcloud run services update-traffic '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --remove-tags="$${candidate_tag}"
 
   - id: publish-latest
     name: gcr.io/cloud-builders/docker
