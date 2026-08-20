@@ -10,7 +10,9 @@ The pipeline never seeds, resets or recreates customer data.
 ## 1. Required production controls
 
 Use one region for Cloud Run, Cloud SQL and Artifact Registry. The checked-in
-defaults use `asia-south1`.
+defaults use `asia-south1`. Release images are stored in Artifact Registry
+repository `mesaorigins`; Cloud Run, Cloud SQL and secrets still use the
+existing `mesadesk` resource IDs.
 
 Cloud SQL must have all of these before a release can migrate data:
 
@@ -156,7 +158,7 @@ For a first release:
 export APP_URL=https://your-production-origin.example
 gcloud builds submit --config cloudbuild.yaml \
   --service-account="projects/$PROJECT_ID/serviceAccounts/mesadesk-build@$PROJECT_ID.iam.gserviceaccount.com" \
-  --substitutions=_REGION="$REGION",_SERVICE=mesadesk,_INSTANCE="$INSTANCE",_APP_URL="$APP_URL"
+  --substitutions=_REGION="$REGION",_REPO=mesaorigins,_SERVICE=mesadesk,_INSTANCE="$INSTANCE",_APP_URL="$APP_URL"
 ```
 
 For an existing service URL:
@@ -164,7 +166,7 @@ For an existing service URL:
 ```bash
 gcloud builds submit --config cloudbuild.yaml \
   --service-account="projects/$PROJECT_ID/serviceAccounts/mesadesk-build@$PROJECT_ID.iam.gserviceaccount.com" \
-  --substitutions=_REGION="$REGION",_SERVICE=mesadesk,_INSTANCE="$INSTANCE"
+  --substitutions=_REGION="$REGION",_REPO=mesaorigins,_SERVICE=mesadesk,_INSTANCE="$INSTANCE"
 ```
 
 Do not push the working tree directly to the automatic production branch until
