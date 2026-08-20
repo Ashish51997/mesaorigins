@@ -1,9 +1,12 @@
 # Production release pipeline for MesaOrigins.
 #
 # The release is intentionally ordered as:
-#   disposable full-stack quality gate -> immutable images -> verified backup
+#   disposable full-stack quality gate -> immutable images -> DB secret gate
 #   -> role bootstrap + additive migration job -> no-traffic candidate -> candidate smoke
 #   -> traffic promotion -> stable-URL smoke -> latest tag.
+#
+# Production Postgres is Neon (TCP URLs in Secret Manager), not Cloud SQL.
+# Do not attach Cloud SQL instances to Cloud Run or call gcloud sql here.
 #
 # Required Secret Manager secrets (numeric enabled versions are resolved and
 # pinned onto each revision/job; `latest` is never mounted at runtime):
@@ -18,11 +21,12 @@
 
 substitutions:
   _REGION: asia-south1
-  # Cloud Run / Cloud SQL / secrets still use the existing mesadesk IDs.
-  # Images push to the new Artifact Registry repo `mesaorigins`.
+  # Cloud Run service + Secret Manager IDs remain mesadesk* for continuity.
+  # Images push to Artifact Registry repo `mesaorigins`.
+  # Postgres is Neon; DATABASE_URL / DIRECT_DATABASE_URL secrets must be Neon
+  # pooled + unpooled TCP URLs (not Cloud SQL Unix sockets).
   _SERVICE: mesadesk
   _REPO: mesaorigins
-  _INSTANCE: mesadesk-pg
   # Leave empty to reuse the existing service's stable Cloud Run URL. A first
   # deployment must supply the intended public/custom HTTPS origin explicitly.
   _APP_URL: ''
@@ -122,28 +126,24 @@ steps:
     name: gcr.io/cloud-builders/docker
     args: [push, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}-migration:$BUILD_ID']
 
-  - id: database-safety-gate
+  - id: database-secret-gate
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: bash
     args:
       - -ceu
       - |
-        gcloud sql instances describe '${_INSTANCE}' --project='$PROJECT_ID' --format=json > /tmp/sql-instance.json
-        python3 - <<'PY'
-        import json
-        instance = json.load(open('/tmp/sql-instance.json'))
-        settings = instance.get('settings', {})
-        backup = settings.get('backupConfiguration', {})
-        failures = []
-        if settings.get('availabilityType') != 'REGIONAL': failures.append('regional HA is not enabled')
-        if not backup.get('enabled'): failures.append('automated backups are disabled')
-        if not backup.get('pointInTimeRecoveryEnabled'): failures.append('point-in-time recovery is disabled')
-        if not (settings.get('deletionProtectionEnabled') or instance.get('deletionProtectionEnabled')):
-            failures.append('deletion protection is disabled')
-        if failures:
-            raise SystemExit('Cloud SQL production safety gate failed: ' + '; '.join(failures))
-        PY
-        gcloud sql backups create --instance='${_INSTANCE}' --project='$PROJECT_ID' --description="pre-release-$BUILD_ID"
+        # Neon (or any managed Postgres) durability lives outside Cloud SQL.
+        # Only require that the connection secrets exist with an enabled version.
+        secret_version() {
+          version="$$(gcloud secrets versions list "$$1" --project='$PROJECT_ID' --filter='state=ENABLED' --sort-by='~createTime' --limit=1 --format='value(name)')"
+          version="$${version##*/}"
+          [[ "$${version}" =~ ^[0-9]+$ ]] || { echo "No enabled numeric version for secret $$1" >&2; exit 1; }
+          printf '%s' "$${version}"
+        }
+        database_version="$$(secret_version mesadesk-database-url)"
+        direct_version="$$(secret_version mesadesk-direct-database-url)"
+        echo "Database secrets ready (pooled=mesadesk-database-url:$${database_version}, direct=mesadesk-direct-database-url:$${direct_version})."
+        echo "Confirm Neon PITR/backups in the Neon console; Cloud SQL is not used."
 
   - id: migrate
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -165,7 +165,6 @@ steps:
           --service-account='mesadesk-migrate@$PROJECT_ID.iam.gserviceaccount.com' \
           --set-env-vars=NODE_ENV=production \
           --set-secrets="DIRECT_DATABASE_URL=mesadesk-direct-database-url:$${direct_version},DATABASE_URL=mesadesk-direct-database-url:$${direct_version}" \
-          --set-cloudsql-instances='$PROJECT_ID:${_REGION}:${_INSTANCE}' \
           --tasks=1 --max-retries=0 --task-timeout=30m
         gcloud run jobs execute "$${migration_job}" --project='$PROJECT_ID' --region='${_REGION}' --wait
 
@@ -222,7 +221,6 @@ steps:
           --service-account='mesadesk-run@$PROJECT_ID.iam.gserviceaccount.com' \
           --update-env-vars="NODE_ENV=production,DEV_AUTH=0,APP_URL=$${app_url},AUTH_URL=$${app_url},TRUST_PROXY_HOPS=${_TRUST_PROXY_HOPS}" \
           --update-secrets="DATABASE_URL=mesadesk-database-url:$${database_version},AUTH_SECRET=mesadesk-auth-secret:$${auth_version},ONBOARDING_ALLOWED_EMAILS=mesadesk-onboarding-emails:$${onboarding_version},MESAORIGINS_VENDOR_BANK_ENCRYPTION_KEY=mesadesk-vendor-bank-key:$${vendor_key_version},MESAORIGINS_ERP_OPS_HANDOFF_HMAC_KEY=mesadesk-erp-ops-handoff-key:$${handoff_key_version},MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY=mesadesk-ops-statutory-key:$${statutory_key_version},MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY=mesadesk-erp-external-evidence-key:$${external_key_version}" \
-          --add-cloudsql-instances='$PROJECT_ID:${_REGION}:${_INSTANCE}' \
           --startup-probe='httpGet.path=/api/ready,httpGet.port=8080,timeoutSeconds=3,periodSeconds=5,failureThreshold=24' \
           --liveness-probe='httpGet.path=/api/health,httpGet.port=8080,timeoutSeconds=3,periodSeconds=30,failureThreshold=3'
 
