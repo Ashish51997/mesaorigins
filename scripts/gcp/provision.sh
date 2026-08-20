@@ -12,7 +12,7 @@ set -euo pipefail
 
 PROJECT_ID="${PROJECT_ID:-football-analysis-473513}"
 REGION="${REGION:-asia-south1}"
-INSTANCE="${INSTANCE:-mesaorigins-pg}"
+INSTANCE="${INSTANCE:-mesadesk-pg}"
 # Regional HA requires a dedicated-core tier; shared-core db-f1-micro is not a
 # suitable production financial-book database.
 EDITION="${EDITION:-ENTERPRISE}"
@@ -20,11 +20,11 @@ TIER="${TIER:-db-custom-1-3840}"
 DB_NAME="${DB_NAME:-masspolimer}"
 DB_OWNER="${DB_OWNER:-masspolimer}"
 DB_APP="${DB_APP:-app_user}"
-REPO="${REPO:-mesaorigins}"
-SERVICE="${SERVICE:-mesaorigins}"
-SA_NAME="mesaorigins-run"
-MIGRATE_SA_NAME="mesaorigins-migrate"
-BUILD_SA_NAME="mesaorigins-build"
+REPO="${REPO:-mesadesk}"
+SERVICE="${SERVICE:-mesadesk}"
+SA_NAME="mesadesk-run"
+MIGRATE_SA_NAME="mesadesk-migrate"
+BUILD_SA_NAME="mesadesk-build"
 
 echo "==> Project: $PROJECT_ID  region: $REGION"
 
@@ -80,12 +80,12 @@ if ! gcloud sql instances describe "$INSTANCE" --project="$PROJECT_ID" &>/dev/nu
   DATABASE_URL="postgresql://${DB_APP}:${APP_PASS}@localhost/${DB_NAME}?host=${SOCKET}&schema=public&connection_limit=5&pool_timeout=10&connect_timeout=10"
   DIRECT_DATABASE_URL="postgresql://${DB_OWNER}:${OWNER_PASS}@localhost/${DB_NAME}?host=${SOCKET}&schema=public"
 
-  printf '%s' "$DATABASE_URL" | gcloud secrets create mesaorigins-database-url --data-file=- 2>/dev/null \
-    || printf '%s' "$DATABASE_URL" | gcloud secrets versions add mesaorigins-database-url --data-file=-
-  printf '%s' "$DIRECT_DATABASE_URL" | gcloud secrets create mesaorigins-direct-database-url --data-file=- 2>/dev/null \
-    || printf '%s' "$DIRECT_DATABASE_URL" | gcloud secrets versions add mesaorigins-direct-database-url --data-file=-
+  printf '%s' "$DATABASE_URL" | gcloud secrets create mesadesk-database-url --data-file=- 2>/dev/null \
+    || printf '%s' "$DATABASE_URL" | gcloud secrets versions add mesadesk-database-url --data-file=-
+  printf '%s' "$DIRECT_DATABASE_URL" | gcloud secrets create mesadesk-direct-database-url --data-file=- 2>/dev/null \
+    || printf '%s' "$DIRECT_DATABASE_URL" | gcloud secrets versions add mesadesk-direct-database-url --data-file=-
 
-  echo "Secrets mesaorigins-database-url and mesaorigins-direct-database-url created."
+  echo "Secrets mesadesk-database-url and mesadesk-direct-database-url created."
 else
   echo "Instance $INSTANCE already exists — skipping create."
   if [[ "${HARDEN_EXISTING_SQL:-0}" == "1" ]]; then
@@ -138,8 +138,8 @@ ensure_database_secret() {
   echo "Created $secret_name."
 }
 
-ensure_database_secret mesaorigins-database-url MESAORIGINS_DATABASE_URL_VALUE
-ensure_database_secret mesaorigins-direct-database-url MESAORIGINS_DIRECT_DATABASE_URL_VALUE
+ensure_database_secret mesadesk-database-url MESAORIGINS_DATABASE_URL_VALUE
+ensure_database_secret mesadesk-direct-database-url MESAORIGINS_DIRECT_DATABASE_URL_VALUE
 
 echo "==> Runtime service account"
 if ! gcloud iam service-accounts describe "${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" &>/dev/null; then
@@ -235,20 +235,20 @@ gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
   --condition=None --quiet 2>/dev/null || true
 
 echo "==> Auth.js AUTH_SECRET"
-if ! gcloud secrets describe mesaorigins-auth-secret &>/dev/null; then
-  openssl rand -hex 32 | tr -d '\n' | gcloud secrets create mesaorigins-auth-secret --data-file=-
-  echo "Created mesaorigins-auth-secret."
+if ! gcloud secrets describe mesadesk-auth-secret &>/dev/null; then
+  openssl rand -hex 32 | tr -d '\n' | gcloud secrets create mesadesk-auth-secret --data-file=-
+  echo "Created mesadesk-auth-secret."
 else
-  echo "Secret mesaorigins-auth-secret already exists."
+  echo "Secret mesadesk-auth-secret already exists."
 fi
 
 echo "==> Onboarding allowlist (product owner emails)"
-if ! gcloud secrets describe mesaorigins-onboarding-emails &>/dev/null; then
-  printf '%s' 'aroul303@gmail.com' | gcloud secrets create mesaorigins-onboarding-emails --data-file=-
-  echo "Created mesaorigins-onboarding-emails (default: aroul303@gmail.com)."
-  echo "  To change: printf 'you@example.com' | gcloud secrets versions add mesaorigins-onboarding-emails --data-file=-"
+if ! gcloud secrets describe mesadesk-onboarding-emails &>/dev/null; then
+  printf '%s' 'aroul303@gmail.com' | gcloud secrets create mesadesk-onboarding-emails --data-file=-
+  echo "Created mesadesk-onboarding-emails (default: aroul303@gmail.com)."
+  echo "  To change: printf 'you@example.com' | gcloud secrets versions add mesadesk-onboarding-emails --data-file=-"
 else
-  echo "Secret mesaorigins-onboarding-emails already exists."
+  echo "Secret mesadesk-onboarding-emails already exists."
 fi
 
 create_base64_secret() {
@@ -262,26 +262,26 @@ create_base64_secret() {
 }
 
 echo "==> MesaERP encryption and independent trust-domain keys"
-create_base64_secret mesaorigins-vendor-bank-key
-create_base64_secret mesaorigins-erp-ops-handoff-key
-create_base64_secret mesaorigins-ops-statutory-key
-create_base64_secret mesaorigins-erp-external-evidence-key
+create_base64_secret mesadesk-vendor-bank-key
+create_base64_secret mesadesk-erp-ops-handoff-key
+create_base64_secret mesadesk-ops-statutory-key
+create_base64_secret mesadesk-erp-external-evidence-key
 
 echo "==> Least-privilege per-secret runtime access"
 for secret in \
-  mesaorigins-database-url \
-  mesaorigins-auth-secret \
-  mesaorigins-onboarding-emails \
-  mesaorigins-vendor-bank-key \
-  mesaorigins-erp-ops-handoff-key \
-  mesaorigins-ops-statutory-key \
-  mesaorigins-erp-external-evidence-key
+  mesadesk-database-url \
+  mesadesk-auth-secret \
+  mesadesk-onboarding-emails \
+  mesadesk-vendor-bank-key \
+  mesadesk-erp-ops-handoff-key \
+  mesadesk-ops-statutory-key \
+  mesadesk-erp-external-evidence-key
 do
   gcloud secrets add-iam-policy-binding "$secret" \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="roles/secretmanager.secretAccessor" --quiet
 done
-gcloud secrets add-iam-policy-binding mesaorigins-direct-database-url \
+gcloud secrets add-iam-policy-binding mesadesk-direct-database-url \
   --member="serviceAccount:${MIGRATE_SA_EMAIL}" \
   --role="roles/secretmanager.secretAccessor" --quiet
 

@@ -7,20 +7,24 @@
 #
 # Required Secret Manager secrets (numeric enabled versions are resolved and
 # pinned onto each revision/job; `latest` is never mounted at runtime):
-#   mesaorigins-database-url
-#   mesaorigins-direct-database-url
-#   mesaorigins-auth-secret
-#   mesaorigins-onboarding-emails
-#   mesaorigins-vendor-bank-key
-#   mesaorigins-erp-ops-handoff-key
-#   mesaorigins-ops-statutory-key
-#   mesaorigins-erp-external-evidence-key
+#   mesadesk-database-url
+#   mesadesk-direct-database-url
+#   mesadesk-auth-secret
+#   mesadesk-onboarding-emails
+#   mesadesk-vendor-bank-key
+#   mesadesk-erp-ops-handoff-key
+#   mesadesk-ops-statutory-key
+#   mesadesk-erp-external-evidence-key
 
 substitutions:
   _REGION: asia-south1
-  _SERVICE: mesaorigins
-  _REPO: mesaorigins
-  _INSTANCE: mesaorigins-pg
+  # Existing GCP resource IDs. The product brand is MesaOrigins; do not rename
+  # these until Artifact Registry, Cloud SQL, secrets, SAs, and Cloud Run match.
+  # Pushing to a missing Artifact Registry repo fails with:
+  #   name unknown: Repository "mesaorigins" not found
+  _SERVICE: mesadesk
+  _REPO: mesadesk
+  _INSTANCE: mesadesk-pg
   # Leave empty to reuse the existing service's stable Cloud Run URL. A first
   # deployment must supply the intended public/custom HTTPS origin explicitly.
   _APP_URL: ''
@@ -155,14 +159,14 @@ steps:
           [[ "$${version}" =~ ^[0-9]+$ ]] || { echo "No enabled numeric version for secret $$1" >&2; exit 1; }
           printf '%s' "$${version}"
         }
-        direct_version="$$(secret_version mesaorigins-direct-database-url)"
+        direct_version="$$(secret_version mesadesk-direct-database-url)"
         migration_job='${_SERVICE}-migrate'
         gcloud run jobs deploy "$${migration_job}" \
           --project='$PROJECT_ID' --region='${_REGION}' \
           --image='${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}-migration:$BUILD_ID' \
-          --service-account='mesaorigins-migrate@$PROJECT_ID.iam.gserviceaccount.com' \
+          --service-account='mesadesk-migrate@$PROJECT_ID.iam.gserviceaccount.com' \
           --set-env-vars=NODE_ENV=production \
-          --set-secrets="DIRECT_DATABASE_URL=mesaorigins-direct-database-url:$${direct_version},DATABASE_URL=mesaorigins-direct-database-url:$${direct_version}" \
+          --set-secrets="DIRECT_DATABASE_URL=mesadesk-direct-database-url:$${direct_version},DATABASE_URL=mesadesk-direct-database-url:$${direct_version}" \
           --set-cloudsql-instances='$PROJECT_ID:${_REGION}:${_INSTANCE}' \
           --tasks=1 --max-retries=0 --task-timeout=30m
         gcloud run jobs execute "$${migration_job}" --project='$PROJECT_ID' --region='${_REGION}' --wait
@@ -194,13 +198,13 @@ steps:
           [[ "$${version}" =~ ^[0-9]+$ ]] || { echo "No enabled numeric version for secret $$1" >&2; exit 1; }
           printf '%s' "$${version}"
         }
-        database_version="$$(secret_version mesaorigins-database-url)"
-        auth_version="$$(secret_version mesaorigins-auth-secret)"
-        onboarding_version="$$(secret_version mesaorigins-onboarding-emails)"
-        vendor_key_version="$$(secret_version mesaorigins-vendor-bank-key)"
-        handoff_key_version="$$(secret_version mesaorigins-erp-ops-handoff-key)"
-        statutory_key_version="$$(secret_version mesaorigins-ops-statutory-key)"
-        external_key_version="$$(secret_version mesaorigins-erp-external-evidence-key)"
+        database_version="$$(secret_version mesadesk-database-url)"
+        auth_version="$$(secret_version mesadesk-auth-secret)"
+        onboarding_version="$$(secret_version mesadesk-onboarding-emails)"
+        vendor_key_version="$$(secret_version mesadesk-vendor-bank-key)"
+        handoff_key_version="$$(secret_version mesadesk-erp-ops-handoff-key)"
+        statutory_key_version="$$(secret_version mesadesk-ops-statutory-key)"
+        external_key_version="$$(secret_version mesadesk-erp-external-evidence-key)"
 
         service_name='${_SERVICE}'
         build_id='$BUILD_ID'
@@ -217,9 +221,9 @@ steps:
           --revision-suffix="build-$BUILD_ID" --tag="$${tag}" --no-traffic \
           --allow-unauthenticated --ingress=all --port=8080 \
           --cpu=1 --memory=1Gi --concurrency=20 --min-instances=1 --max-instances=3 --timeout=300 --no-cpu-throttling \
-          --service-account='mesaorigins-run@$PROJECT_ID.iam.gserviceaccount.com' \
+          --service-account='mesadesk-run@$PROJECT_ID.iam.gserviceaccount.com' \
           --update-env-vars="NODE_ENV=production,DEV_AUTH=0,APP_URL=$${app_url},AUTH_URL=$${app_url},TRUST_PROXY_HOPS=${_TRUST_PROXY_HOPS}" \
-          --update-secrets="DATABASE_URL=mesaorigins-database-url:$${database_version},AUTH_SECRET=mesaorigins-auth-secret:$${auth_version},ONBOARDING_ALLOWED_EMAILS=mesaorigins-onboarding-emails:$${onboarding_version},MESAORIGINS_VENDOR_BANK_ENCRYPTION_KEY=mesaorigins-vendor-bank-key:$${vendor_key_version},MESAORIGINS_ERP_OPS_HANDOFF_HMAC_KEY=mesaorigins-erp-ops-handoff-key:$${handoff_key_version},MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY=mesaorigins-ops-statutory-key:$${statutory_key_version},MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY=mesaorigins-erp-external-evidence-key:$${external_key_version}" \
+          --update-secrets="DATABASE_URL=mesadesk-database-url:$${database_version},AUTH_SECRET=mesadesk-auth-secret:$${auth_version},ONBOARDING_ALLOWED_EMAILS=mesadesk-onboarding-emails:$${onboarding_version},MESAORIGINS_VENDOR_BANK_ENCRYPTION_KEY=mesadesk-vendor-bank-key:$${vendor_key_version},MESAORIGINS_ERP_OPS_HANDOFF_HMAC_KEY=mesadesk-erp-ops-handoff-key:$${handoff_key_version},MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY=mesadesk-ops-statutory-key:$${statutory_key_version},MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY=mesadesk-erp-external-evidence-key:$${external_key_version}" \
           --add-cloudsql-instances='$PROJECT_ID:${_REGION}:${_INSTANCE}' \
           --startup-probe='httpGet.path=/api/ready,httpGet.port=8080,timeoutSeconds=3,periodSeconds=5,failureThreshold=24' \
           --liveness-probe='httpGet.path=/api/health,httpGet.port=8080,timeoutSeconds=3,periodSeconds=30,failureThreshold=3'
