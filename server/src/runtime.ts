@@ -373,19 +373,22 @@ function contentSecurityPolicy(requestPath: string): string {
     ].join('; ');
   }
   if (requestPath.startsWith('/api/')) return "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+  // Vite injects an inline React Refresh preamble in development. Blocking it with
+  // script-src 'self' leaves #root empty. Keep production on external scripts only.
+  const isProd = process.env.NODE_ENV === 'production';
   return [
     "default-src 'self'",
-    "script-src 'self'",
+    isProd ? "script-src 'self'" : "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://images.unsplash.com",
-    "connect-src 'self'",
+    isProd ? "connect-src 'self'" : "connect-src 'self' ws: wss:",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'",
     "form-action 'self'",
     "manifest-src 'self'",
-    ...(process.env.NODE_ENV === 'production' ? ['upgrade-insecure-requests'] : []),
+    ...(isProd ? ['upgrade-insecure-requests'] : []),
   ].join('; ');
 }
 

@@ -107,6 +107,37 @@ describe('production runtime controls', () => {
     expect(response.headers['x-frame-options']).toBe('DENY');
   });
 
+  it('allows Vite inline refresh scripts outside production', async () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+    try {
+      const app = express();
+      app.use(securityHeaders);
+      app.get('/', (_req, res) => res.send('ok'));
+      const response = await request(app).get('/');
+      expect(response.headers['content-security-policy']).toContain("script-src 'self' 'unsafe-inline'");
+      expect(response.headers['content-security-policy']).toContain('ws:');
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+  });
+
+  it('keeps production script-src on self only', async () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const app = express();
+      app.use(securityHeaders);
+      app.get('/', (_req, res) => res.send('ok'));
+      const response = await request(app).get('/');
+      expect(response.headers['content-security-policy']).toContain("script-src 'self'");
+      expect(response.headers['content-security-policy']).not.toContain("script-src 'self' 'unsafe-inline'");
+      expect(response.headers['content-security-policy']).toContain('upgrade-insecure-requests');
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+  });
+
   it('rejects an oversized ordinary API body before authentication', async () => {
     const response = await request(buildApp())
       .post('/api/unknown')
