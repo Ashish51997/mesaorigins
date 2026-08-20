@@ -4,6 +4,10 @@ The default Compose stack runs a production-like MesaOrigins image with PostgreS
 16. Prisma migrations run as a one-shot dependency before the app starts. Both
 Postgres and the remaining legacy JSON store use named volumes.
 
+**Day-to-day team development** (Postgres in Docker + `npm run dev` on the host)
+is documented in [LOCAL.md](./LOCAL.md). Use this file when you want the full
+Compose app image, hot-reload override, or production-like local validation.
+
 ## First local start
 
 Docker Desktop must be running.

@@ -22,13 +22,16 @@
     "provision:aone": "tsx server/scripts/provisionAone.ts",
     "provision:platform-admin": "tsx server/scripts/provisionPlatformAdmin.ts",
     "db:generate": "prisma generate",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose stop postgres",
     "db:preflight:mesaerp": "tsx server/scripts/preflightMesaErpMigration.ts",
     "release:migrate": "npm run db:apply-runtime-role && npm run db:preflight:mesaerp && prisma migrate deploy && npm run db:apply-runtime-role && prisma migrate status",
     "db:apply-runtime-role": "prisma db execute --schema server/prisma/schema.prisma --file server/prisma/setup-roles.sql",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset --force",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "setup:local": "npm run db:up && npx prisma generate && npm run release:migrate && npm run db:seed"
   },
   "prisma": {
     "schema": "server/prisma/schema.prisma",
