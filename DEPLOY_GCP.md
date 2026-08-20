@@ -1,27 +1,31 @@
 # MesaOrigins production release runbook (Google Cloud)
 
-MesaOrigins runs as one Cloud Run service backed by Cloud SQL for PostgreSQL 16,
+MesaOrigins runs as one Cloud Run service backed by **Neon Postgres**,
 Artifact Registry and Secret Manager. The application container connects with
-the least-privilege `app_user`; only the one-shot migration job receives the
-owner connection.
+the least-privilege `app_user` (pooled Neon URL); only the one-shot migration
+job receives the owner / unpooled connection (`DIRECT_DATABASE_URL`).
 
 The pipeline never seeds, resets or recreates customer data.
 
 ## 1. Required production controls
 
-Use one region for Cloud Run, Cloud SQL and Artifact Registry. The checked-in
-defaults use `asia-south1`. Release images are stored in Artifact Registry
-repository `mesaorigins`; Cloud Run, Cloud SQL and secrets still use the
-existing `mesadesk` resource IDs.
+Use one region for Cloud Run and Artifact Registry. The checked-in defaults use
+`asia-south1`. Release images are stored in Artifact Registry repository
+`mesaorigins`; Cloud Run and Secret Manager IDs still use the existing
+`mesadesk` names.
 
-Cloud SQL must have all of these before a release can migrate data:
+Postgres durability (HA / PITR / backups) is managed in **Neon**, not Cloud SQL.
+Cloud Build no longer calls `gcloud sql` or attaches Cloud SQL instances.
 
-- regional high availability;
-- automated backups and point-in-time recovery;
-- deletion protection;
-- an on-demand pre-release backup created by Cloud Build.
+Before release, confirm in Secret Manager that:
 
-Cloud Build stops before migration if any durability control is absent.
+- `mesadesk-database-url` is the Neon **pooled** `app_user` URL
+  (`…-pooler….neon.tech`, `sslmode=require`, `pgbouncer=true`);
+- `mesadesk-direct-database-url` is the Neon **unpooled** owner URL
+  (no `-pooler`, used only by the migration job).
+
+Do **not** store Cloud SQL Unix-socket URLs (`host=/cloudsql/...`) in those
+secrets.
 
 The runtime revision is also fail-closed until `/api/ready` confirms:
 
@@ -158,7 +162,7 @@ For a first release:
 export APP_URL=https://your-production-origin.example
 gcloud builds submit --config cloudbuild.yaml \
   --service-account="projects/$PROJECT_ID/serviceAccounts/mesadesk-build@$PROJECT_ID.iam.gserviceaccount.com" \
-  --substitutions=_REGION="$REGION",_REPO=mesaorigins,_SERVICE=mesadesk,_INSTANCE="$INSTANCE",_APP_URL="$APP_URL"
+  --substitutions=_REGION="$REGION",_REPO=mesaorigins,_SERVICE=mesadesk,_APP_URL="$APP_URL"
 ```
 
 For an existing service URL:
@@ -166,7 +170,7 @@ For an existing service URL:
 ```bash
 gcloud builds submit --config cloudbuild.yaml \
   --service-account="projects/$PROJECT_ID/serviceAccounts/mesadesk-build@$PROJECT_ID.iam.gserviceaccount.com" \
-  --substitutions=_REGION="$REGION",_REPO=mesaorigins,_SERVICE=mesadesk,_INSTANCE="$INSTANCE"
+  --substitutions=_REGION="$REGION",_REPO=mesaorigins,_SERVICE=mesadesk
 ```
 
 Do not push the working tree directly to the automatic production branch until
@@ -178,7 +182,7 @@ the complete quality gate is green.
 
 1. Builds a quality image.
 2. Starts disposable PostgreSQL 16 with separate bootstrap, non-super migration
-   owner and least-privilege runtime roles, matching Cloud SQL's RLS behavior.
+   owner and least-privilege runtime roles (CI parity for Neon RLS behavior).
 3. Proves a two-tenant legacy upgrade and cross-tenant denial, then applies the
    complete clean migration chain, seeds only the disposable database, and runs
    frontend/server type checks, unit tests, integration tests, OpenAPI
@@ -186,12 +190,15 @@ the complete quality gate is green.
    `RUN_MESAERP_DB_INTEGRATION=1` is mandatory so database suites cannot skip.
 4. Builds and pushes immutable application and migration images tagged with the
    Cloud Build ID.
-5. Verifies Cloud SQL durability controls and creates an on-demand backup.
+5. Confirms Neon connection secrets (`mesadesk-database-url` and
+   `mesadesk-direct-database-url`) have enabled versions. Durability/PITR is
+   managed in Neon, not via `gcloud sql`.
 6. Normalizes permitted runtime-role attributes, verifies that protected role
    attributes and effective memberships are least-privilege, then runs the
    read-only MesaERP preflight and `prisma migrate deploy` in a single-task,
-   zero-retry Cloud Run Job using the owner connection.
-7. Deploys a revision with no traffic and a unique candidate URL.
+   zero-retry Cloud Run Job using the Neon owner URL (no Cloud SQL attachment).
+7. Deploys a revision with no traffic and a unique candidate URL (TCP to Neon;
+   no `--add-cloudsql-instances`).
 8. Smoke-tests candidate readiness, OpenAPI and the SPA.
    It also verifies security headers, rejects development identity headers,
    confirms an unauthenticated MesaERP request fails closed, and proves server
@@ -265,19 +272,19 @@ gcloud run services update-traffic mesadesk --region="$REGION" \
 ```
 
 Database migrations are not rolled back automatically. Correct a migration
-with a new forward migration. Restore from the pre-release backup only through
-an incident-reviewed recovery procedure.
+with a new forward migration. Point-in-time recovery is performed in Neon
+through an incident-reviewed recovery procedure.
 
 ## 7. Troubleshooting
 
 | Symptom | Action |
 |---|---|
-| Safety gate reports zonal or backups disabled | Run the explicit existing-instance hardening step and verify Cloud SQL settings. |
+| Database secret gate fails | Create/enable `mesadesk-database-url` and `mesadesk-direct-database-url` with Neon pooled + unpooled TCP URLs (not `/cloudsql/` sockets). |
 | Migration preflight stops on split plans | Reconcile each legacy planned quantity; never guess or reset the database. |
 | Candidate `/api/ready` is 503 | Read candidate logs and inspect configuration, runtime DB role and migration counts. Do not promote it. |
 | `APP_URL` validation fails | Supply the exact public HTTPS origin with `_APP_URL`; do not use an internal or HTTP address. |
 | Secret version cannot be resolved | Create/enable a version, then rerun. Do not replace numeric pinning with `latest`. |
-| Runtime role is unsafe | Correct `mesadesk-database-url` to use `app_user`, rerun `scripts/gcp/provision.sh` so the Cloud SQL Admin API revokes its default database roles, and rerun the release. `setup-roles.sql` verifies protected attributes and effective `cloudsqlsuperuser` membership but cannot repair that managed state. |
+| Runtime role is unsafe | Correct `mesadesk-database-url` to use Neon `app_user` and re-apply `setup-roles.sql` via the migration job. |
 | Migration owner is blocked by forced RLS | Do not disable RLS or grant runtime bypass. Confirm every forced table is owned by the direct migration identity and has `migration_owner_all_tenants` restricted to that exact owner/session, then recover the failed Prisma migration only after proving `applied_steps_count=0`. |
 | Artifact push is denied | Grant the trigger's actual build service account Artifact Registry writer access. |
-| Migration job cannot connect | Verify its Cloud SQL attachment and the owner socket URL in `mesadesk-direct-database-url`. |
+| Migration job cannot connect | Verify `mesadesk-direct-database-url` is the Neon unpooled owner URL (`sslmode=require`, no Cloud SQL socket). |
