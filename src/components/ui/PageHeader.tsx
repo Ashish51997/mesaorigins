@@ -17,7 +17,7 @@ export interface PageHeaderProps {
 
 /**
  * Shared in-content page header for drill-down screens.
- * Flat MesaDesk chrome: 24px page title, ≥44px back control.
+ * Flat MesaOrigins chrome: 24px page title, ≥44px back control.
  */
 export default function PageHeader({
   title,

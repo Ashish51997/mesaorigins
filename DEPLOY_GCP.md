@@ -1,6 +1,6 @@
-# MesaDesk production release runbook (Google Cloud)
+# MesaOrigins production release runbook (Google Cloud)
 
-MesaDesk runs as one Cloud Run service backed by Cloud SQL for PostgreSQL 16,
+MesaOrigins runs as one Cloud Run service backed by Cloud SQL for PostgreSQL 16,
 Artifact Registry and Secret Manager. The application container connects with
 the least-privilege `app_user`; only the one-shot migration job receives the
 owner connection.
@@ -35,7 +35,7 @@ release-readiness signal.
 ```bash
 export PROJECT_ID=football-analysis-473513
 export REGION=asia-south1
-export INSTANCE=mesadesk-pg
+export INSTANCE=mesaorigins-pg
 gcloud config set project "$PROJECT_ID"
 
 chmod +x scripts/gcp/*.sh
@@ -92,21 +92,21 @@ The provisioner creates or verifies these required secrets:
 
 | Secret | Runtime purpose |
 |---|---|
-| `mesadesk-database-url` | least-privilege application connection |
-| `mesadesk-direct-database-url` | migration owner connection; migration job only |
-| `mesadesk-auth-secret` | Auth.js session signing |
-| `mesadesk-onboarding-emails` | internal onboarding allowlist |
-| `mesadesk-vendor-bank-key` | vendor-bank encryption |
-| `mesadesk-erp-ops-handoff-key` | MesaERP-to-MesaOps snapshot signatures |
-| `mesadesk-ops-statutory-key` | MesaERP-issued statutory evidence signatures |
-| `mesadesk-erp-external-evidence-key` | external-evidence verifier attestations |
+| `mesaorigins-database-url` | least-privilege application connection |
+| `mesaorigins-direct-database-url` | migration owner connection; migration job only |
+| `mesaorigins-auth-secret` | Auth.js session signing |
+| `mesaorigins-onboarding-emails` | internal onboarding allowlist |
+| `mesaorigins-vendor-bank-key` | vendor-bank encryption |
+| `mesaorigins-erp-ops-handoff-key` | MesaERP-to-MesaOps snapshot signatures |
+| `mesaorigins-ops-statutory-key` | MesaERP-issued statutory evidence signatures |
+| `mesaorigins-erp-external-evidence-key` | external-evidence verifier attestations |
 
 If an existing Cloud SQL instance predates these secrets, supply its two socket
 connection URLs only for that bootstrap invocation:
 
 ```bash
-MESADESK_DATABASE_URL_VALUE='postgresql://app_user:REDACTED@localhost/masspolimer?host=/cloudsql/PROJECT:REGION:INSTANCE&schema=public' \
-MESADESK_DIRECT_DATABASE_URL_VALUE='postgresql://OWNER:REDACTED@localhost/masspolimer?host=/cloudsql/PROJECT:REGION:INSTANCE&schema=public' \
+MESAORIGINS_DATABASE_URL_VALUE='postgresql://app_user:REDACTED@localhost/masspolimer?host=/cloudsql/PROJECT:REGION:INSTANCE&schema=public' \
+MESAORIGINS_DIRECT_DATABASE_URL_VALUE='postgresql://OWNER:REDACTED@localhost/masspolimer?host=/cloudsql/PROJECT:REGION:INSTANCE&schema=public' \
 ./scripts/gcp/provision.sh
 ```
 
@@ -118,13 +118,13 @@ that version to the release; it never mounts `latest` on a revision.
 
 The provisioner also separates identities:
 
-- `mesadesk-run` can connect to Cloud SQL and access only the seven runtime secrets;
-- `mesadesk-migrate` can connect to Cloud SQL and access only the direct owner URL;
-- `mesadesk-build` can build images, create backups, deploy and impersonate the
+- `mesaorigins-run` can connect to Cloud SQL and access only the seven runtime secrets;
+- `mesaorigins-migrate` can connect to Cloud SQL and access only the direct owner URL;
+- `mesaorigins-build` can build images, create backups, deploy and impersonate the
   two workload identities, but cannot read application secret values.
 
 Configure the repository trigger to execute as
-`mesadesk-build@PROJECT_ID.iam.gserviceaccount.com`. Do not reuse the runtime
+`mesaorigins-build@PROJECT_ID.iam.gserviceaccount.com`. Do not reuse the runtime
 identity as a Cloud Build trigger identity.
 
 The release migration requires `app_user` to have no Cloud SQL database-role
@@ -155,16 +155,16 @@ For a first release:
 ```bash
 export APP_URL=https://your-production-origin.example
 gcloud builds submit --config cloudbuild.yaml \
-  --service-account="projects/$PROJECT_ID/serviceAccounts/mesadesk-build@$PROJECT_ID.iam.gserviceaccount.com" \
-  --substitutions=_REGION="$REGION",_SERVICE=mesadesk,_INSTANCE="$INSTANCE",_APP_URL="$APP_URL"
+  --service-account="projects/$PROJECT_ID/serviceAccounts/mesaorigins-build@$PROJECT_ID.iam.gserviceaccount.com" \
+  --substitutions=_REGION="$REGION",_SERVICE=mesaorigins,_INSTANCE="$INSTANCE",_APP_URL="$APP_URL"
 ```
 
 For an existing service URL:
 
 ```bash
 gcloud builds submit --config cloudbuild.yaml \
-  --service-account="projects/$PROJECT_ID/serviceAccounts/mesadesk-build@$PROJECT_ID.iam.gserviceaccount.com" \
-  --substitutions=_REGION="$REGION",_SERVICE=mesadesk,_INSTANCE="$INSTANCE"
+  --service-account="projects/$PROJECT_ID/serviceAccounts/mesaorigins-build@$PROJECT_ID.iam.gserviceaccount.com" \
+  --substitutions=_REGION="$REGION",_SERVICE=mesaorigins,_INSTANCE="$INSTANCE"
 ```
 
 Do not push the working tree directly to the automatic production branch until
@@ -206,17 +206,17 @@ forward-migrated database.
 ## 5. Post-release verification
 
 ```bash
-SERVICE_URL="$(gcloud run services describe mesadesk \
+SERVICE_URL="$(gcloud run services describe mesaorigins \
   --region="$REGION" --format='value(status.url)')"
 
 curl --fail --silent --show-error "$SERVICE_URL/api/health"
 curl --fail --silent --show-error "$SERVICE_URL/api/ready"
 curl --fail --silent --show-error "$SERVICE_URL/api/openapi.json" >/dev/null
 
-gcloud run services describe mesadesk --region="$REGION" \
+gcloud run services describe mesaorigins --region="$REGION" \
   --format='yaml(status.latestReadyRevisionName,status.traffic)'
 gcloud run revisions describe \
-  "$(gcloud run services describe mesadesk --region="$REGION" --format='value(status.latestReadyRevisionName)')" \
+  "$(gcloud run services describe mesaorigins --region="$REGION" --format='value(status.latestReadyRevisionName)')" \
   --region="$REGION" --format='yaml(spec.containers[0].env,status.conditions)'
 ```
 
@@ -232,12 +232,12 @@ Cloud Run. The utility never prints the password or password hash.
 
 ```bash
 umask 077
-openssl rand -base64 24 > /tmp/mesadesk-platform-admin-password
-chmod 600 /tmp/mesadesk-platform-admin-password
+openssl rand -base64 24 > /tmp/mesaorigins-platform-admin-password
+chmod 600 /tmp/mesaorigins-platform-admin-password
 
 DIRECT_DATABASE_URL='postgresql://...' \
 PLATFORM_ADMIN_EMAIL='admin@example.com' \
-PLATFORM_ADMIN_PASSWORD_FILE='/tmp/mesadesk-platform-admin-password' \
+PLATFORM_ADMIN_PASSWORD_FILE='/tmp/mesaorigins-platform-admin-password' \
 PLATFORM_ADMIN_ORGANIZATION='demo' \
 ONBOARDING_ALLOWED_EMAILS='admin@example.com' \
 npm run provision:platform-admin
@@ -257,8 +257,8 @@ release pipeline to pin and verify the new version.
 Application rollback is a Cloud Run traffic operation:
 
 ```bash
-gcloud run revisions list --service=mesadesk --region="$REGION"
-gcloud run services update-traffic mesadesk --region="$REGION" \
+gcloud run revisions list --service=mesaorigins --region="$REGION"
+gcloud run services update-traffic mesaorigins --region="$REGION" \
   --to-revisions=PREVIOUS_REVISION=100
 ```
 
@@ -275,7 +275,7 @@ an incident-reviewed recovery procedure.
 | Candidate `/api/ready` is 503 | Read candidate logs and inspect configuration, runtime DB role and migration counts. Do not promote it. |
 | `APP_URL` validation fails | Supply the exact public HTTPS origin with `_APP_URL`; do not use an internal or HTTP address. |
 | Secret version cannot be resolved | Create/enable a version, then rerun. Do not replace numeric pinning with `latest`. |
-| Runtime role is unsafe | Correct `mesadesk-database-url` to use `app_user`, rerun `scripts/gcp/provision.sh` so the Cloud SQL Admin API revokes its default database roles, and rerun the release. `setup-roles.sql` verifies protected attributes and effective `cloudsqlsuperuser` membership but cannot repair that managed state. |
+| Runtime role is unsafe | Correct `mesaorigins-database-url` to use `app_user`, rerun `scripts/gcp/provision.sh` so the Cloud SQL Admin API revokes its default database roles, and rerun the release. `setup-roles.sql` verifies protected attributes and effective `cloudsqlsuperuser` membership but cannot repair that managed state. |
 | Migration owner is blocked by forced RLS | Do not disable RLS or grant runtime bypass. Confirm every forced table is owned by the direct migration identity and has `migration_owner_all_tenants` restricted to that exact owner/session, then recover the failed Prisma migration only after proving `applied_steps_count=0`. |
 | Artifact push is denied | Grant the trigger's actual build service account Artifact Registry writer access. |
-| Migration job cannot connect | Verify its Cloud SQL attachment and the owner socket URL in `mesadesk-direct-database-url`. |
+| Migration job cannot connect | Verify its Cloud SQL attachment and the owner socket URL in `mesaorigins-direct-database-url`. |

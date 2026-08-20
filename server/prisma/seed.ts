@@ -38,7 +38,7 @@ const prisma = new PrismaClient({
 const DEMO_ORG_ID = 'org-demo';
 const DEMO_MESAOPS_PLANT_ACCESS_ROLE_ID = `mesaops-plant-access-${createHash('md5').update(DEMO_ORG_ID).digest('hex')}`;
 /** Default password for every seeded user (override with SEED_USER_PASSWORD). */
-const SEED_PASSWORD = process.env.SEED_USER_PASSWORD || 'mesadesk123';
+const SEED_PASSWORD = process.env.SEED_USER_PASSWORD || 'mesaorigins123';
 const PRODUCT_OWNER_EMAIL = 'aroul303@gmail.com';
 const PRODUCT_OWNER_PASSWORD = 'ashish123';
 
@@ -218,7 +218,7 @@ async function main(): Promise<void> {
 
   console.log('[seed] provisioning demo organization…');
   const org = await prisma.organization.create({
-    data: { id: DEMO_ORG_ID, name: 'Mesadesk (Demo Plant)', slug: 'demo', status: 'active', plan: 'enterprise', subscriptionStatus: 'active' },
+    data: { id: DEMO_ORG_ID, name: 'MesaOrigins (Demo Plant)', slug: 'demo', status: 'active', plan: 'enterprise', subscriptionStatus: 'active' },
   });
   const O = org.id;
   await prisma.organizationService.createMany({
@@ -318,7 +318,7 @@ async function main(): Promise<void> {
     const financialYearId = 'fy-demo-2026-27';
     await tx.legalEntity.create({
       data: {
-        id: legalEntityId, organizationId: O, code: 'DEMO01', legalName: 'Mesadesk Demo Manufacturing Private Limited',
+        id: legalEntityId, organizationId: O, code: 'DEMO01', legalName: 'MesaOrigins Demo Manufacturing Private Limited',
         countryCode: 'IN', baseCurrency: 'INR', fiscalYearStartMonth: 4,
       },
     });

@@ -1,6 +1,6 @@
 /**
  * GuidedPreviewSheet.tsx — read-only live preview on the left of Guided mode.
- * Active section and field use MesaDesk primary soft/blue; amber is reserved for
+ * Active section and field use MesaOrigins primary soft/blue; amber is reserved for
  * out-of-range values. Clicking a field drives the wizard via onSelectField.
  */
 
@@ -110,7 +110,7 @@ export default function GuidedPreviewSheet({ logbook: l, template: t, activeFiel
           <div className="grid grid-cols-12 border-b border-slate-200 bg-slate-50 text-center">
             <div className="col-span-3 flex flex-col items-center justify-center border-r border-slate-200 p-2">
               <div className="flex items-center gap-1 text-xs font-extrabold tracking-wide text-slate-900 sm:text-sm">
-                <Building2 className="h-3.5 w-3.5 text-[#1E40AF]" /> {t.brandName || 'MesaDesk'}
+                <Building2 className="h-3.5 w-3.5 text-[#1E40AF]" /> {t.brandName || 'MesaOrigins'}
               </div>
               <span className="text-[10px] font-medium uppercase text-slate-500">Quality Management System</span>
             </div>

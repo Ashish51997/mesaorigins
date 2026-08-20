@@ -2,7 +2,7 @@
 # destined for Cloud Run can be tested locally.
 services:
   app:
-    image: mesadesk-app:dev
+    image: mesaorigins-app:dev
     build:
       context: .
       target: development
@@ -10,15 +10,15 @@ services:
       NODE_ENV: development
       PORT: 3000
       DEV_AUTH: "1"
-      APP_URL: http://localhost:${MESADESK_APP_PORT:-3000}
+      APP_URL: http://localhost:${MESAORIGINS_APP_PORT:-3000}
       AUTH_URL: ""
       AUTH_SECRET: ""
       TRUST_PROXY_HOPS: "0"
       DISABLE_HMR: "false"
     volumes:
       - .:/app
-      - mesadesk-node-modules:/app/node_modules
+      - mesaorigins-node-modules:/app/node_modules
     command: ["npm", "run", "dev"]
 
 volumes:
-  mesadesk-node-modules:
+  mesaorigins-node-modules:

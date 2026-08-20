@@ -131,7 +131,7 @@ export interface VendorBankProtector {
 /** AES-256-GCM envelope; the encryption key must be supplied by the deployment secret store. */
 export class EnvironmentVendorBankProtector implements VendorBankProtector {
   protect(accountNumber: string): { masked: string; cipher: Uint8Array } {
-    const encoded = process.env.MESADESK_VENDOR_BANK_ENCRYPTION_KEY || '';
+    const encoded = process.env.MESAORIGINS_VENDOR_BANK_ENCRYPTION_KEY || '';
     let key: Buffer;
     try {
       key = Buffer.from(encoded, 'base64');

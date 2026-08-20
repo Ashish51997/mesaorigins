@@ -1,4 +1,4 @@
--- Global MesaDesk service catalog + many-to-many organization subscriptions.
+-- Global MesaOrigins service catalog + many-to-many organization subscriptions.
 CREATE TABLE "Service" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -35,7 +35,7 @@ INSERT INTO "Service" ("id", "name", "description", "status", "sortOrder") VALUE
   ('mesaops', 'MesaOps', 'Manufacturing operations, planning, quality, inventory and dispatch.', 'active', 10),
   ('mesaleads', 'MesaLeads', 'Lead management and sales pipeline workspace.', 'preview', 20);
 
--- Preserve existing behavior: every organization already using MesaDesk starts
+-- Preserve existing behavior: every organization already using MesaOrigins starts
 -- with MesaOps assigned. MesaLeads stays opt-in.
 INSERT INTO "OrganizationService" ("organizationId", "serviceId")
 SELECT "id", 'mesaops' FROM "Organization"

@@ -216,9 +216,9 @@ function RouteState({ title, copy, onRetry, onExit }: { title: string; copy: str
         <p className="mt-2 text-sm leading-6 text-slate-600">{copy}</p>
         <div className="mt-6 flex flex-wrap gap-2">
           {onRetry && <button type="button" onClick={onRetry} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800"><RefreshCw className="h-4 w-4" /> Retry</button>}
-          {onExit && <button type="button" onClick={onExit} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Back to MesaDesk</button>}
+          {onExit && <button type="button" onClick={onExit} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Back to MesaOrigins</button>}
         </div>
-        <div className="mt-6 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-900"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /><span>MesaERP is independently entitled and company scoped. No other MesaDesk service is required to open or operate it.</span></div>
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-900"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /><span>MesaERP is independently entitled and company scoped. No other MesaOrigins service is required to open or operate it.</span></div>
       </section>
     </main>
   );
@@ -251,7 +251,7 @@ function EmptyCompanyState({ onCreate, onExit }: { onCreate: (input: ErpLegalEnt
           {error && <div className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</div>}
           <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-900"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /><span>The company, fiscal year, periods and manufacturing chart of accounts are created atomically. No MesaOps company is required.</span></div>
         </div>
-        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 p-4 sm:px-7">{onExit && <button type="button" onClick={onExit} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700">Back to MesaDesk</button>}<button type="submit" disabled={saving} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white disabled:bg-slate-300"><Plus className="h-4 w-4" />{saving ? 'Creating…' : 'Create legal company'}</button></div>
+        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 p-4 sm:px-7">{onExit && <button type="button" onClick={onExit} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700">Back to MesaOrigins</button>}<button type="submit" disabled={saving} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white disabled:bg-slate-300"><Plus className="h-4 w-4" />{saving ? 'Creating…' : 'Create legal company'}</button></div>
       </form>
     </main>
   );

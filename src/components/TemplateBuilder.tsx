@@ -172,7 +172,7 @@ function TemplateEditor({ template, cloneOf, onClose }: { template: ApiTemplate 
   const t = template;
   const [f, setF] = useState({
     productName: t?.productName ?? '', docNo: t?.docNo ?? 'QR/MFG/013', revNo: t?.revNo ?? '', revDate: t?.revDate ?? '',
-    brandName: t?.brandName ?? 'MesaDesk', location: t?.location ?? 'BENGALURU',
+    brandName: t?.brandName ?? 'MesaOrigins', location: t?.location ?? 'BENGALURU',
     layout: (t?.layout ?? 'coil') as 'pipe' | 'coil', hardnessType: (t?.hardnessType ?? 'A') as 'A' | 'D',
     productionUnit: (t?.productionUnit ?? 'roll') as 'nos' | 'roll', packingNote: t?.packingNote ?? '',
     shifts: CSV(t?.shifts) || 'D, N', supervisors: CSV(t?.supervisors), dieZones: CSV(t?.dieZones) || 'Die 6, Die 5',
@@ -202,7 +202,7 @@ function TemplateEditor({ template, cloneOf, onClose }: { template: ApiTemplate 
       docNo: f.docNo.trim() || 'QR/MFG/013',
       revNo: f.revNo.trim() || '01',
       revDate: f.revDate.trim(),
-      brandName: f.brandName.trim() || 'MesaDesk',
+      brandName: f.brandName.trim() || 'MesaOrigins',
       location: f.location.trim() || 'BENGALURU',
       title: t?.title ?? 'MACHINE LOG BOOK',
       productName: f.productName.trim() || 'Product name',

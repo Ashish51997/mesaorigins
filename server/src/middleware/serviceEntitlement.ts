@@ -3,7 +3,7 @@ import { basePrisma } from '../db';
 import { ApiError } from './error';
 
 /**
- * Returns whether an organization may currently use a MesaDesk service.
+ * Returns whether an organization may currently use a MesaOrigins service.
  *
  * Service access is deliberately checked against all three control planes:
  * the global service switch, the organization's assignment, and the

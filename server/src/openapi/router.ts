@@ -22,7 +22,7 @@ export function createDocsRouter(getRoutes: () => DiscoveredRoute[]): Router {
     '/docs',
     apiReference({
       url: '/api/openapi.json',
-      pageTitle: 'Mesadesk API',
+      pageTitle: 'MesaOrigins API',
       theme: 'default',
     }),
   );

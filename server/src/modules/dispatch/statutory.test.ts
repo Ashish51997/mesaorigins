@@ -13,16 +13,16 @@ describe('MesaOps statutory profile and evidence', () => {
   let originalEvidenceHmacKey: string | undefined;
 
   beforeEach(() => {
-    originalEvidenceHmacKey = process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY;
-    process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY = Buffer.alloc(32, 11).toString('base64');
+    originalEvidenceHmacKey = process.env.MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY;
+    process.env.MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY = Buffer.alloc(32, 11).toString('base64');
   });
 
   afterEach(() => {
     if (originalEvidenceHmacKey === undefined) {
-      delete process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY;
+      delete process.env.MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY;
       return;
     }
-    process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY = originalEvidenceHmacKey;
+    process.env.MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY = originalEvidenceHmacKey;
   });
 
   const profileRow = (overrides: Partial<MesaOpsStatutoryRuleProfile>): MesaOpsStatutoryRuleProfile => ({

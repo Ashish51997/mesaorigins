@@ -112,7 +112,7 @@ describe('docs endpoints', () => {
     const r = await request(app).get('/api/openapi.json');
     expect(r.status).toBe(200);
     expect(r.body.openapi).toBe('3.1.0');
-    expect(r.body.info.title).toBe('Mesadesk API');
+    expect(r.body.info.title).toBe('MesaOrigins API');
     const served = Object.values(r.body.paths as Record<string, object>).flatMap((methods) => Object.keys(methods));
     expect(served.length).toBe(routes.length);
   });

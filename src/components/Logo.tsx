@@ -1,5 +1,5 @@
 /**
- * Logo.tsx — the MesaDesk brand mark, inlined so it stays crisp at any size.
+ * Logo.tsx — the MesaOrigins brand mark, inlined so it stays crisp at any size.
  * White rounded tile (6px radius) with the blue gateway mark.
  * Size it via className (e.g. "h-9 w-9").
  *
@@ -11,12 +11,12 @@ import { useId, type ReactElement } from 'react';
 
 export default function Logo({ className = 'h-9 w-9' }: { className?: string }): ReactElement {
   const uid = useId().replace(/:/g, '');
-  const gA = `md_logo_a_${uid}`;
-  const gB = `md_logo_b_${uid}`;
-  const gC = `md_logo_c_${uid}`;
+  const gA = `mo_logo_a_${uid}`;
+  const gB = `mo_logo_b_${uid}`;
+  const gC = `mo_logo_c_${uid}`;
 
   return (
-    <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} role="img" aria-label="MesaDesk">
+    <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} role="img" aria-label="MesaOrigins">
       <rect width="36" height="36" rx="6" fill="white" stroke="#E2E8F0" strokeWidth="1" />
       <path d="M23.5771 6.68959C25.4125 7.64277 31.1904 15.4049 31.1904 15.4049L4.00013 15.4049C4.00013 15.4049 9.77807 7.57469 11.6134 6.68959C13.4488 5.80449 21.7418 5.73641 23.5771 6.68959Z" fill={`url(#${gA})`} />
       <path d="M31.1904 15.4049L31.1904 25.1926C31.1904 27.2954 29.4858 29.0001 27.383 29.0001C25.2802 29.0001 23.5755 27.2954 23.5755 25.1926L23.5755 17.5801C23.5755 17.5801 23.6027 16.1526 23.4395 15.9487C23.1675 15.6089 22.6236 15.4049 22.6236 15.4049L31.1904 15.4049Z" fill={`url(#${gB})`} />

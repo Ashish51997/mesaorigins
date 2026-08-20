@@ -110,7 +110,7 @@ function submitOrganizationLogin() {
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 }
 
-describe('MesaDesk landing page', () => {
+describe('MesaOrigins landing page', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     onEnterService.mockReset();
@@ -253,7 +253,7 @@ describe('MesaDesk landing page', () => {
 
     expect(await screen.findByRole('heading', { name: 'Choose a service' })).toBeTruthy();
     expect(getOrganizationId()).toBe('org-northstar');
-    expect(window.sessionStorage.getItem('mesadesk_organization')).toBe('org-northstar');
+    expect(window.sessionStorage.getItem('mesaorigins_organization')).toBe('org-northstar');
     expect(onEnterService).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open MesaLeads' }));

@@ -130,7 +130,7 @@ async function passwordLogin(
         error: platformAdminOnly
           ? {
               code: 'platform_admin_required',
-              message: 'This account cannot access MesaDesk administration.',
+              message: 'This account cannot access MesaOrigins administration.',
             }
           : selectedOrganization
           ? {
@@ -153,7 +153,7 @@ async function passwordLogin(
         res.status(403).json({
           error: {
             code: 'platform_admin_required',
-            message: 'This account cannot access MesaDesk administration.',
+            message: 'This account cannot access MesaOrigins administration.',
           },
         });
         return;

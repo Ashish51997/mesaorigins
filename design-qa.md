@@ -1,15 +1,15 @@
-# MesaDesk landing and organization access — design QA
+# MesaOrigins landing and organization access — design QA
 
-Source visual truth: `/tmp/mesadesk-admin-login-reference.jpg` (the existing MesaDesk admin login and its established visual language)
+Source visual truth: `/tmp/mesaorigins-admin-login-reference.jpg` (the existing MesaOrigins admin login and its established visual language)
 
 Rendered implementation evidence:
 
-- `/tmp/mesadesk-landing-entry.jpg`
-- `/tmp/mesadesk-landing-organization-form.jpg`
-- `/tmp/mesadesk-landing-chooser.jpg`
-- `/tmp/mesadesk-landing-phone.jpg`
-- `/tmp/mesadesk-design-qa-full.jpg` (normalized source and implementation comparison)
-- `/tmp/mesadesk-design-qa-form-region.jpg` (focused form-region comparison)
+- `/tmp/mesaorigins-landing-entry.jpg`
+- `/tmp/mesaorigins-landing-organization-form.jpg`
+- `/tmp/mesaorigins-landing-chooser.jpg`
+- `/tmp/mesaorigins-landing-phone.jpg`
+- `/tmp/mesaorigins-design-qa-full.jpg` (normalized source and implementation comparison)
+- `/tmp/mesaorigins-design-qa-form-region.jpg` (focused form-region comparison)
 
 ## Capture normalization
 
@@ -23,7 +23,7 @@ Rendered implementation evidence:
 
 No actionable P0, P1, or P2 visual differences remain.
 
-- Fonts and typography: both screens use the established MesaDesk sans-serif stack, weight hierarchy, compact uppercase eyebrow, and readable small-copy treatment. Heading wraps are controlled on desktop and phone.
+- Fonts and typography: both screens use the established MesaOrigins sans-serif stack, weight hierarchy, compact uppercase eyebrow, and readable small-copy treatment. Heading wraps are controlled on desktop and phone.
 - Spacing and layout rhythm: the implementation preserves the source's centered split card, navy/white balance, 12 px radii, restrained borders, generous gutters, and consistent field/button rhythm. The wider desktop frame is intentional so two service cards fit without crowding.
 - Colors and visual tokens: navy, blue action color, slate borders/backgrounds, and semantic green status accents align with the source. Text and control contrast remain clear.
 - Image quality and asset fidelity: the existing vector `Logo` component is reused; interface symbols use the project's Lucide icon system. No placeholder, emoji, raster substitute, or custom-drawn visible asset was introduced.
@@ -33,17 +33,17 @@ No actionable P0, P1, or P2 visual differences remain.
 
 ## Full-view comparison evidence
 
-`/tmp/mesadesk-design-qa-full.jpg` places the existing admin visual language and the organization-login implementation in one normalized comparison. The brand lockup, split composition, palette, heading hierarchy, form proportions, button treatment, border language, and vertical rhythm remain visibly consistent. Content differences are task-specific rather than design drift.
+`/tmp/mesaorigins-design-qa-full.jpg` places the existing admin visual language and the organization-login implementation in one normalized comparison. The brand lockup, split composition, palette, heading hierarchy, form proportions, button treatment, border language, and vertical rhythm remain visibly consistent. Content differences are task-specific rather than design drift.
 
 ## Focused region comparison evidence
 
-`/tmp/mesadesk-design-qa-form-region.jpg` compares the two form panels at readable scale. Label sizing, input height, focus treatment, icon container, primary button, and heading/body spacing are consistent. The organization form adds a back action because it is one level below the new landing entry; the admin trust footer remains specific to temporary local admin access.
+`/tmp/mesaorigins-design-qa-form-region.jpg` compares the two form panels at readable scale. Label sizing, input height, focus treatment, icon container, primary button, and heading/body spacing are consistent. The organization form adds a back action because it is one level below the new landing entry; the admin trust footer remains specific to temporary local admin access.
 
 ## Comparison history
 
 1. Initial desktop check found a P1 layout issue: the arbitrary responsive grid track compiled without usable columns, stacking the navy and white regions. It also found a P1 legibility issue where the global heading rule overrode the navy-panel heading to dark text.
 2. Fixes: replaced the fragile track with the project's stable two-column breakpoint and explicitly preserved the white hero heading token on the navy panel. The same fixes were applied to the matching admin login shell.
-3. Post-fix evidence: `/tmp/mesadesk-landing-entry.jpg`, `/tmp/mesadesk-landing-organization-form.jpg`, and `/tmp/mesadesk-design-qa-full.jpg` show a balanced desktop split with correct heading contrast. `/tmp/mesadesk-landing-phone.jpg` confirms the mobile collapse.
+3. Post-fix evidence: `/tmp/mesaorigins-landing-entry.jpg`, `/tmp/mesaorigins-landing-organization-form.jpg`, and `/tmp/mesaorigins-design-qa-full.jpg` show a balanced desktop split with correct heading contrast. `/tmp/mesaorigins-landing-phone.jpg` confirms the mobile collapse.
 
 ## Primary interactions verified
 
@@ -57,7 +57,7 @@ No actionable P0, P1, or P2 visual differences remain.
 
 ## Implementation checklist
 
-- [x] Match the existing MesaDesk admin visual system.
+- [x] Match the existing MesaOrigins admin visual system.
 - [x] Keep Admin and Organization entry paths distinct.
 - [x] Render the organization credential form and service chooser.
 - [x] Verify desktop and phone layouts.

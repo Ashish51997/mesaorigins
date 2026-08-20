@@ -7,16 +7,16 @@ import { withTenant } from '../../db';
 
 // Integration tests against a live Postgres (seeded demo tenant). No auth header
 // → demo Administrator (can do everything).
-const previousMesaErpOpsHandoffKey = process.env.MESADESK_ERP_OPS_HANDOFF_HMAC_KEY;
-process.env.MESADESK_ERP_OPS_HANDOFF_HMAC_KEY = Buffer.alloc(32, 7).toString('base64');
+const previousMesaErpOpsHandoffKey = process.env.MESAORIGINS_ERP_OPS_HANDOFF_HMAC_KEY;
+process.env.MESAORIGINS_ERP_OPS_HANDOFF_HMAC_KEY = Buffer.alloc(32, 7).toString('base64');
 const app = buildApp();
 const idem = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 afterAll(() => {
   if (previousMesaErpOpsHandoffKey === undefined) {
-    delete process.env.MESADESK_ERP_OPS_HANDOFF_HMAC_KEY;
+    delete process.env.MESAORIGINS_ERP_OPS_HANDOFF_HMAC_KEY;
   } else {
-    process.env.MESADESK_ERP_OPS_HANDOFF_HMAC_KEY = previousMesaErpOpsHandoffKey;
+    process.env.MESAORIGINS_ERP_OPS_HANDOFF_HMAC_KEY = previousMesaErpOpsHandoffKey;
   }
 });
 

@@ -1,6 +1,6 @@
 /**
  * RoleDashboard — tenant-scoped home for non-MD roles.
- * Live KPIs from GET /api/summary. Mobile-first MesaDesk layout.
+ * Live KPIs from GET /api/summary. Mobile-first MesaOrigins layout.
  */
 import {
   Briefcase,

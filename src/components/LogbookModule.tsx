@@ -1494,7 +1494,7 @@ function dimWith(draft: LogbookTemplate, key: 'top' | 'bottom', patch: { nominal
 
 // Minimal safety fallback if no template exists at first render (should not happen — one is seeded).
 const FALLBACK_TEMPLATE: LogbookTemplate = {
-  id: 'fallback', docNo: 'QR/MFG/013', revNo: '02', revDate: '', brandName: 'MesaDesk', location: '', title: 'MACHINE LOG BOOK',
+  id: 'fallback', docNo: 'QR/MFG/013', revNo: '02', revDate: '', brandName: 'MesaOrigins', location: '', title: 'MACHINE LOG BOOK',
   productName: 'Untitled', shifts: ['D', 'N'], supervisors: [], lotNumberNote: '', dieZones: ['Die 6', 'Die 5'],
   barrelZones: ['Zone 4', 'Zone 3', 'Zone 2', 'Zone 1'],
   coil: { perM: 150, targetKg: 0, bobbinGms: 0, rangeLo: 0, rangeHi: 0, count: 44 },

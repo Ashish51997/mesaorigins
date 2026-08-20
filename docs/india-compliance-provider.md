@@ -21,14 +21,14 @@ files.
 
 ## Generic HTTPS protocol
 
-MesaDesk sends `POST operations/{operation}` under the configured base URL with
-Bearer authentication, `Idempotency-Key`, `X-MesaDesk-Operation` and
-`X-MesaDesk-Request-Hash`. The JSON request schema is
-`mesadesk.india-compliance.adapter.request.v1` and carries the same operation,
+MesaOrigins sends `POST operations/{operation}` under the configured base URL with
+Bearer authentication, `Idempotency-Key`, `X-MesaOrigins-Operation` and
+`X-MesaOrigins-Request-Hash`. The JSON request schema is
+`mesaorigins.india-compliance.adapter.request.v1` and carries the same operation,
 request id, canonical SHA-256 request hash and request object.
 
 The adapter must return
-`mesadesk.india-compliance.adapter.response.v1` with the identical operation,
+`mesaorigins.india-compliance.adapter.response.v1` with the identical operation,
 request id and request hash, a schema-valid operation payload, and:
 
 ```json
@@ -42,7 +42,7 @@ request id and request hash, a schema-valid operation payload, and:
 ```
 
 The HMAC input is canonical JSON for the response without `attestation`, plus
-`attestation: { algorithm: "hmac-sha256", keyId }`. MesaDesk verifies this in
+`attestation: { algorithm: "hmac-sha256", keyId }`. MesaOrigins verifies this in
 constant time before accepting the payload and stores the attestation alongside
 the provider evidence.
 

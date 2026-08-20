@@ -186,8 +186,8 @@ describe('dispatch slice', () => {
   });
 
   it.each(['external_verified', 'mesaerp_snapshot'] as const)('dispatches independently with valid %s statutory evidence', async (source) => {
-    const previousEvidenceKey = process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY;
-    process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY = Buffer.alloc(32, 37).toString('base64');
+    const previousEvidenceKey = process.env.MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY;
+    process.env.MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY = Buffer.alloc(32, 37).toString('base64');
     try {
       const plantCode = `${source === 'external_verified' ? 'EXT' : 'ERP'}-${uniq()}`.toUpperCase();
       const orderId = await independentOrder(plantCode);
@@ -229,7 +229,7 @@ describe('dispatch slice', () => {
       });
       expect(response.body.statutoryArtifact.source).toBe(source);
     } finally {
-      restoreEnvironment('MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY', previousEvidenceKey);
+      restoreEnvironment('MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY', previousEvidenceKey);
     }
   });
 });

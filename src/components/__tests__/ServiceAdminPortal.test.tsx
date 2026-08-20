@@ -80,7 +80,7 @@ function jsonResponse(body: unknown, ok = true, status = ok ? 200 : 401): Respon
   return { ok, status, json: async () => body } as Response;
 }
 
-describe('MesaDesk service admin portal', () => {
+describe('MesaOrigins service admin portal', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -93,7 +93,7 @@ describe('MesaDesk service admin portal', () => {
       if (url === '/api/health') return jsonResponse({ auth: 'dev' });
       if (url === '/api/auth/logout') return jsonResponse({ ok: true });
       if (url === '/api/auth/admin-login') return jsonResponse({
-        user: { userId: 'admin-user', email: 'platform.admin@mesadesk.test', name: 'Platform Admin' },
+        user: { userId: 'admin-user', email: 'platform.admin@mesaorigins.test', name: 'Platform Admin' },
       });
       throw new Error(`Unexpected fetch ${url}`);
     });
@@ -149,7 +149,7 @@ describe('MesaDesk service admin portal', () => {
   });
 
   it('updates the live backend and persists a successful service control action', async () => {
-    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    window.sessionStorage.setItem('mesaorigins_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Stop MesaOps' }));
@@ -159,11 +159,11 @@ describe('MesaDesk service admin portal', () => {
       { status: 'stopped' },
     ));
     expect(await screen.findByText('MesaOps stopped')).toBeTruthy();
-    await waitFor(() => expect(window.localStorage.getItem('mesadesk_service_states')).toContain('"mesaops":"stopped"'));
+    await waitFor(() => expect(window.localStorage.getItem('mesaorigins_service_states')).toContain('"mesaops":"stopped"'));
   });
 
   it('keeps the previous service status when the control plane rejects the change', async () => {
-    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    window.sessionStorage.setItem('mesaorigins_admin_session', 'active');
     put.mockRejectedValueOnce(new Error('Control plane unavailable'));
     render(<ServiceAdminPortal />);
 
@@ -171,11 +171,11 @@ describe('MesaDesk service admin portal', () => {
 
     expect((await screen.findByRole('alert')).textContent).toContain('Its previous status was kept');
     expect((screen.getByRole('button', { name: 'Stop MesaOps' }) as HTMLButtonElement).disabled).toBe(false);
-    expect(window.localStorage.getItem('mesadesk_service_states')).toContain('"mesaops":"running"');
+    expect(window.localStorage.getItem('mesaorigins_service_states')).toContain('"mesaops":"running"');
   });
 
   it('keeps organization onboarding inside the admin console', async () => {
-    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    window.sessionStorage.setItem('mesaorigins_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
     expect(await screen.findByRole('heading', { name: 'Organization onboarding' })).toBeTruthy();
@@ -200,7 +200,7 @@ describe('MesaDesk service admin portal', () => {
   });
 
   it('keeps all onboarded organizations in a dedicated searchable section', async () => {
-    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    window.sessionStorage.setItem('mesaorigins_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
     expect(await screen.findByRole('link', { name: 'Organizations' })).toBeTruthy();
@@ -216,7 +216,7 @@ describe('MesaDesk service admin portal', () => {
   });
 
   it('assigns multiple services to an organization as one replacement set', async () => {
-    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    window.sessionStorage.setItem('mesaorigins_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
     const organization = await screen.findByRole('article', { name: 'Northstar Manufacturing' });
@@ -231,7 +231,7 @@ describe('MesaDesk service admin portal', () => {
   });
 
   it('keeps at least one service assigned to every organization', async () => {
-    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    window.sessionStorage.setItem('mesaorigins_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
     const organization = await screen.findByRole('article', { name: 'Northstar Manufacturing' });
@@ -253,12 +253,12 @@ describe('MesaDesk service admin portal', () => {
 
     expect(await screen.findByText('Good to see you, Admin')).toBeTruthy();
     expect(get).toHaveBeenCalledWith('/onboarding/access');
-    expect(window.sessionStorage.getItem('mesadesk_admin_session')).toBeNull();
+    expect(window.sessionStorage.getItem('mesaorigins_admin_session')).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => String(url) === '/api/auth/admin-login')).toBe(false);
   });
 
   it('does not let the legacy browser marker bypass production authentication', async () => {
-    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    window.sessionStorage.setItem('mesaorigins_admin_session', 'active');
     fetchMock.mockImplementation(async (input: string | URL | Request) => {
       const url = String(input);
       if (url === '/api/health') return jsonResponse({ auth: 'authjs' });
@@ -270,7 +270,7 @@ describe('MesaDesk service admin portal', () => {
 
     expect(await screen.findByLabelText('Email address')).toBeTruthy();
     expect(screen.queryByText('Good to see you, Admin')).toBeNull();
-    expect(window.sessionStorage.getItem('mesadesk_admin_session')).toBeNull();
+    expect(window.sessionStorage.getItem('mesaorigins_admin_session')).toBeNull();
     expect(get).toHaveBeenCalledWith('/onboarding/access');
   });
 
@@ -279,7 +279,7 @@ describe('MesaDesk service admin portal', () => {
       const url = String(input);
       if (url === '/api/health') return jsonResponse({ auth: 'authjs' });
       if (url === '/api/auth/admin-login') return jsonResponse({
-        user: { userId: 'admin-user', email: 'platform.admin@mesadesk.test', name: 'Platform Admin' },
+        user: { userId: 'admin-user', email: 'platform.admin@mesaorigins.test', name: 'Platform Admin' },
       });
       if (url === '/api/auth/logout') return jsonResponse({ ok: true });
       throw new Error(`Unexpected fetch ${url}`);
@@ -289,7 +289,7 @@ describe('MesaDesk service admin portal', () => {
     render(<ServiceAdminPortal />);
 
     fireEvent.change(await screen.findByLabelText('Email address'), {
-      target: { value: 'Platform.Admin@MesaDesk.Test' },
+      target: { value: 'Platform.Admin@MesaOrigins.Test' },
     });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'strong-password' } });
     fireEvent.click(screen.getByRole('button', { name: 'Open control center' }));
@@ -298,7 +298,7 @@ describe('MesaDesk service admin portal', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ email: 'platform.admin@mesadesk.test', password: 'strong-password' }),
+      body: JSON.stringify({ email: 'platform.admin@mesaorigins.test', password: 'strong-password' }),
     }));
     expect(await screen.findByText('Good to see you, Admin')).toBeTruthy();
     expect(get.mock.calls.filter(([path]) => path === '/onboarding/access').length).toBeGreaterThanOrEqual(2);
@@ -354,7 +354,7 @@ describe('MesaDesk service admin portal', () => {
   });
 
   it('posts logout and clears the local admin marker', async () => {
-    window.sessionStorage.setItem('mesadesk_admin_session', 'active');
+    window.sessionStorage.setItem('mesaorigins_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
     const signOutButtons = await screen.findAllByRole('button', { name: 'Sign out' });
@@ -365,6 +365,6 @@ describe('MesaDesk service admin portal', () => {
       credentials: 'include',
     }));
     expect(await screen.findByLabelText('User ID')).toBeTruthy();
-    expect(window.sessionStorage.getItem('mesadesk_admin_session')).toBeNull();
+    expect(window.sessionStorage.getItem('mesaorigins_admin_session')).toBeNull();
   });
 });

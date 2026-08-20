@@ -9,3 +9,8 @@ coverage/
 
 # Runtime datastore — rewritten every second by the server; never a source artifact.
 data.json
+
+# Local database dumps and ad-hoc connection files.
+*.dump
+.cloudsql*
+.neon-urls.env

@@ -136,7 +136,7 @@ export async function provisionAone(db: PrismaClient, options: ProvisionOptions 
   return db.$transaction(async (tx) => {
     // Serialize independent deploy jobs before any read/create decision. The
     // stable two-key lock does not depend on an organization row existing yet.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('mesadesk-provision'), hashtext(${AONE_ORG_SLUG}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('mesaorigins-provision'), hashtext(${AONE_ORG_SLUG}))`;
     const service = await tx.service.findUnique({ where: { id: 'mesaleads' } });
     if (!service) throw new Error('MesaLeads is missing from the global service catalog. Apply migrations/seed the catalog before provisioning.');
     if ('status' in service && service.status !== 'active') throw new Error('Global MesaLeads is not active. Activate it before provisioning AONE.');

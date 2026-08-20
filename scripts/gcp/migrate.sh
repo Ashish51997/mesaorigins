@@ -2,18 +2,18 @@
 # Run Prisma migrate + setup-roles against Cloud SQL via Auth Proxy.
 #
 # Usage:
-#   export PROJECT_ID=football-analysis-473513 REGION=asia-south1 INSTANCE=mesadesk-pg
+#   export PROJECT_ID=football-analysis-473513 REGION=asia-south1 INSTANCE=mesaorigins-pg
 #   ./scripts/gcp/migrate.sh
 #   SEED=1 ./scripts/gcp/migrate.sh   # optional demo data
 #
-# If DIRECT_DATABASE_URL is unset, loads mesadesk-direct-database-url from Secret
+# If DIRECT_DATABASE_URL is unset, loads mesaorigins-direct-database-url from Secret
 # Manager and rewrites the Cloud SQL socket host to 127.0.0.1:$PROXY_PORT.
 
 set -euo pipefail
 
 PROJECT_ID="${PROJECT_ID:-football-analysis-473513}"
 REGION="${REGION:-asia-south1}"
-INSTANCE="${INSTANCE:-mesadesk-pg}"
+INSTANCE="${INSTANCE:-mesaorigins-pg}"
 PROXY_PORT="${PROXY_PORT:-5433}"
 CONNECTION="${PROJECT_ID}:${REGION}:${INSTANCE}"
 
@@ -47,12 +47,12 @@ PY
 
 if [[ -z "${DIRECT_DATABASE_URL:-}" ]]; then
   if ! command -v gcloud >/dev/null 2>&1; then
-    echo "Set DIRECT_DATABASE_URL or install gcloud to pull mesadesk-direct-database-url."
+    echo "Set DIRECT_DATABASE_URL or install gcloud to pull mesaorigins-direct-database-url."
     exit 1
   fi
-  echo "==> Loading mesadesk-direct-database-url from Secret Manager"
+  echo "==> Loading mesaorigins-direct-database-url from Secret Manager"
   SECRET_URL="$(gcloud secrets versions access latest \
-    --secret=mesadesk-direct-database-url \
+    --secret=mesaorigins-direct-database-url \
     --project="$PROJECT_ID")"
   DIRECT_DATABASE_URL="$(rewrite_socket_to_tcp "$SECRET_URL")"
 fi

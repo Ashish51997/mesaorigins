@@ -1,5 +1,5 @@
-/* Mesadesk — installable PWA service worker (network-first for app shell). */
-const CACHE = 'mesadesk-shell-v2';
+/* MesaOrigins — installable PWA service worker (network-first for app shell). */
+const CACHE = 'mesaorigins-shell-v2';
 const PRECACHE = [
   '/',
   '/manifest.webmanifest',

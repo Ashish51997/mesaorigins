@@ -1,6 +1,6 @@
-# Mesadesk Docker setup
+# MesaOrigins Docker setup
 
-The default Compose stack runs a production-like Mesadesk image with PostgreSQL
+The default Compose stack runs a production-like MesaOrigins image with PostgreSQL
 16. Prisma migrations run as a one-shot dependency before the app starts. Both
 Postgres and the remaining legacy JSON store use named volumes.
 
@@ -28,11 +28,11 @@ need to override ports or optional services:
 cp .env.example .env
 ```
 
-Common overrides are `MESADESK_APP_PORT`, `MESADESK_POSTGRES_PORT`,
-`MESADESK_POSTGRES_USER`, `MESADESK_POSTGRES_PASSWORD`,
-`MESADESK_POSTGRES_DB`, and `MESADESK_SEED_PASSWORD`. For an isolated local
+Common overrides are `MESAORIGINS_APP_PORT`, `MESAORIGINS_POSTGRES_PORT`,
+`MESAORIGINS_POSTGRES_USER`, `MESAORIGINS_POSTGRES_PASSWORD`,
+`MESAORIGINS_POSTGRES_DB`, and `MESAORIGINS_SEED_PASSWORD`. For an isolated local
 demo of the production image, opt into the development identity picker with
-`MESADESK_DEV_AUTH=1`; never use that override on a shared or public host.
+`MESAORIGINS_DEV_AUTH=1`; never use that override on a shared or public host.
 
 ## Hot-reload development
 
@@ -41,8 +41,8 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
 The repository is bind-mounted into the app container while dependencies remain
-in the `mesadesk-node-modules` volume. The API and Vite middleware are served on
-the same `MESADESK_APP_PORT` as the default stack. This override explicitly sets
+in the `mesaorigins-node-modules` volume. The API and Vite middleware are served on
+the same `MESAORIGINS_APP_PORT` as the default stack. This override explicitly sets
 `DEV_AUTH=1` for the local hot-reload workflow; the base Compose file remains
 fail-closed.
 
@@ -81,11 +81,11 @@ only when the development override is explicitly enabled.
 Build the same final target used by Compose and Cloud Run:
 
 ```bash
-docker build --target production -t mesadesk:local .
+docker build --target production -t mesaorigins:local .
 ```
 
 The runtime image runs as the unprivileged `node` user and does not contain the
 Prisma CLI or development dependencies. Use the `migration` target for release
-migrations. For a real deployment, keep `MESADESK_DEV_AUTH=0`, use a strong
+migrations. For a real deployment, keep `MESAORIGINS_DEV_AUTH=0`, use a strong
 `AUTH_SECRET`, and supply authentication and database credentials through the
 platform's secret manager.

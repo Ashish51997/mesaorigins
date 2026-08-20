@@ -40,7 +40,7 @@ describe('supplier portal security boundary', () => {
     expect(response.status).toBe(201);
     expect(response.body.sessionToken).toBeUndefined();
     expect(JSON.stringify(response.body)).not.toContain('raw-session-secret');
-    expect(response.headers['set-cookie'][0]).toContain('mesadesk_supplier_session=raw-session-secret');
+    expect(response.headers['set-cookie'][0]).toContain('mesaorigins_supplier_session=raw-session-secret');
     expect(response.headers['set-cookie'][0]).toContain('HttpOnly');
     expect(response.headers['set-cookie'][0]).toContain('SameSite=Strict');
     expect(acceptInvite).toHaveBeenCalledWith('x'.repeat(43));

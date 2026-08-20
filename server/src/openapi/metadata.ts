@@ -1635,10 +1635,10 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
   'GET /api/onboarding/services': {
     tag: 'Onboarding',
-    operationId: 'listMesaDeskServices',
+    operationId: 'listMesaOriginsServices',
     summary: 'List the service catalog',
-    description: 'Returns every MesaDesk service that can be assigned to an organization.',
-    responseDescription: 'The global MesaDesk service catalog.',
+    description: 'Returns every MesaOrigins service that can be assigned to an organization.',
+    responseDescription: 'The global MesaOrigins service catalog.',
     responseSchema: obj({ services: arr(SERVICE_SUMMARY) }),
     errors: [
       { status: 403, code: 'forbidden', when: 'The current user is not the product owner or is not an admin.' },
@@ -1647,12 +1647,12 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
   'PUT /api/onboarding/services/:id/status': {
     tag: 'Onboarding',
-    operationId: 'setMesaDeskServiceStatus',
+    operationId: 'setMesaOriginsServiceStatus',
     summary: 'Set a global service status',
-    description: 'Protected product-owner control that starts, pauses or stops a MesaDesk service for every organization.',
+    description: 'Protected product-owner control that starts, pauses or stops a MesaOrigins service for every organization.',
     responseDescription: 'The updated global service catalog entry.',
     responseSchema: SERVICE_SUMMARY,
-    params: { id: 'MesaDesk service id.' },
+    params: { id: 'MesaOrigins service id.' },
     errors: [
       { status: 403, code: 'forbidden', when: 'The current user is not the product owner or is not an admin.' },
       { status: 404, code: 'not_found', when: 'The service does not exist.' },
@@ -1686,7 +1686,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     tag: 'Onboarding',
     operationId: 'setOrganizationServices',
     summary: 'Replace organization service access',
-    description: 'Assigns one or more MesaDesk services to an organization, replacing its previous service set.',
+    description: 'Assigns one or more MesaOrigins services to an organization, replacing its previous service set.',
     responseDescription: 'The organization id and its updated service assignments.',
     responseSchema: obj({
       organizationId: str,
@@ -2122,9 +2122,9 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     summary: 'Accept an optional MesaERP demand snapshot',
     description: 'Internal service route. Requires a short-lived HMAC signature in addition to the employee/session context, verifies the immutable snapshot hash, deduplicates the event, and creates a MesaOps-owned draft without sharing lifecycle status.',
     headers: {
-      'x-mesadesk-source-service': 'Must be `mesaerp`.',
-      'x-mesadesk-timestamp': 'Unix timestamp within the five-minute replay window.',
-      'x-mesadesk-signature': 'Hex HMAC-SHA256 over the tenant, timestamp and canonical payload hash.',
+      'x-mesaorigins-source-service': 'Must be `mesaerp`.',
+      'x-mesaorigins-timestamp': 'Unix timestamp within the five-minute replay window.',
+      'x-mesaorigins-signature': 'Hex HMAC-SHA256 over the tenant, timestamp and canonical payload hash.',
     },
     status: 201,
     responseDescription: 'Accepted, replayed or conflicted handoff result and its local operational order when available.',
