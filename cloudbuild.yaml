@@ -18,12 +18,10 @@
 
 substitutions:
   _REGION: asia-south1
-  # Existing GCP resource IDs. The product brand is MesaOrigins; do not rename
-  # these until Artifact Registry, Cloud SQL, secrets, SAs, and Cloud Run match.
-  # Pushing to a missing Artifact Registry repo fails with:
-  #   name unknown: Repository "mesaorigins" not found
+  # Cloud Run / Cloud SQL / secrets still use the existing mesadesk IDs.
+  # Images push to the new Artifact Registry repo `mesaorigins`.
   _SERVICE: mesadesk
-  _REPO: mesadesk
+  _REPO: mesaorigins
   _INSTANCE: mesadesk-pg
   # Leave empty to reuse the existing service's stable Cloud Run URL. A first
   # deployment must supply the intended public/custom HTTPS origin explicitly.
