@@ -268,7 +268,7 @@ function Shell({ children }: { children: ReactNode }) {
             <Logo className="h-9 w-9" />
             <div>
               <p className="font-extrabold leading-none text-slate-900">MesaLeads</p>
-              <p className="mt-1 text-[11px] font-medium text-slate-400">Powered by MesaDesk</p>
+              <p className="mt-1 text-[11px] font-medium text-slate-400">Powered by MesaOrigins</p>
             </div>
           </div>
           <div className="hidden items-center gap-2 text-xs font-semibold text-slate-500 sm:flex">

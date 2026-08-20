@@ -1,7 +1,7 @@
 const LOCAL_DEFAULT_PLATFORM_ADMIN = 'aroul303@gmail.com';
 
 /**
- * Identity allowlist for the cross-tenant MesaDesk control plane.
+ * Identity allowlist for the cross-tenant MesaOrigins control plane.
  *
  * Production intentionally has no source-code fallback: the deployment must
  * mount ONBOARDING_ALLOWED_EMAILS from its secret store. The seeded fallback

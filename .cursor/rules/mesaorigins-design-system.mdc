@@ -1,13 +1,13 @@
 ---
-description: MesaDesk brand and responsive UI rules for dashboard, tablet, and mobile product interfaces
+description: MesaOrigins brand and responsive UI rules for dashboard, tablet, and mobile product interfaces
 globs:
   - "**/*.{html,css,scss,sass,less,js,jsx,ts,tsx,vue,svelte}"
 alwaysApply: true
 ---
 
-# MesaDesk design system
+# MesaOrigins design system
 
-Use these rules whenever you create or modify MesaDesk UI. They consolidate the MesaDesk brand, color, typography, spacing, layout, and data-visualization guidelines and extend them to tablet and mobile product screens.
+Use these rules whenever you create or modify MesaOrigins UI. They consolidate the MesaOrigins brand, color, typography, spacing, layout, and data-visualization guidelines and extend them to tablet and mobile product screens.
 
 ## Rule priority
 
@@ -18,9 +18,9 @@ Use these rules whenever you create or modify MesaDesk UI. They consolidate the 
 
 ## Canonical brand
 
-- The parent brand is `MesaWorks`; the product is `MesaDesk`.
-- Always spell the product `MesaDesk`: capital M, capital D, no space. Treat `MezaDesk`, `Mesa Desk`, `mesadesk`, and `MESADESK` as incorrect.
-- MesaDesk is a manufacturing operations dashboard/workstation.
+- The parent brand is `MesaWorks`; the product is `MesaOrigins`.
+- Always spell the product `MesaOrigins`: capital M, capital O, no space. Treat `MezaOrigins`, `Mesa Origins`, `mesaorigins`, and `MESAORIGINS` as incorrect.
+- MesaOrigins is a manufacturing operations dashboard/workstation.
 - The tagline is `One Platform. Every Operation.`
 - Use the tagline only near the logo, in Roboto Light at 10-14px.
 - Use the full brand lockup in spacious contexts such as desktop sidebars, login screens, about pages, and marketing headers.
@@ -97,7 +97,7 @@ Do not introduce near-match colors, spacing values, radii, or shadows when an ex
 
 ## Typography
 
-- Use Roboto across all MesaDesk product screens.
+- Use Roboto across all MesaOrigins product screens.
 - Use `#0F172A` for headings/titles, `#475569` for primary body text, `#64748B` for secondary text, `#94A3B8` for placeholders/muted text, `#1E40AF` for links/actions, and white on dark or colored surfaces.
 - Use the following type scale. Set readable line heights, generally 1.2-1.3 for headings and 1.4-1.6 for body copy.
 
@@ -155,7 +155,7 @@ Use content-driven behavior, with these defaults unless the project already defi
 ## Mobile navigation and shell
 
 - Replace the persistent desktop sidebar below 1024px with an accessible drawer or a compact top/bottom navigation pattern suited to information depth.
-- Mobile top bar: 48px minimum height, 12–16px horizontal padding, icon-only MesaDesk mark, concise page title, and only the highest-priority action.
+- Mobile top bar: 48px minimum height, 12–16px horizontal padding, icon-only MesaOrigins mark, concise page title, and only the highest-priority action.
 - A navigation drawer should retain the white surface, active Sky/primary treatment, labels, and icons from desktop. It must trap focus while open, close on Escape, restore focus to its trigger, and provide a visible close control.
 - Use bottom navigation only for 3-5 stable top-level destinations. Keep it clear of safe areas and show both icon and label.
 - Move secondary actions into an overflow menu; do not crowd the top bar.
@@ -237,7 +237,7 @@ Use content-driven behavior, with these defaults unless the project already defi
 
 ## Implementation checklist
 
-Before considering a MesaDesk screen complete, verify:
+Before considering a MesaOrigins screen complete, verify:
 
 - Brand spelling, logo variant, colors, Roboto typography, spacing, and radii match this file.
 - Desktop and mobile share the same information hierarchy and functionality.

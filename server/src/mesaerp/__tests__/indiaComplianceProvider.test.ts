@@ -22,7 +22,7 @@ function adapterResponse(operation = 'submit_e_invoice', payload: unknown = {
   qrData: 'opaque-provider-qr-data',
 }, overrides: Record<string, unknown> = {}) {
   const unsigned = {
-    schema: 'mesadesk.india-compliance.adapter.response.v1',
+    schema: 'mesaorigins.india-compliance.adapter.response.v1',
     operation,
     requestId,
     requestHash: canonicalHash(request),
@@ -72,11 +72,11 @@ describe('generic HTTPS India compliance provider', () => {
       expect(init?.headers).toMatchObject({
         authorization: 'Bearer test-bearer-token-long-enough',
         'idempotency-key': requestId,
-        'x-mesadesk-operation': 'submit_e_invoice',
-        'x-mesadesk-request-hash': canonicalHash(request),
+        'x-mesaorigins-operation': 'submit_e_invoice',
+        'x-mesaorigins-request-hash': canonicalHash(request),
       });
       expect(JSON.parse(String(init?.body))).toEqual({
-        schema: 'mesadesk.india-compliance.adapter.request.v1',
+        schema: 'mesaorigins.india-compliance.adapter.request.v1',
         operation: 'submit_e_invoice',
         requestId,
         requestHash: canonicalHash(request),

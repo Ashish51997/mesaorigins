@@ -212,10 +212,10 @@ export default function LandingPage({ onEnterService }: LandingPageProps) {
       <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-6xl items-center sm:min-h-[calc(100vh-4rem)]">
         <div className="grid w-full overflow-hidden rounded-xl border border-slate-200 bg-white md:grid-cols-2">
           <section className="hidden min-h-[640px] bg-[#102A65] p-10 text-white md:flex md:flex-col lg:p-12">
-            <a href="/" aria-label="MesaDesk home" className="flex items-center gap-3 self-start">
+            <a href="/" aria-label="MesaOrigins home" className="flex items-center gap-3 self-start">
               <Logo className="h-10 w-10 shrink-0" />
               <div>
-                <p className="text-lg font-extrabold leading-none">MesaDesk</p>
+                <p className="text-lg font-extrabold leading-none">MesaOrigins</p>
                 <p className="mt-1 text-xs text-blue-200">Parent service platform</p>
               </div>
             </a>
@@ -249,7 +249,7 @@ export default function LandingPage({ onEnterService }: LandingPageProps) {
               <div className="mb-8 flex items-center gap-3 md:hidden">
                 <Logo className="h-10 w-10" />
                 <div>
-                  <p className="font-extrabold leading-none text-slate-900">MesaDesk</p>
+                  <p className="font-extrabold leading-none text-slate-900">MesaOrigins</p>
                   <p className="mt-1 text-xs text-slate-500">One platform. Every operation.</p>
                 </div>
               </div>
@@ -273,7 +273,7 @@ export default function LandingPage({ onEnterService }: LandingPageProps) {
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 group-hover:bg-white"><Building2 className="h-6 w-6" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-extrabold text-slate-900">Organization</span>
-                    <span className="mt-1 block text-xs leading-5 text-slate-500">Open your team’s assigned MesaDesk services.</span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">Open your team’s assigned MesaOrigins services.</span>
                   </span>
                   <ArrowRight className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-700" />
                 </button>
@@ -370,7 +370,7 @@ export default function LandingPage({ onEnterService }: LandingPageProps) {
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-50 text-amber-700"><LockKeyhole className="h-5 w-5" /></div>
               <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900">Service access needed</h2>
               <div role="alert" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                No services are available for <strong>{organization.organizationName}</strong>. Ask your MesaDesk administrator to activate at least one service.
+                No services are available for <strong>{organization.organizationName}</strong>. Ask your MesaOrigins administrator to activate at least one service.
               </div>
               <button type="button" onClick={reset} className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"><ArrowLeft className="h-4 w-4" /> Back to sign in</button>
             </>

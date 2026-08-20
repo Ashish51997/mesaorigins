@@ -4,7 +4,7 @@ import { ApiError } from '../middleware/error';
 import { REQUIRED_PERMISSION } from '../middleware/authz';
 import { supplierPortalLifecycleAllowed, type SupplierActor, supplierTokenHash } from './supplierPortalService';
 
-export const SUPPLIER_SESSION_COOKIE = 'mesadesk_supplier_session';
+export const SUPPLIER_SESSION_COOKIE = 'mesaorigins_supplier_session';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace

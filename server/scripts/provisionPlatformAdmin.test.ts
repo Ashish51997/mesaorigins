@@ -13,10 +13,10 @@ function databaseWithTransaction(tx: unknown): PrismaClient {
 }
 
 const baseInput: PlatformAdminProvisionInput = {
-  email: 'admin@mesadesk.example',
+  email: 'admin@mesaorigins.example',
   password: 'a-strong-admin-password',
   organization: 'demo',
-  name: 'MesaDesk Platform Administrator',
+  name: 'MesaOrigins Platform Administrator',
   employeeCode: 'PLATFORM-ADMIN',
   reuseExisting: false,
   rotateExisting: false,
@@ -26,7 +26,7 @@ function baseTx(overrides: Record<string, unknown> = {}) {
   return {
     $executeRaw: vi.fn(async () => 0),
     organization: {
-      findFirst: vi.fn(async () => ({ id: 'org-demo', name: 'MesaDesk', slug: 'demo' })),
+      findFirst: vi.fn(async () => ({ id: 'org-demo', name: 'MesaOrigins', slug: 'demo' })),
     },
     role: {
       upsert: vi.fn(async () => ({ id: 'role-admin', name: 'Administrator', isAdmin: true })),
@@ -49,10 +49,10 @@ describe('platform administrator provisioner', () => {
   it('loads a chmod-600 password file and requires the runtime allowlist', async () => {
     const config = await readPlatformAdminConfig({
       DIRECT_DATABASE_URL: ' postgresql://owner/database ',
-      PLATFORM_ADMIN_EMAIL: ' Admin@MesaDesk.Example ',
+      PLATFORM_ADMIN_EMAIL: ' Admin@MesaOrigins.Example ',
       PLATFORM_ADMIN_PASSWORD_FILE: '/secure/admin-password',
       PLATFORM_ADMIN_ORGANIZATION: ' demo ',
-      ONBOARDING_ALLOWED_EMAILS: 'other@example.com,admin@mesadesk.example',
+      ONBOARDING_ALLOWED_EMAILS: 'other@example.com,admin@mesaorigins.example',
     }, {
       stat: vi.fn(async () => ({ mode: 0o100600, isFile: () => true })),
       readFile: vi.fn(async () => 'file-backed-admin-password\n'),
@@ -60,7 +60,7 @@ describe('platform administrator provisioner', () => {
 
     expect(config.directDatabaseUrl).toBe('postgresql://owner/database');
     expect(config.input).toMatchObject({
-      email: 'admin@mesadesk.example',
+      email: 'admin@mesaorigins.example',
       password: 'file-backed-admin-password',
       organization: 'demo',
       reuseExisting: false,
@@ -71,10 +71,10 @@ describe('platform administrator provisioner', () => {
   it('rejects permissive secret files and missing allowlist entries', async () => {
     const baseEnv = {
       DIRECT_DATABASE_URL: 'postgresql://owner/database',
-      PLATFORM_ADMIN_EMAIL: 'admin@mesadesk.example',
+      PLATFORM_ADMIN_EMAIL: 'admin@mesaorigins.example',
       PLATFORM_ADMIN_PASSWORD_FILE: '/secure/admin-password',
       PLATFORM_ADMIN_ORGANIZATION: 'demo',
-      ONBOARDING_ALLOWED_EMAILS: 'admin@mesadesk.example',
+      ONBOARDING_ALLOWED_EMAILS: 'admin@mesaorigins.example',
     };
 
     await expect(readPlatformAdminConfig(baseEnv, {

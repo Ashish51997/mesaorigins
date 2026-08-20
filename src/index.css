@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 /* =============================================================================
-   MesaDesk — design system tokens
+   MesaOrigins — design system tokens
    Manufacturing operations dashboard. Roboto throughout. Primary #1E40AF.
    Flat cards (12px radius, no shadow). Light sidebar. Light-first.
    Tokens cascade through Tailwind remaps; indigo/blue utilities → primary.
@@ -95,14 +95,14 @@
   --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, monospace;
   --font-display: "Roboto", system-ui, sans-serif;
 
-  /* MesaDesk radii: control 8, card 12 — do not inflate */
+  /* MesaOrigins radii: control 8, card 12 — do not inflate */
   --radius-md: 8px;
   --radius-lg: 8px;
   --radius-xl: 12px;
   --radius-2xl: 12px;
   --radius-3xl: 12px;
 
-  /* True slate scale for MesaDesk */
+  /* True slate scale for MesaOrigins */
   --color-slate-50: #F8FAFC;
   --color-slate-100: #F1F5F9;
   --color-slate-200: #E2E8F0;
@@ -141,7 +141,7 @@
 
   --color-white: var(--bg-card);
 
-  /* Primary brand — indigo/blue/sky all map to MesaDesk primary */
+  /* Primary brand — indigo/blue/sky all map to MesaOrigins primary */
   --color-indigo-50: var(--accent-bg-light);
   --color-indigo-100: var(--accent-bg);
   --color-indigo-200: var(--accent-bg-muted);
@@ -205,7 +205,7 @@
   --color-amber-900: var(--warn-text);
 }
 
-/* Global body — flat MesaDesk page background */
+/* Global body — flat MesaOrigins page background */
 html, body {
   background-color: var(--bg-app) !important;
   color: var(--text-secondary) !important;
@@ -456,7 +456,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-primary) !important; }
 #applet-root { background-color: var(--bg-app); }
 
 /* -----------------------------------------------------------------------------
-   Reusable MesaDesk components
+   Reusable MesaOrigins components
    -------------------------------------------------------------------------- */
 
 .tile {
@@ -501,7 +501,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-primary) !important; }
 .seg-magenta { background: #F59E0B; }
 .seg-purple  { background: #10B981; }
 
-/* Standard MesaDesk card */
+/* Standard MesaOrigins card */
 .md-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);

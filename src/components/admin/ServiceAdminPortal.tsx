@@ -49,8 +49,8 @@ type ActivityEntry = {
   time: string;
 };
 
-const ADMIN_SESSION_KEY = 'mesadesk_admin_session';
-const SERVICE_STATE_KEY = 'mesadesk_service_states';
+const ADMIN_SESSION_KEY = 'mesaorigins_admin_session';
+const SERVICE_STATE_KEY = 'mesaorigins_service_states';
 const DEFAULT_SERVICE_STATES: ServiceStates = { mesaops: 'running', mesaleads: 'running', mesaerp: 'running' };
 const ADMIN_ONBOARDING_IDENTITY = 'aroul303@gmail.com';
 
@@ -184,7 +184,7 @@ function AdminLogin({
             <div className="relative flex items-center gap-3">
               <Logo className="h-10 w-10" />
               <div>
-                <p className="text-lg font-extrabold leading-none">MesaDesk</p>
+                <p className="text-lg font-extrabold leading-none">MesaOrigins</p>
                 <p className="mt-1 text-xs text-blue-200">Parent service platform</p>
               </div>
             </div>
@@ -192,7 +192,7 @@ function AdminLogin({
               <div className="mb-5 inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-blue-50">
                 <ShieldCheck className="h-4 w-4" /> Secure administration
               </div>
-              <h1 className="text-4xl font-extrabold leading-tight tracking-tight !text-white">Every MesaDesk service, one control center.</h1>
+              <h1 className="text-4xl font-extrabold leading-tight tracking-tight !text-white">Every MesaOrigins service, one control center.</h1>
               <p className="mt-4 max-w-sm text-sm leading-6 text-blue-100">Monitor availability, control service state and open each workspace without switching consoles.</p>
             </div>
             <div className="relative grid grid-cols-2 gap-3">
@@ -212,7 +212,7 @@ function AdminLogin({
               <div className="mb-8 flex items-center gap-3 md:hidden">
                 <Logo className="h-10 w-10" />
                 <div>
-                  <p className="font-extrabold leading-none text-slate-900">MesaDesk</p>
+                  <p className="font-extrabold leading-none text-slate-900">MesaOrigins</p>
                   <p className="mt-1 text-xs text-slate-500">Service administration</p>
                 </div>
               </div>
@@ -222,7 +222,7 @@ function AdminLogin({
               <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-slate-900">Admin sign in</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 {mode === 'production'
-                  ? 'Use your MesaDesk administrator email and password to open the service console.'
+                  ? 'Use your MesaOrigins administrator email and password to open the service console.'
                   : 'Use the isolated local-development administrator credentials.'}
               </p>
               <form className="mt-7 space-y-4" onSubmit={submit}>
@@ -287,7 +287,7 @@ export default function ServiceAdminPortal() {
     let cancelled = false;
 
     const restoreAdminSession = async () => {
-      // An organization selector or development identity from another MesaDesk
+      // An organization selector or development identity from another MesaOrigins
       // workspace must never influence the platform-admin authorization check.
       setOrganizationId('');
       setDevUser('');
@@ -336,7 +336,7 @@ export default function ServiceAdminPortal() {
   }, []);
 
   useEffect(() => {
-    document.title = authenticated ? 'Service Control Center · MesaDesk' : 'Admin Sign In · MesaDesk';
+    document.title = authenticated ? 'Service Control Center · MesaOrigins' : 'Admin Sign In · MesaOrigins';
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }, [authenticated]);
@@ -506,7 +506,7 @@ export default function ServiceAdminPortal() {
         <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5">
           <Logo className="h-9 w-9 shrink-0" />
           <div>
-            <p className="font-extrabold leading-none text-slate-900">MesaDesk</p>
+            <p className="font-extrabold leading-none text-slate-900">MesaOrigins</p>
             <p className="mt-1 text-[11px] font-medium text-slate-400">ADMIN CONSOLE</p>
           </div>
         </div>
@@ -533,7 +533,7 @@ export default function ServiceAdminPortal() {
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500" /> Platform online
             </div>
-            <p className="mt-1 text-[11px] text-slate-400">MesaDesk control plane</p>
+            <p className="mt-1 text-[11px] text-slate-400">MesaOrigins control plane</p>
           </div>
           <button onClick={logout} className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-500 transition hover:bg-rose-50 hover:text-rose-700">
             <LogOut className="h-4 w-4" /> Sign out
@@ -546,13 +546,13 @@ export default function ServiceAdminPortal() {
           <div className="flex items-center gap-3 lg:hidden">
             <Logo className="h-8 w-8" />
             <div>
-              <p className="text-sm font-extrabold leading-none text-slate-900">MesaDesk</p>
+              <p className="text-sm font-extrabold leading-none text-slate-900">MesaOrigins</p>
               <p className="mt-1 text-[10px] font-medium text-slate-400">ADMIN CONSOLE</p>
             </div>
           </div>
           <div className="hidden lg:block">
             <p className="text-sm font-semibold text-slate-800">Service control center</p>
-            <p className="text-xs text-slate-400">Parent platform · MesaDesk</p>
+            <p className="text-xs text-slate-400">Parent platform · MesaOrigins</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 sm:flex">
@@ -572,7 +572,7 @@ export default function ServiceAdminPortal() {
                 <ShieldCheck className="h-3.5 w-3.5" /> Admin workspace
               </div>
               <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Good to see you, Admin</h1>
-              <p className="mt-1.5 max-w-2xl text-sm text-slate-500">Monitor and control every service registered under the MesaDesk platform.</p>
+              <p className="mt-1.5 max-w-2xl text-sm text-slate-500">Monitor and control every service registered under the MesaOrigins platform.</p>
             </div>
             <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
               <Activity className="h-4 w-4 text-emerald-600" /> Updated just now
@@ -580,7 +580,7 @@ export default function ServiceAdminPortal() {
           </section>
 
           <section aria-label="Service summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard icon={<Server className="h-5 w-5" />} label="All services" value={String(SERVICES.length)} detail="Registered with MesaDesk" />
+            <MetricCard icon={<Server className="h-5 w-5" />} label="All services" value={String(SERVICES.length)} detail="Registered with MesaOrigins" />
             <MetricCard icon={<CheckCircle2 className="h-5 w-5" />} label="Operational" value={String(runningCount)} detail="Available right now" />
             <MetricCard icon={<CirclePause className="h-5 w-5" />} label="Not running" value={String(SERVICES.length - runningCount)} detail="Paused or stopped" />
             <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Control plane" value="Online" detail="Admin session active" />
@@ -719,7 +719,7 @@ export default function ServiceAdminPortal() {
           </section>
 
           <footer className="flex flex-col gap-1 border-t border-slate-200 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-            <span>© 2026 MesaDesk · Service Control Center</span>
+            <span>© 2026 MesaOrigins · Service Control Center</span>
             <span>Signed in as admin</span>
           </footer>
         </main>

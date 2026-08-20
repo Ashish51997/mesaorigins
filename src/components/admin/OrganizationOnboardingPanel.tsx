@@ -213,7 +213,7 @@ export default function OrganizationOnboardingPanel({ onCreated }: { onCreated?:
         </label>
         <fieldset className="sm:col-span-2">
           <legend className="text-[13px] font-semibold text-slate-700">Services</legend>
-          <p className="mt-1 text-[11px] text-slate-400">Choose one or more MesaDesk services for this organization.</p>
+          <p className="mt-1 text-[11px] text-slate-400">Choose one or more MesaOrigins services for this organization.</p>
           {catalogLoading ? (
             <div className="mt-2 rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-500">Loading services…</div>
           ) : (
@@ -363,7 +363,7 @@ export function OrganizationsDirectory({
               <h2 className="text-lg font-bold text-slate-900">Organizations</h2>
               <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">{organizations.length}</span>
             </div>
-            <p className="mt-1 text-xs text-slate-500">All organizations onboarded through MesaDesk.</p>
+            <p className="mt-1 text-xs text-slate-500">All organizations onboarded through MesaOrigins.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

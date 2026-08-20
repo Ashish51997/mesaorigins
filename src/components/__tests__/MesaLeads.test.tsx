@@ -323,8 +323,8 @@ describe('MesaLeads organization dashboard', () => {
 
   it('signs out from MesaLeads and clears the locally remembered session', async () => {
     window.localStorage.setItem('erp_session', JSON.stringify({ uid: 'emp-user-1' }));
-    window.sessionStorage.setItem('mesadesk_dev_identity', 'owner@acme.test');
-    window.sessionStorage.setItem('mesadesk_organization', 'org-acme');
+    window.sessionStorage.setItem('mesaorigins_dev_identity', 'owner@acme.test');
+    window.sessionStorage.setItem('mesaorigins_organization', 'org-acme');
     get.mockImplementation(async (path: string) => {
       if (path === '/mesaleads/summary') {
         return {
@@ -352,8 +352,8 @@ describe('MesaLeads organization dashboard', () => {
       credentials: 'include',
     }));
     expect(window.localStorage.getItem('erp_session')).toBeNull();
-    expect(window.sessionStorage.getItem('mesadesk_dev_identity')).toBeNull();
-    expect(window.sessionStorage.getItem('mesadesk_organization')).toBeNull();
+    expect(window.sessionStorage.getItem('mesaorigins_dev_identity')).toBeNull();
+    expect(window.sessionStorage.getItem('mesaorigins_organization')).toBeNull();
     navigationNoise.mockRestore();
   });
 
@@ -390,8 +390,8 @@ describe('MesaLeads organization dashboard', () => {
 
   it('clears stale identity and shows a sign-in path when a direct visit has an expired session', async () => {
     window.localStorage.setItem('erp_session', JSON.stringify({ uid: 'emp-user-1' }));
-    window.sessionStorage.setItem('mesadesk_dev_identity', 'owner@acme.test');
-    window.sessionStorage.setItem('mesadesk_organization', 'org-acme');
+    window.sessionStorage.setItem('mesaorigins_dev_identity', 'owner@acme.test');
+    window.sessionStorage.setItem('mesaorigins_organization', 'org-acme');
     get.mockRejectedValue(new ApiError(401, 'invalid_token', 'Session is invalid or expired.'));
 
     renderWithQuery(<MesaLeadsApp />);
@@ -400,8 +400,8 @@ describe('MesaLeads organization dashboard', () => {
     const signIn = screen.getByRole('link', { name: 'Back to sign in' });
     expect(signIn.getAttribute('href')).toBe('/');
     expect(window.localStorage.getItem('erp_session')).toBeNull();
-    expect(window.sessionStorage.getItem('mesadesk_dev_identity')).toBeNull();
-    expect(window.sessionStorage.getItem('mesadesk_organization')).toBeNull();
+    expect(window.sessionStorage.getItem('mesaorigins_dev_identity')).toBeNull();
+    expect(window.sessionStorage.getItem('mesaorigins_organization')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Turn requirements into qualified RFQs' })).toBeNull();
   });
 

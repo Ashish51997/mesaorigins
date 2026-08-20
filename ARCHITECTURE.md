@@ -1,6 +1,6 @@
-# MesaDesk manufacturing platform architecture
+# MesaOrigins manufacturing platform architecture
 
-MesaDesk is a modular manufacturing platform delivered as one React, Express and
+MesaOrigins is a modular manufacturing platform delivered as one React, Express and
 PostgreSQL application. Its three product services are independently entitled and
 independently operable:
 

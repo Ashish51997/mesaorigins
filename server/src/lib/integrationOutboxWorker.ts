@@ -565,7 +565,7 @@ export class IntegrationOutboxWorker {
     return this.db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.current_tenant', ${organizationId}, true)`;
       const lock = await tx.$queryRaw<Array<{ locked: boolean }>>(Prisma.sql`
-        SELECT pg_try_advisory_xact_lock(hashtextextended(${`mesadesk:integration-outbox:${organizationId}`}, 0)) AS locked
+        SELECT pg_try_advisory_xact_lock(hashtextextended(${`mesaorigins:integration-outbox:${organizationId}`}, 0)) AS locked
       `);
       if (!lock[0]?.locked) return { lockSkipped: true, claimed: 0, published: 0, retried: 0, companyRouteRequired: 0 };
       const candidates = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`

@@ -526,7 +526,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans gap-4" id="applet-loading">
         <Logo className="h-12 w-12" />
         <div className="space-y-1 text-center">
-          <h3 className="font-extrabold text-slate-900 text-base">MesaDesk</h3>
+          <h3 className="font-extrabold text-slate-900 text-base">MesaOrigins</h3>
           {/* <p className="text-xs text-slate-500 font-medium">One Platform. Every Operation.</p> */}
         </div>
       </div>
@@ -539,7 +539,7 @@ export default function App() {
         <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 text-center sm:p-8">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><LockKeyhole className="h-6 w-6" /></div>
           <h1 className="mt-5 text-xl font-extrabold text-slate-900">{serviceAccessError === 'unauthenticated' ? 'Session expired' : 'MesaOps is not assigned'}</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">{serviceAccessError === 'unauthenticated' ? 'Sign in again to continue to your organization services.' : 'MesaOps is not active for this organization. Return to your service list or ask a MesaDesk administrator for access.'}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-500">{serviceAccessError === 'unauthenticated' ? 'Sign in again to continue to your organization services.' : 'MesaOps is not active for this organization. Return to your service list or ask a MesaOrigins administrator for access.'}</p>
           <a href="/" className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">Return to sign in</a>
         </div>
       </div>
@@ -562,15 +562,15 @@ export default function App() {
           <button
             onClick={() => { if (!sidebarOpen) setSidebarOpen(true); }}
             className={`shrink-0 ${showSidebarLabels ? 'cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'}`}
-            title={showSidebarLabels ? 'MesaDesk' : 'Expand menu'}
-            aria-label={showSidebarLabels ? 'MesaDesk' : 'Expand menu'}
+            title={showSidebarLabels ? 'MesaOrigins' : 'Expand menu'}
+            aria-label={showSidebarLabels ? 'MesaOrigins' : 'Expand menu'}
           >
             <Logo className="h-8 w-8" />
           </button>
           {showSidebarLabels && (
             <>
               <div className="min-w-0">
-                <h1 className="font-extrabold text-slate-900 tracking-tight text-[15px] leading-none">MesaDesk</h1>
+                <h1 className="font-extrabold text-slate-900 tracking-tight text-[15px] leading-none">MesaOrigins</h1>
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}

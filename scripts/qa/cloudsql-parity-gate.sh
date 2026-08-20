@@ -18,7 +18,7 @@ owner_password="masspolimer"
 runtime_role="app_user"
 runtime_password="app_user"
 main_database="masspolimer"
-upgrade_database="mesadesk_upgrade"
+upgrade_database="mesaorigins_upgrade"
 migration_cutoff="20260814085000_migration_owner_rls_window"
 expected_migration_count=44
 

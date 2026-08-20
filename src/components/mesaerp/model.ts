@@ -345,7 +345,7 @@ export function createDemoWorkspace(): MesaErpWorkspace {
     handoffs: [
       { id: 'HO-001', sourceService: 'MesaLeads', sourceReference: 'QUOTE-DEMO-071', destination: 'Sales order', destinationReference: 'SO-DEMO-041', summary: 'Approved commercial snapshot for moulded panels', state: 'linked', sourceHash: 'sha256:2b1…89d', reviewed: true },
       { id: 'HO-002', sourceService: 'MesaOps', sourceReference: 'BATCH-DEMO-115', destination: 'Costing document', destinationReference: 'COST-DEMO-115', summary: 'Batch completion snapshot changed after destination creation', state: 'stale', sourceHash: 'sha256:7a0…41c', reviewed: false },
-      { id: 'HO-003', sourceService: 'External', sourceReference: 'CSV-DEMO-018', destination: 'Purchase invoice', summary: 'Finance can create a local record without another MesaDesk service', state: 'unlinked', sourceHash: 'sha256:9dd…05a', reviewed: false },
+      { id: 'HO-003', sourceService: 'External', sourceReference: 'CSV-DEMO-018', destination: 'Purchase invoice', summary: 'Finance can create a local record without another MesaOrigins service', state: 'unlinked', sourceHash: 'sha256:9dd…05a', reviewed: false },
     ],
     roles: [
       { id: 'ROLE-FIN', name: 'Finance controller', scope: 'Finance', grants: ['mesaerp.voucher.create', 'mesaerp.voucher.post', 'mesaerp.banking.manage'] },

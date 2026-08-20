@@ -2,8 +2,8 @@
  * Dev identity header for the Phase-1 login picker (`x-dev-user`).
  * Production Auth.js sessions use httpOnly cookies (credentials: 'include').
  */
-const DEV_USER_KEY = 'mesadesk_dev_identity';
-const ORGANIZATION_KEY = 'mesadesk_organization';
+const DEV_USER_KEY = 'mesaorigins_dev_identity';
+const ORGANIZATION_KEY = 'mesaorigins_organization';
 
 function readStoredDevUser(): string {
   if (typeof window === 'undefined') return '';

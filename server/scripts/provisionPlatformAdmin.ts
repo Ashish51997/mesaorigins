@@ -88,7 +88,7 @@ export async function readPlatformAdminConfig(
       email,
       password: await readPassword(env, io),
       organization: required(env, 'PLATFORM_ADMIN_ORGANIZATION'),
-      name: (env.PLATFORM_ADMIN_NAME || '').trim() || 'MesaDesk Platform Administrator',
+      name: (env.PLATFORM_ADMIN_NAME || '').trim() || 'MesaOrigins Platform Administrator',
       employeeCode: (env.PLATFORM_ADMIN_EMPLOYEE_CODE || '').trim() || 'PLATFORM-ADMIN',
       rotateExisting: env.PLATFORM_ADMIN_ROTATE_EXISTING === '1',
       reuseExisting: env.PLATFORM_ADMIN_REUSE_EXISTING === '1' || env.PLATFORM_ADMIN_ROTATE_EXISTING === '1',
@@ -115,7 +115,7 @@ export async function provisionPlatformAdmin(
   const passwordVerifier = dependencies.passwordVerifier ?? verifyPassword;
 
   return db.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('mesadesk-platform-admin'), hashtext(${input.email}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('mesaorigins-platform-admin'), hashtext(${input.email}))`;
 
     const organization = await tx.organization.findFirst({
       where: { OR: [{ id: input.organization }, { slug: input.organization }] },

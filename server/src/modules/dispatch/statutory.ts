@@ -102,7 +102,7 @@ export async function selectStatutoryProfile(
 }
 
 function evidenceKey(): Buffer | null {
-  const encoded = (process.env.MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY || '').trim();
+  const encoded = (process.env.MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY || '').trim();
   if (!encoded) return null;
   const key = Buffer.from(encoded, 'base64');
   return key.length >= 32 ? key : null;
@@ -114,7 +114,7 @@ function evidenceMessage(organizationId: string, operationalOrderId: string, cor
 
 export function signMesaOpsStatutoryEvidence(organizationId: string, operationalOrderId: string, core: StatutoryEvidenceCore): string {
   const key = evidenceKey();
-  if (!key) throw new Error('MESADESK_OPS_STATUTORY_EVIDENCE_HMAC_KEY must be base64 and decode to at least 32 bytes.');
+  if (!key) throw new Error('MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY must be base64 and decode to at least 32 bytes.');
   return createHmac('sha256', key).update(evidenceMessage(organizationId, operationalOrderId, core)).digest('hex');
 }
 

@@ -121,7 +121,7 @@ const providerResultSchemas = {
 } satisfies Record<ProviderOperation, z.ZodTypeAny>;
 
 const responseEnvelopeSchema = z.object({
-  schema: z.literal('mesadesk.india-compliance.adapter.response.v1'),
+  schema: z.literal('mesaorigins.india-compliance.adapter.response.v1'),
   operation: z.enum([
     'submit_e_invoice', 'cancel_e_invoice', 'generate_e_way_bill',
     'cancel_e_way_bill', 'update_e_way_bill_vehicle', 'extend_e_way_bill',
@@ -147,7 +147,7 @@ function attestedEvidence(
   return {
     providerEvidence,
     mesaDeskAdapterAttestation: {
-      scheme: 'mesadesk-generic-https-hmac-v1',
+      scheme: 'mesaorigins-generic-https-hmac-v1',
       keyId: envelope.attestation.keyId,
       signature: envelope.attestation.signature,
       operation: envelope.operation,
@@ -162,7 +162,7 @@ function attestedEvidence(
 
 /**
  * Production-selectable adapter for an organisation's authorised IRP/GSP/ASP
- * gateway. The gateway contract is deliberately provider-neutral. MesaDesk
+ * gateway. The gateway contract is deliberately provider-neutral. MesaOrigins
  * authenticates with a bearer token and verifies an HMAC attestation over the
  * operation, upstream idempotency identity, request hash and response payload.
  * That attestation authenticates the configured adapter only; it does not
@@ -193,7 +193,7 @@ export class GenericHttpsIndiaComplianceProvider implements IndiaComplianceProvi
     }
     const requestHash = canonicalHash(request);
     const body = {
-      schema: 'mesadesk.india-compliance.adapter.request.v1',
+      schema: 'mesaorigins.india-compliance.adapter.request.v1',
       operation,
       requestId: idempotencyKey,
       requestHash,
@@ -214,8 +214,8 @@ export class GenericHttpsIndiaComplianceProvider implements IndiaComplianceProvi
           'content-type': 'application/json',
           authorization: `Bearer ${this.options.bearerToken}`,
           'idempotency-key': idempotencyKey,
-          'x-mesadesk-operation': operation,
-          'x-mesadesk-request-hash': requestHash,
+          'x-mesaorigins-operation': operation,
+          'x-mesaorigins-request-hash': requestHash,
         },
         body: JSON.stringify(body),
       });

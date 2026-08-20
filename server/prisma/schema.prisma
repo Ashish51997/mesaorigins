@@ -152,7 +152,7 @@ model Organization {
   mesaOpsIdempotencyRecords    MesaOpsIdempotencyRecord[]
 }
 
-// MesaDesk's global product catalog. Organizations subscribe through the
+// MesaOrigins' global product catalog. Organizations subscribe through the
 // explicit join below so one tenant can use any number of services.
 model Service {
   id          String   @id

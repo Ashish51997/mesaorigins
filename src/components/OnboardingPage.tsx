@@ -144,7 +144,7 @@ export default function OnboardingPage({ onLogin }: { onLogin: (session: LoginSe
           <div className="flex items-center gap-3">
             <Logo className="h-9 w-9 shrink-0" />
             <div className="min-w-0">
-              <h1 className="font-extrabold text-slate-900 text-base leading-none">MesaDesk</h1>
+              <h1 className="font-extrabold text-slate-900 text-base leading-none">MesaOrigins</h1>
               <p className="text-[11px] sm:text-xs text-slate-500 font-light mt-0.5">One Platform. Every Operation.</p>
             </div>
           </div>
