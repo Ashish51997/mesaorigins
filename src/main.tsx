@@ -1,12 +1,12 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import App from './App.tsx';
-import LandingPage, { servicePath, type OrganizationSession } from './components/LandingPage.tsx';
-import ServiceAdminPortal from './components/admin/ServiceAdminPortal.tsx';
-import CustomerQuestionnaire from './components/mesaleads/CustomerQuestionnaire.tsx';
-import MesaLeadsApp from './components/mesaleads/MesaLeadsApp.tsx';
-import { MesaErpRoute, SupplierPortalRoute } from './components/mesaerp';
+import App from '@mesaops/App.tsx';
+import LandingPage, { servicePath, type OrganizationSession } from '@platform/LandingPage.tsx';
+import ServiceAdminPortal from '@platform/ServiceAdminPortal.tsx';
+import CustomerQuestionnaire from '@mesaleads/CustomerQuestionnaire.tsx';
+import MesaLeadsApp from '@mesaleads/MesaLeadsApp.tsx';
+import { MesaErpRoute, SupplierPortalRoute } from '@mesaerp/index';
 import './index.css';
 
 const queryClient = new QueryClient({

@@ -92,6 +92,14 @@ function bodyJsonSchema(schema: ZodTypeAny): JsonSchema {
   return rest;
 }
 
+function serviceTagForPath(path: string): string {
+  if (path.startsWith('/api/mesaops/')) return 'MesaOps';
+  if (path.startsWith('/api/mesaerp/')) return 'MesaERP';
+  if (path.startsWith('/api/mesaleads') || path.startsWith('/api/public/mesaleads')) return 'MesaLeads';
+  if (path.startsWith('/api/supplier-portal/')) return 'Supplier Portal';
+  return 'Platform';
+}
+
 function operationFor(route: DiscoveredRoute, doc: RouteDoc): JsonSchema {
   const responses: Record<string, JsonSchema> = {};
 
@@ -159,8 +167,11 @@ function operationFor(route: DiscoveredRoute, doc: RouteDoc): JsonSchema {
     route.permission ? `**Requires permission:** \`${route.permission}\`` : undefined,
   ].filter(Boolean).join('\n\n');
 
+  const serviceTag = serviceTagForPath(route.path);
+  const tags = serviceTag === doc.tag ? [doc.tag] : [serviceTag, doc.tag];
+
   return {
-    tags: [doc.tag],
+    tags,
     operationId: doc.operationId,
     summary: doc.summary,
     ...(description ? { description } : {}),

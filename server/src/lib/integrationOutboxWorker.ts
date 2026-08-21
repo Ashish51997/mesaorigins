@@ -1,7 +1,8 @@
 import { Prisma, type IntegrationOutboxEvent, type PrismaClient } from '@prisma/client';
 import { basePrisma } from '../db';
 import { canonicalHash } from './canonical';
-import { mesaErpOperationalOrderHandoffSchema } from '../modules/planning/schemas';
+import { setIntegrationOutboxDrainHandler } from './integrationOutboxNotify';
+import { mesaErpOperationalOrderHandoffSchema } from '../mesaops/planning/schemas';
 
 const ERP_TO_OPS_EVENT = 'mesaerp.production-demand.released.v1';
 const OPS_TO_ERP_EVENTS = [
@@ -50,6 +51,8 @@ class DeliveryError extends Error {
 export interface IntegrationOutboxWorkerOptions {
   batchSize?: number;
   pollIntervalMs?: number;
+  /** When true, keep a poll timer. Production defaults to false (on-demand drain). */
+  continuousPolling?: boolean;
   retryBaseMs?: number;
   retryMaxMs?: number;
   transactionTimeoutMs?: number;
@@ -68,6 +71,7 @@ export interface IntegrationOutboxPollResult {
 
 export interface IntegrationOutboxWorkerHealth {
   running: boolean;
+  continuousPolling: boolean;
   inFlight: boolean;
   healthy: boolean;
   startedAt: string | null;
@@ -422,6 +426,7 @@ async function deliverEvent(tx: Tx, event: IntegrationOutboxEvent): Promise<Dest
 export class IntegrationOutboxWorker {
   private readonly batchSize: number;
   private readonly pollIntervalMs: number;
+  private readonly continuousPolling: boolean;
   private readonly retryBaseMs: number;
   private readonly retryMaxMs: number;
   private readonly transactionTimeoutMs: number;
@@ -451,6 +456,10 @@ export class IntegrationOutboxWorker {
   ) {
     this.batchSize = Math.min(Math.max(options.batchSize ?? 25, 1), 250);
     this.pollIntervalMs = Math.max(options.pollIntervalMs ?? 2_000, 100);
+    this.continuousPolling = options.continuousPolling
+      ?? (process.env.INTEGRATION_OUTBOX_CONTINUOUS_POLLING === '1'
+        || (process.env.INTEGRATION_OUTBOX_CONTINUOUS_POLLING !== '0'
+          && process.env.NODE_ENV !== 'production'));
     this.retryBaseMs = Math.max(options.retryBaseMs ?? 5_000, 100);
     this.retryMaxMs = Math.max(options.retryMaxMs ?? 15 * 60_000, this.retryBaseMs);
     this.transactionTimeoutMs = Math.max(options.transactionTimeoutMs ?? 7_000, 1_000);
@@ -463,7 +472,13 @@ export class IntegrationOutboxWorker {
     this.health.running = true;
     this.health.startedAt = this.now();
     this.health.stoppedAt = null;
-    this.schedule(0);
+    if (this.continuousPolling) {
+      this.schedule(0);
+      return;
+    }
+    // Production / on-demand: one drain at boot; further drains are scheduled
+    // after IntegrationOutboxEvent inserts so Neon can scale to zero when idle.
+    void this.pollOnce().catch(() => undefined);
   }
 
   async stop(): Promise<void> {
@@ -477,6 +492,7 @@ export class IntegrationOutboxWorker {
   healthSnapshot(): IntegrationOutboxWorkerHealth {
     return {
       running: this.health.running,
+      continuousPolling: this.continuousPolling,
       inFlight: this.health.inFlight,
       healthy: this.health.running && this.health.consecutivePollFailures === 0,
       startedAt: iso(this.health.startedAt),
@@ -640,6 +656,10 @@ export class IntegrationOutboxWorker {
 }
 
 export const integrationOutboxWorker = new IntegrationOutboxWorker();
+
+setIntegrationOutboxDrainHandler(() => {
+  void integrationOutboxWorker.pollOnce().catch(() => undefined);
+});
 
 export function startIntegrationOutboxWorker(): void {
   integrationOutboxWorker.start();

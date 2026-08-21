@@ -124,7 +124,7 @@ afterAll(async () => {
 
 describe('MesaOps service entitlement gate', () => {
   it('makes the global MesaOps stop immediate without disabling onboarding or MesaLeads', async () => {
-    const activeSummary = await request(app).get('/api/summary').set('x-dev-user', ADMIN_EMAIL);
+    const activeSummary = await request(app).get('/api/mesaops/v1/summary').set('x-dev-user', ADMIN_EMAIL);
     expect(activeSummary.status).toBe(200);
 
     // The shared filesystem bridge is permanently retired. Both methods must
@@ -146,7 +146,7 @@ describe('MesaOps service entitlement gate', () => {
     expect(stop.body).toMatchObject({ id: 'mesaops', status: 'stopped' });
 
     const [summary, health, publicQuestionnaire, me, onboarding, mesaLeads, mesaErp] = await Promise.all([
-      request(app).get('/api/summary').set('x-dev-user', ADMIN_EMAIL),
+      request(app).get('/api/mesaops/v1/summary').set('x-dev-user', ADMIN_EMAIL),
       request(app).get('/api/health'),
       request(app).get('/api/public/mesaleads/forms/not-a-real-token'),
       request(app).get('/api/me').set('x-dev-user', ADMIN_EMAIL),
@@ -175,7 +175,7 @@ describe('MesaOps service entitlement gate', () => {
 
     const [erp, ops, leads] = await Promise.all([
       request(app).get('/api/mesaerp/v1/entities').set('x-dev-user', ADMIN_EMAIL),
-      request(app).get('/api/summary').set('x-dev-user', ADMIN_EMAIL),
+      request(app).get('/api/mesaops/v1/summary').set('x-dev-user', ADMIN_EMAIL),
       request(app).get('/api/mesaleads/summary').set('x-dev-user', ADMIN_EMAIL),
     ]);
     expect(erp.status).toBe(403);
@@ -189,7 +189,7 @@ describe('MesaOps service entitlement gate', () => {
       where: { organizationId_serviceId: { organizationId: snapshot.organizationId, serviceId: 'mesaops' } },
       data: { status: 'suspended' },
     });
-    const assignmentBlocked = await request(app).get('/api/summary').set('x-dev-user', ADMIN_EMAIL);
+    const assignmentBlocked = await request(app).get('/api/mesaops/v1/summary').set('x-dev-user', ADMIN_EMAIL);
     expect(assignmentBlocked.status).toBe(403);
     expect(assignmentBlocked.body.error.code).toBe('service_not_enabled');
 
@@ -201,7 +201,7 @@ describe('MesaOps service entitlement gate', () => {
       where: { id: snapshot.organizationId },
       data: { status: 'suspended' },
     });
-    const organizationBlocked = await request(app).get('/api/summary').set('x-dev-user', ADMIN_EMAIL);
+    const organizationBlocked = await request(app).get('/api/mesaops/v1/summary').set('x-dev-user', ADMIN_EMAIL);
     expect(organizationBlocked.status).toBe(403);
     expect(organizationBlocked.body.error.code).toBe('service_not_enabled');
   });

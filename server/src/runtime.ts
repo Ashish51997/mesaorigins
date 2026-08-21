@@ -337,6 +337,7 @@ export const readinessHandler: RequestHandler = async (_req, res) => {
         integrationOutbox: {
           ok: outboxWorker.healthy,
           running: outboxWorker.running,
+          continuousPolling: outboxWorker.continuousPolling,
           inFlight: outboxWorker.inFlight,
           consecutivePollFailures: outboxWorker.consecutivePollFailures,
           lastSuccessfulPollAt: outboxWorker.lastSuccessfulPollAt,

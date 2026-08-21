@@ -10,8 +10,10 @@
 #
 # Required Secret Manager secrets (numeric enabled versions are resolved and
 # pinned onto each revision/job; `latest` is never mounted at runtime):
-#   mesadesk-database-url
-#   mesadesk-direct-database-url
+#   mesadesk-database-url          (Neon pooled app_user)
+#   mesadesk-direct-database-url   (Neon unpooled owner; migrate job only)
+#   mesadesk-neon-project-id       (pre-release gate; build SA)
+#   mesadesk-neon-api-key          (pre-release gate; build SA)
 #   mesadesk-auth-secret
 #   mesadesk-onboarding-emails
 #   mesadesk-vendor-bank-key
@@ -20,11 +22,12 @@
 #   mesadesk-erp-external-evidence-key
 
 substitutions:
-  _REGION: asia-south1
-  # Cloud Run service + Secret Manager IDs remain mesadesk* for continuity.
+  _REGION: asia-southeast1
+  # Cloud Run / secrets still use the existing mesadesk IDs.
   # Images push to Artifact Registry repo `mesaorigins`.
-  # Postgres is Neon; DATABASE_URL / DIRECT_DATABASE_URL secrets must be Neon
-  # pooled + unpooled TCP URLs (not Cloud SQL Unix sockets).
+  # Database is Neon (Singapore); see docs/architecture/production.md.
+  # DATABASE_URL / DIRECT_DATABASE_URL must be Neon pooled + unpooled TCP URLs
+  # (not Cloud SQL Unix sockets).
   _SERVICE: mesadesk
   _REPO: mesaorigins
   # Leave empty to reuse the existing service's stable Cloud Run URL. A first
@@ -69,7 +72,7 @@ steps:
         done
 
         # Keep the ordinary seed/test database clean while a second database
-        # proves the two-tenant legacy upgrade and Cloud SQL RLS boundary.
+        # proves the two-tenant legacy upgrade and Postgres RLS boundary.
         bash scripts/qa/cloudsql-parity-gate.sh "$${database}" "$${network}" "$${quality_image}" /workspace
 
         docker run --rm --network "$${network}" \
@@ -132,18 +135,9 @@ steps:
     args:
       - -ceu
       - |
-        # Neon (or any managed Postgres) durability lives outside Cloud SQL.
-        # Only require that the connection secrets exist with an enabled version.
-        secret_version() {
-          version="$$(gcloud secrets versions list "$$1" --project='$PROJECT_ID' --filter='state=ENABLED' --sort-by='~createTime' --limit=1 --format='value(name)')"
-          version="$${version##*/}"
-          [[ "$${version}" =~ ^[0-9]+$ ]] || { echo "No enabled numeric version for secret $$1" >&2; exit 1; }
-          printf '%s' "$${version}"
-        }
-        database_version="$$(secret_version mesadesk-database-url)"
-        direct_version="$$(secret_version mesadesk-direct-database-url)"
-        echo "Database secrets ready (pooled=mesadesk-database-url:$${database_version}, direct=mesadesk-direct-database-url:$${direct_version})."
-        echo "Confirm Neon PITR/backups in the Neon console; Cloud SQL is not used."
+        chmod +x /workspace/scripts/gcp/neon-pre-release.sh
+        PROJECT_ID="$PROJECT_ID" BUILD_ID="$BUILD_ID" \
+          /workspace/scripts/gcp/neon-pre-release.sh
 
   - id: migrate
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -165,6 +159,7 @@ steps:
           --service-account='mesadesk-migrate@$PROJECT_ID.iam.gserviceaccount.com' \
           --set-env-vars=NODE_ENV=production \
           --set-secrets="DIRECT_DATABASE_URL=mesadesk-direct-database-url:$${direct_version},DATABASE_URL=mesadesk-direct-database-url:$${direct_version}" \
+          --clear-cloudsql-instances \
           --tasks=1 --max-retries=0 --task-timeout=30m
         gcloud run jobs execute "$${migration_job}" --project='$PROJECT_ID' --region='${_REGION}' --wait
 
@@ -217,11 +212,12 @@ steps:
           --image='${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID' \
           --revision-suffix="build-$BUILD_ID" --tag="$${tag}" --no-traffic \
           --allow-unauthenticated --ingress=all --port=8080 \
-          --cpu=1 --memory=1Gi --concurrency=20 --min-instances=1 --max-instances=3 --timeout=300 --no-cpu-throttling \
+          --cpu=1 --memory=1Gi --concurrency=20 --min-instances=0 --max-instances=3 --timeout=300 \
           --service-account='mesadesk-run@$PROJECT_ID.iam.gserviceaccount.com' \
           --update-env-vars="NODE_ENV=production,DEV_AUTH=0,APP_URL=$${app_url},AUTH_URL=$${app_url},TRUST_PROXY_HOPS=${_TRUST_PROXY_HOPS}" \
           --update-secrets="DATABASE_URL=mesadesk-database-url:$${database_version},AUTH_SECRET=mesadesk-auth-secret:$${auth_version},ONBOARDING_ALLOWED_EMAILS=mesadesk-onboarding-emails:$${onboarding_version},MESAORIGINS_VENDOR_BANK_ENCRYPTION_KEY=mesadesk-vendor-bank-key:$${vendor_key_version},MESAORIGINS_ERP_OPS_HANDOFF_HMAC_KEY=mesadesk-erp-ops-handoff-key:$${handoff_key_version},MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY=mesadesk-ops-statutory-key:$${statutory_key_version},MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY=mesadesk-erp-external-evidence-key:$${external_key_version}" \
-          --startup-probe='httpGet.path=/api/ready,httpGet.port=8080,timeoutSeconds=3,periodSeconds=5,failureThreshold=24' \
+          --clear-cloudsql-instances \
+          --startup-probe='httpGet.path=/api/ready,httpGet.port=8080,timeoutSeconds=5,periodSeconds=5,failureThreshold=36' \
           --liveness-probe='httpGet.path=/api/health,httpGet.port=8080,timeoutSeconds=3,periodSeconds=30,failureThreshold=3'
 
         candidate_url="$$(gcloud run services describe '${_SERVICE}' --project='$PROJECT_ID' --region='${_REGION}' --format=json | TAG="$${tag}" python3 -c 'import json, os, sys; d=json.load(sys.stdin); print(next((x.get("url", "") for x in d.get("status", {}).get("traffic", []) if x.get("tag") == os.environ["TAG"]), ""))')"
@@ -237,7 +233,8 @@ steps:
       - -ceu
       - |
         candidate_url="$$(cat /workspace/.release/candidate-url)"
-        curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "$${candidate_url}/api/ready"
+        # Neon + Cloud Run cold start can take several seconds; allow a longer smoke window.
+        curl --fail --silent --show-error --retry 24 --retry-all-errors --retry-delay 5 "$${candidate_url}/api/ready"
         curl --fail --silent --show-error "$${candidate_url}/api/openapi.json" >/dev/null
         curl --fail --silent --show-error --dump-header /tmp/candidate-headers "$${candidate_url}/" >/dev/null
         grep -Eiq '^content-security-policy:' /tmp/candidate-headers

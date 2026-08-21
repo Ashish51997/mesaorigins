@@ -54,6 +54,11 @@ export interface RouteDoc {
 }
 
 export const TAGS: { name: string; description: string }[] = [
+  { name: 'Platform', description: 'Cross-service health, identity, auth and organization onboarding.' },
+  { name: 'MesaOps', description: 'Plant operations: sales order execution, planning, logbooks, QA, inventory, dispatch, maintenance and plant ACL.' },
+  { name: 'MesaERP', description: 'Independent multi-company manufacturing ERP, procurement, accounting, costing and statutory control.' },
+  { name: 'MesaLeads', description: 'Configurable customer questionnaires, lead qualification, pipeline and follow-up.' },
+  { name: 'Supplier Portal', description: 'Vendor-scoped sourcing, order collaboration, compliance evidence, disputes and payment-status visibility. Supplier sessions never enter employee or journal APIs.' },
   { name: 'Health', description: 'Liveness and the caller’s own identity.' },
   { name: 'Sales', description: 'Customers, inquiries, quotations and sales orders — the head of the value chain.' },
   { name: 'Planning', description: 'Scheduling confirmed orders onto a machine, shift and date.' },
@@ -67,9 +72,6 @@ export const TAGS: { name: string; description: string }[] = [
   { name: 'Dashboard', description: 'Aggregated KPIs for the per-role home screens.' },
   { name: 'Administration', description: 'Employees, roles and per-employee screen access.' },
   { name: 'Onboarding', description: 'Create a new organization and its first owner account.' },
-  { name: 'MesaLeads', description: 'Configurable customer questionnaires, lead qualification, pipeline and follow-up.' },
-  { name: 'MesaERP', description: 'Independent multi-company manufacturing ERP, procurement, accounting, costing and statutory control.' },
-  { name: 'Supplier Portal', description: 'Vendor-scoped sourcing, order collaboration, compliance evidence, disputes and payment-status visibility. Supplier sessions never enter employee or journal APIs.' },
 ];
 
 const NOT_FOUND = (what: string): DocumentedError => ({ status: 404, code: 'not_found', when: `No ${what} with that id exists in your organization.` });
@@ -1968,21 +1970,21 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Sales ─────────────────────────────────────────────────────────────────
-  'GET /api/members': {
+  'GET /api/mesaops/v1/members': {
     tag: 'Sales',
     operationId: 'listMembers',
     summary: 'List organization members',
     responseDescription: 'Members of the caller’s organization.',
     responseModel: 'Membership', responseIsArray: true, responseIncludes: ['user'],
   },
-  'GET /api/customers': {
+  'GET /api/mesaops/v1/customers': {
     tag: 'Sales',
     operationId: 'listCustomers',
     summary: 'List customers',
     responseDescription: 'All customers in the caller’s organization.',
     responseModel: 'Customer', responseIsArray: true,
   },
-  'POST /api/customers': {
+  'POST /api/mesaops/v1/customers': {
     tag: 'Sales',
     operationId: 'createCustomer',
     summary: 'Create a customer',
@@ -1992,14 +1994,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'Customer',
     errors: [{ status: 409, code: 'gst_taken', when: 'Another customer already holds that GST number.' }],
   },
-  'GET /api/inquiries': {
+  'GET /api/mesaops/v1/inquiries': {
     tag: 'Sales',
     operationId: 'listInquiries',
     summary: 'List inquiries',
     responseDescription: 'All inquiries with their customer.',
     responseModel: 'Inquiry', responseIsArray: true, responseIncludes: ['customer'],
   },
-  'POST /api/inquiries': {
+  'POST /api/mesaops/v1/inquiries': {
     tag: 'Sales',
     operationId: 'createInquiry',
     summary: 'Raise an inquiry',
@@ -2008,7 +2010,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'Inquiry',
     errors: [{ status: 422, code: 'bad_customer', when: 'The referenced customer does not exist.' }],
   },
-  'POST /api/inquiries/:id/quote': {
+  'POST /api/mesaops/v1/inquiries/:id/quote': {
     tag: 'Sales',
     operationId: 'quoteInquiry',
     summary: 'Quote an inquiry',
@@ -2018,14 +2020,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'Inquiry',
     errors: [NOT_FOUND('inquiry'), { status: 409, code: 'already_ordered', when: 'The inquiry has already been converted to an order.' }],
   },
-  'GET /api/orders': {
+  'GET /api/mesaops/v1/orders': {
     tag: 'Sales',
     operationId: 'listOrders',
     summary: 'List sales orders',
     responseDescription: 'All sales orders with their customer and inquiry.',
     responseModel: 'SalesOrder', responseIsArray: true, responseIncludes: ['customer', 'inquiry'],
   },
-  'POST /api/orders': {
+  'POST /api/mesaops/v1/orders': {
     tag: 'Sales',
     operationId: 'confirmOrder',
     summary: 'Confirm a quoted inquiry as an order',
@@ -2039,7 +2041,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 409, code: 'already_ordered', when: 'The inquiry already has a sales order.' },
     ],
   },
-  'POST /api/orders/:id/cancel': {
+  'POST /api/mesaops/v1/orders/:id/cancel': {
     tag: 'Sales',
     operationId: 'cancelOrder',
     summary: 'Cancel a pending order',
@@ -2050,7 +2052,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Maintenance ───────────────────────────────────────────────────────────
-  'GET /api/machines': {
+  'GET /api/mesaops/v1/machines': {
     tag: 'Maintenance',
     operationId: 'listMachines',
     summary: 'List machines',
@@ -2058,7 +2060,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The machine registry.',
     responseModel: 'Machine', responseIsArray: true,
   },
-  'POST /api/machines': {
+  'POST /api/mesaops/v1/machines': {
     tag: 'Maintenance',
     operationId: 'createMachine',
     summary: 'Register a machine',
@@ -2067,14 +2069,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'Machine',
     errors: [{ status: 409, code: 'code_taken', when: 'A machine with that code already exists in this organization.' }],
   },
-  'GET /api/maintenance': {
+  'GET /api/mesaops/v1/maintenance': {
     tag: 'Maintenance',
     operationId: 'listMaintenanceTasks',
     summary: 'List maintenance tasks',
     responseDescription: 'The preventive maintenance schedule.',
     responseModel: 'MaintenanceTask', responseIsArray: true,
   },
-  'POST /api/maintenance': {
+  'POST /api/mesaops/v1/maintenance': {
     tag: 'Maintenance',
     operationId: 'createMaintenanceTask',
     summary: 'Schedule a maintenance task',
@@ -2083,7 +2085,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'MaintenanceTask',
     errors: [{ status: 422, code: 'bad_machine', when: 'The referenced machine does not exist.' }],
   },
-  'POST /api/maintenance/:id/complete': {
+  'POST /api/mesaops/v1/maintenance/:id/complete': {
     tag: 'Maintenance',
     operationId: 'completeMaintenanceTask',
     summary: 'Mark a maintenance task complete',
@@ -2094,7 +2096,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Planning ──────────────────────────────────────────────────────────────
-  'GET /api/operational-orders': {
+  'GET /api/mesaops/v1/operational-orders': {
     tag: 'Planning',
     operationId: 'listOperationalOrders',
     summary: 'List MesaOps operational orders',
@@ -2102,7 +2104,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'MesaOps-owned operational orders with decimal quantities serialized as strings.',
     responseSchema: arr({ type: 'object' }),
   },
-  'POST /api/operational-orders': {
+  'POST /api/mesaops/v1/operational-orders': {
     tag: 'Planning',
     operationId: 'createOperationalOrder',
     summary: 'Create standalone MesaOps demand',
@@ -2116,7 +2118,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 409, code: 'order_number_exists', when: 'The order number already exists in this organization.' },
     ],
   },
-  'POST /api/operational-orders/handoffs/mesaerp': {
+  'POST /api/mesaops/v1/operational-orders/handoffs/mesaerp': {
     tag: 'Planning',
     operationId: 'acceptMesaErpOperationalOrderSnapshot',
     summary: 'Accept an optional MesaERP demand snapshot',
@@ -2135,7 +2137,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 422, code: 'source_hash_mismatch', when: 'The supplied hash does not match the canonical snapshot payload.' },
     ],
   },
-  'GET /api/operational-orders/handoffs/mesaerp': {
+  'GET /api/mesaops/v1/operational-orders/handoffs/mesaerp': {
     tag: 'Planning',
     operationId: 'listMesaErpOperationalOrderHandoffs',
     summary: 'List durable MesaERP production-demand proposals',
@@ -2150,7 +2152,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 403, code: 'forbidden', when: 'The caller lacks the orders-to-plan screen permission or the proposal belongs to another plant scope.' },
     ],
   },
-  'POST /api/operational-orders/handoffs/mesaerp/:eventId/accept': {
+  'POST /api/mesaops/v1/operational-orders/handoffs/mesaerp/:eventId/accept': {
     tag: 'Planning',
     operationId: 'acceptMesaErpOperationalOrderFromOutbox',
     summary: 'Accept a verified MesaERP outbox proposal',
@@ -2171,7 +2173,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 422, code: 'validation_error', when: 'expectedSourceSnapshotHash is not a lowercase SHA-256 hash.' },
     ],
   },
-  'GET /api/planning/orders': {
+  'GET /api/mesaops/v1/planning/orders': {
     tag: 'Planning',
     operationId: 'listOrdersToPlan',
     summary: 'List orders awaiting planning',
@@ -2179,21 +2181,21 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The planning queue.',
     responseSchema: arr({ type: 'object' }),
   },
-  'GET /api/planning/operators': {
+  'GET /api/mesaops/v1/planning/operators': {
     tag: 'Planning',
     operationId: 'listOperators',
     summary: 'List assignable operators',
     responseDescription: 'Active operators in the caller’s organization.',
     responseModel: 'Membership', responseIsArray: true, responseIncludes: ['user'],
   },
-  'GET /api/plans': {
+  'GET /api/mesaops/v1/plans': {
     tag: 'Planning',
     operationId: 'listPlans',
     summary: 'List production plans',
     responseDescription: 'Production plans with machine, order and customer.',
     responseSchema: arr({ type: 'object' }),
   },
-  'POST /api/plans': {
+  'POST /api/mesaops/v1/plans': {
     tag: 'Planning',
     operationId: 'createPlan',
     summary: 'Schedule an order onto a machine and shift',
@@ -2211,7 +2213,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 422, code: 'bad_machine', when: 'The referenced machine does not exist.' },
     ],
   },
-  'PATCH /api/plans/:id': {
+  'PATCH /api/mesaops/v1/plans/:id': {
     tag: 'Planning',
     operationId: 'updatePlan',
     summary: 'Edit a scheduled plan until start time',
@@ -2228,7 +2230,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 409, code: 'double_booked', when: 'That machine, shift and day are already booked.' },
     ],
   },
-  'POST /api/plans/:id/release': {
+  'POST /api/mesaops/v1/plans/:id/release': {
     tag: 'Planning',
     operationId: 'releasePlan',
     summary: 'Release a plan back to the queue',
@@ -2245,7 +2247,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Manufacturing ─────────────────────────────────────────────────────────
-  'GET /api/logbook/templates': {
+  'GET /api/mesaops/v1/logbook/templates': {
     tag: 'Manufacturing',
     operationId: 'listLogbookTemplates',
     summary: 'List logbook templates',
@@ -2253,14 +2255,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'Templates that shape the operator sheet.',
     responseModel: 'LogbookTemplate', responseIsArray: true,
   },
-  'GET /api/logbook/plans': {
+  'GET /api/mesaops/v1/logbook/plans': {
     tag: 'Manufacturing',
     operationId: 'listPlansToLog',
     summary: 'List plans ready to log',
     responseDescription: 'Plans an operator can open a logbook against.',
     responseModel: 'ProductionPlan', responseIsArray: true, responseIncludes: ['machine', 'salesOrder', 'logbook'],
   },
-  'GET /api/logbook/formulas': {
+  'GET /api/mesaops/v1/logbook/formulas': {
     tag: 'Manufacturing',
     operationId: 'listActiveFormulas',
     summary: 'List active formulations',
@@ -2268,7 +2270,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'Active formulations, identity fields only.',
     responseModel: 'Formulation', responseIsArray: true, responseFields: ['id', 'code', 'rev', 'product'],
   },
-  'GET /api/logbook/tasks': {
+  'GET /api/mesaops/v1/logbook/tasks': {
     tag: 'Manufacturing',
     operationId: 'listMachineTasks',
     summary: 'List machine tasks',
@@ -2276,7 +2278,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'One entry per machine that has work on it.',
     responseSchema: arr(obj({ machine: str, line: str, tasks: arr({ $ref: '#/components/schemas/ProductionPlan' }) })),
   },
-  'GET /api/logbook/resolve': {
+  'GET /api/mesaops/v1/logbook/resolve': {
     tag: 'Manufacturing',
     operationId: 'resolveMachineLogbook',
     summary: 'Resolve machine QR to active plan',
@@ -2290,7 +2292,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     }),
     errors: [NOT_FOUND('machine')],
   },
-  'GET /api/logbook/machine-hub': {
+  'GET /api/mesaops/v1/logbook/machine-hub': {
     tag: 'Manufacturing',
     operationId: 'getMachineLogbookHub',
     summary: 'Get the operator machine hub',
@@ -2312,7 +2314,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       NOT_FOUND('machine'),
     ],
   },
-  'POST /api/logbook/templates': {
+  'POST /api/mesaops/v1/logbook/templates': {
     tag: 'Manufacturing',
     operationId: 'createLogbookTemplate',
     summary: 'Create a logbook template',
@@ -2320,7 +2322,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The created template.',
     responseModel: 'LogbookTemplate',
   },
-  'PATCH /api/logbook/templates/:id': {
+  'PATCH /api/mesaops/v1/logbook/templates/:id': {
     tag: 'Manufacturing',
     operationId: 'updateLogbookTemplate',
     summary: 'Update a logbook template',
@@ -2329,7 +2331,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'LogbookTemplate',
     errors: [NOT_FOUND('template')],
   },
-  'DELETE /api/logbook/templates/:id': {
+  'DELETE /api/mesaops/v1/logbook/templates/:id': {
     tag: 'Manufacturing',
     operationId: 'deleteLogbookTemplate',
     summary: 'Delete a logbook template',
@@ -2338,7 +2340,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseSchema: ACK,
     errors: [NOT_FOUND('template'), { status: 409, code: 'in_use', when: 'Logbooks or plans still reference the template.' }],
   },
-  'GET /api/logbook/ledger': {
+  'GET /api/mesaops/v1/logbook/ledger': {
     tag: 'Manufacturing',
     operationId: 'listLogbookLedger',
     summary: 'Submitted logbook ledger',
@@ -2366,7 +2368,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       })),
     }),
   },
-  'GET /api/logbooks/plan/:planId': {
+  'GET /api/mesaops/v1/logbooks/plan/:planId': {
     tag: 'Manufacturing',
     operationId: 'getLogbookForPlan',
     summary: 'Get the logbook for a plan',
@@ -2375,7 +2377,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The plan’s logbook, or null.',
     responseModel: 'MachineLogbook', responseNullable: true,
   },
-  'POST /api/logbooks': {
+  'POST /api/mesaops/v1/logbooks': {
     tag: 'Manufacturing',
     operationId: 'openLogbook',
     summary: 'Open a logbook for a plan',
@@ -2389,7 +2391,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 422, code: 'no_template', when: 'No logbook template is configured.' },
     ],
   },
-  'PATCH /api/logbooks/:id': {
+  'PATCH /api/mesaops/v1/logbooks/:id': {
     tag: 'Manufacturing',
     operationId: 'updateLogbook',
     summary: 'Save logbook edits',
@@ -2398,7 +2400,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'MachineLogbook',
     errors: [NOT_FOUND('logbook'), { status: 409, code: 'locked', when: 'The logbook is submitted and no longer editable.' }],
   },
-  'POST /api/logbooks/:id/submit': {
+  'POST /api/mesaops/v1/logbooks/:id/submit': {
     tag: 'Manufacturing',
     operationId: 'submitLogbook',
     summary: 'Submit and lock a logbook',
@@ -2414,7 +2416,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Quality ───────────────────────────────────────────────────────────────
-  'GET /api/quality/queue': {
+  'GET /api/mesaops/v1/quality/queue': {
     tag: 'Quality',
     operationId: 'listInspectionQueue',
     summary: 'List rolls awaiting inspection',
@@ -2422,14 +2424,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The inspection queue.',
     responseSchema: arr(obj({ lotNumber: str, colour: str, code: str, machineId: str, date: str, product: str })),
   },
-  'GET /api/quality/inspections': {
+  'GET /api/mesaops/v1/quality/inspections': {
     tag: 'Quality',
     operationId: 'listInspections',
     summary: 'List inspection history',
     responseDescription: 'Past inspections, newest first.',
     responseModel: 'QualityInspection', responseIsArray: true,
   },
-  'POST /api/quality/inspections': {
+  'POST /api/mesaops/v1/quality/inspections': {
     tag: 'Quality',
     operationId: 'createInspection',
     summary: 'Record a QA decision',
@@ -2444,7 +2446,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Dispatch ──────────────────────────────────────────────────────────────
-  'GET /api/dispatch/ready': {
+  'GET /api/mesaops/v1/dispatch/ready': {
     tag: 'Dispatch',
     operationId: 'listReadyOrders',
     summary: 'List orders ready to ship',
@@ -2452,14 +2454,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'Dispatch-ready orders.',
     responseModel: 'SalesOrder', responseIsArray: true, responseIncludes: ['customer'],
   },
-  'GET /api/dispatches': {
+  'GET /api/mesaops/v1/dispatches': {
     tag: 'Dispatch',
     operationId: 'listDispatches',
     summary: 'List dispatch history',
     responseDescription: 'Dispatch records, newest first.',
     responseModel: 'DispatchRecord', responseIsArray: true, responseIncludes: ['salesOrder'],
   },
-  'POST /api/dispatches': {
+  'POST /api/mesaops/v1/dispatches': {
     tag: 'Dispatch',
     operationId: 'createDispatch',
     summary: 'Dispatch an order',
@@ -2488,7 +2490,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Inventory ─────────────────────────────────────────────────────────────
-  'GET /api/inventory/stock': {
+  'GET /api/mesaops/v1/inventory/stock': {
     tag: 'Inventory',
     operationId: 'listStock',
     summary: 'Get on-hand stock',
@@ -2499,14 +2501,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       return obj({ rawMaterials: arr(row), finishedGoods: arr(row) });
     })(),
   },
-  'GET /api/inventory/transactions': {
+  'GET /api/mesaops/v1/inventory/transactions': {
     tag: 'Inventory',
     operationId: 'listInventoryTransactions',
     summary: 'List the stock ledger',
     responseDescription: 'Inventory movements.',
     responseModel: 'InventoryTransaction', responseIsArray: true,
   },
-  'POST /api/inventory/receive': {
+  'POST /api/mesaops/v1/inventory/receive': {
     tag: 'Inventory',
     operationId: 'receiveMaterial',
     summary: 'Receive raw material',
@@ -2514,7 +2516,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The booked IN movement.',
     responseModel: 'InventoryTransaction',
   },
-  'POST /api/inventory/issue': {
+  'POST /api/mesaops/v1/inventory/issue': {
     tag: 'Inventory',
     operationId: 'issueMaterial',
     summary: 'Issue raw material to a machine',
@@ -2529,7 +2531,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── CAPA ──────────────────────────────────────────────────────────────────
-  'GET /api/complaints/batches': {
+  'GET /api/mesaops/v1/complaints/batches': {
     tag: 'CAPA',
     operationId: 'listComplaintBatches',
     summary: 'List dispatched batches',
@@ -2537,14 +2539,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'Dispatched batches with their order and customer.',
     responseModel: 'DispatchRecord', responseIsArray: true, responseIncludes: ['salesOrder'],
   },
-  'GET /api/complaints': {
+  'GET /api/mesaops/v1/complaints': {
     tag: 'CAPA',
     operationId: 'listComplaints',
     summary: 'List complaints',
     responseDescription: 'Complaints, each with its customer and linked CAPA.',
     responseModel: 'Complaint', responseIsArray: true, responseIncludes: ['customer', 'capa'],
   },
-  'POST /api/complaints': {
+  'POST /api/mesaops/v1/complaints': {
     tag: 'CAPA',
     operationId: 'createComplaint',
     summary: 'Log a complaint',
@@ -2554,7 +2556,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'Complaint', responseIncludes: ['capa'],
     errors: [{ status: 422, code: 'not_dispatched', when: 'The order has not been dispatched, so there is no batch to complain about.' }],
   },
-  'POST /api/complaints/:id/resolve': {
+  'POST /api/mesaops/v1/complaints/:id/resolve': {
     tag: 'CAPA',
     operationId: 'resolveComplaint',
     summary: 'Resolve a complaint',
@@ -2568,14 +2570,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 409, code: 'capa_open', when: 'The linked CAPA is still open.' },
     ],
   },
-  'GET /api/capas': {
+  'GET /api/mesaops/v1/capas': {
     tag: 'CAPA',
     operationId: 'listCapas',
     summary: 'List CAPA tickets',
     responseDescription: 'CAPA tickets, newest first.',
     responseModel: 'CAPARecord', responseIsArray: true,
   },
-  'PATCH /api/capas/:id': {
+  'PATCH /api/mesaops/v1/capas/:id': {
     tag: 'CAPA',
     operationId: 'updateCapa',
     summary: 'Update a CAPA',
@@ -2585,7 +2587,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'CAPARecord',
     errors: [NOT_FOUND('CAPA'), { status: 409, code: 'closed', when: 'The CAPA is closed and no longer editable.' }],
   },
-  'POST /api/capas/:id/close': {
+  'POST /api/mesaops/v1/capas/:id/close': {
     tag: 'CAPA',
     operationId: 'closeCapa',
     summary: 'Close a CAPA',
@@ -2601,14 +2603,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Formulations ──────────────────────────────────────────────────────────
-  'GET /api/formulations': {
+  'GET /api/mesaops/v1/formulations': {
     tag: 'Formulations',
     operationId: 'listFormulations',
     summary: 'List formulations',
     responseDescription: 'Formulations with their components.',
     responseModel: 'Formulation', responseIsArray: true,
   },
-  'POST /api/formulations': {
+  'POST /api/mesaops/v1/formulations': {
     tag: 'Formulations',
     operationId: 'createFormulation',
     summary: 'Create a formulation',
@@ -2616,7 +2618,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The created formulation.',
     responseModel: 'Formulation',
   },
-  'PATCH /api/formulations/:id': {
+  'PATCH /api/mesaops/v1/formulations/:id': {
     tag: 'Formulations',
     operationId: 'updateFormulation',
     summary: 'Update a formulation',
@@ -2627,7 +2629,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
-  'GET /api/summary': {
+  'GET /api/mesaops/v1/summary': {
     tag: 'Dashboard',
     operationId: 'getDashboardSummary',
     summary: 'Get dashboard KPIs',
@@ -2645,7 +2647,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       stock: obj({ rawMaterialKg: int, finishedGoodsKg: int }),
     }),
   },
-  'GET /api/management/overview': {
+  'GET /api/mesaops/v1/management/overview': {
     tag: 'Dashboard',
     operationId: 'getManagementOverview',
     summary: 'Managing Director plant overview',
@@ -2675,7 +2677,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── Administration ────────────────────────────────────────────────────────
-  'GET /api/me/permissions': {
+  'GET /api/mesaops/v1/me/permissions': {
     tag: 'Administration',
     operationId: 'getMyPermissions',
     summary: 'Get the caller’s effective access',
@@ -2683,7 +2685,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The caller’s admin flag and screen list.',
     responseSchema: obj({ isAdmin: { type: 'boolean' }, screens: arr(str) }),
   },
-  'GET /api/directory': {
+  'GET /api/mesaops/v1/directory': {
     tag: 'Administration',
     operationId: 'listDirectory',
     summary: 'List the member directory',
@@ -2691,7 +2693,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The member roster.',
     responseSchema: arr(obj({ id: str, name: str, email: str, role: str, employeeCode: str, department: str })),
   },
-  'GET /api/screens': {
+  'GET /api/mesaops/v1/screens': {
     tag: 'Administration',
     operationId: 'listScreens',
     summary: 'List the screen catalog',
@@ -2699,14 +2701,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'The catalog of screen keys.',
     responseSchema: obj({ screens: arr(str) }),
   },
-  'GET /api/employees': {
+  'GET /api/mesaops/v1/employees': {
     tag: 'Administration',
     operationId: 'listEmployees',
     summary: 'List employees',
     responseDescription: 'Employees in the caller’s organization.',
     responseModel: 'Membership', responseIsArray: true, responseIncludes: ['user'],
   },
-  'POST /api/employees': {
+  'POST /api/mesaops/v1/employees': {
     tag: 'Administration',
     operationId: 'createEmployee',
     summary: 'Add an employee',
@@ -2718,7 +2720,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 422, code: 'bad_role', when: 'The referenced role does not exist in this organization.' },
     ],
   },
-  'PATCH /api/employees/:id': {
+  'PATCH /api/mesaops/v1/employees/:id': {
     tag: 'Administration',
     operationId: 'updateEmployee',
     summary: 'Update an employee',
@@ -2727,7 +2729,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'Membership', responseIncludes: ['user'],
     errors: [NOT_FOUND('employee'), { status: 422, code: 'bad_role', when: 'The referenced role does not exist in this organization.' }],
   },
-  'POST /api/employees/:id/password': {
+  'POST /api/mesaops/v1/employees/:id/password': {
     tag: 'Administration',
     operationId: 'setEmployeePassword',
     summary: 'Set an employee’s login password',
@@ -2740,14 +2742,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 409, code: 'shared_identity_password', when: 'The linked global identity belongs to more than one organization.' },
     ],
   },
-  'GET /api/roles': {
+  'GET /api/mesaops/v1/roles': {
     tag: 'Administration',
     operationId: 'listRoles',
     summary: 'List roles',
     responseDescription: 'Built-in and custom roles, each with a count of the employees on it.',
     responseModel: 'Role', responseIsArray: true, responseIncludes: ['_count'],
   },
-  'POST /api/roles': {
+  'POST /api/mesaops/v1/roles': {
     tag: 'Administration',
     operationId: 'createRole',
     summary: 'Create a custom role',
@@ -2756,7 +2758,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'Role',
     errors: [{ status: 409, code: 'name_taken', when: 'A role with that name already exists.' }],
   },
-  'PATCH /api/roles/:id': {
+  'PATCH /api/mesaops/v1/roles/:id': {
     tag: 'Administration',
     operationId: 'updateRole',
     summary: 'Update a role',
@@ -2769,7 +2771,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 409, code: 'name_taken', when: 'A role with that name already exists.' },
     ],
   },
-  'DELETE /api/roles/:id': {
+  'DELETE /api/mesaops/v1/roles/:id': {
     tag: 'Administration',
     operationId: 'deleteRole',
     summary: 'Delete a custom role',
@@ -2782,7 +2784,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 409, code: 'role_in_use', when: 'Employees are still assigned to the role.' },
     ],
   },
-  'GET /api/employees/:id/grants': {
+  'GET /api/mesaops/v1/employees/:id/grants': {
     tag: 'Administration',
     operationId: 'listEmployeeGrants',
     summary: 'List an employee’s screen overrides',
@@ -2791,7 +2793,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'EmployeeGrant', responseIsArray: true,
     errors: [NOT_FOUND('employee')],
   },
-  'PUT /api/employees/:id/grants': {
+  'PUT /api/mesaops/v1/employees/:id/grants': {
     tag: 'Administration',
     operationId: 'setEmployeeGrants',
     summary: 'Replace an employee’s screen overrides',
@@ -2803,7 +2805,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
 
   // ── MesaERP ──────────────────────────────────────────────────────────────
-  'GET /api/mesaops/role-assignments': {
+  'GET /api/mesaops/v1/role-assignments': {
     tag: 'Administration',
     operationId: 'listMesaOpsRoleAssignments',
     summary: 'List MesaOps role and plant assignments',
@@ -2811,7 +2813,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'MesaOps assignments in the caller’s organization.',
     responseModel: 'RoleAssignment', responseIsArray: true, responseIncludes: ['membership', 'role'],
   },
-  'POST /api/mesaops/role-assignments': {
+  'POST /api/mesaops/v1/role-assignments': {
     tag: 'Administration',
     operationId: 'createMesaOpsRoleAssignment',
     summary: 'Assign a MesaOps role and plant scope',
@@ -2830,7 +2832,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 422, code: 'invalid_validity_window', when: 'validTo precedes validFrom.' },
     ],
   },
-  'POST /api/mesaops/role-assignments/:id/revoke': {
+  'POST /api/mesaops/v1/role-assignments/:id/revoke': {
     tag: 'Administration',
     operationId: 'revokeMesaOpsRoleAssignment',
     summary: 'Revoke a MesaOps role assignment',
@@ -2847,7 +2849,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 409, code: 'version_conflict', when: 'The expected row version is stale.' },
     ],
   },
-  'GET /api/mesaops/admin/statutory-rule-profiles': {
+  'GET /api/mesaops/v1/admin/statutory-rule-profiles': {
     tag: 'Administration',
     operationId: 'listMesaOpsStatutoryRuleProfiles',
     summary: 'List MesaOps statutory applicability versions',
@@ -2855,7 +2857,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseDescription: 'MesaOps statutory rule profiles in this organization.',
     responseModel: 'MesaOpsStatutoryRuleProfile', responseIsArray: true,
   },
-  'GET /api/mesaops/admin/statutory-rule-profiles/:id': {
+  'GET /api/mesaops/v1/admin/statutory-rule-profiles/:id': {
     tag: 'Administration',
     operationId: 'getMesaOpsStatutoryRuleProfile',
     summary: 'Get one MesaOps statutory applicability version',
@@ -2864,7 +2866,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     responseModel: 'MesaOpsStatutoryRuleProfile',
     errors: [{ status: 404, code: 'statutory_rule_profile_not_found', when: 'The profile does not exist in this organization.' }],
   },
-  'POST /api/mesaops/admin/statutory-rule-profiles': {
+  'POST /api/mesaops/v1/admin/statutory-rule-profiles': {
     tag: 'Administration',
     operationId: 'createMesaOpsStatutoryRuleProfile',
     summary: 'Create a MesaOps statutory rule draft',
@@ -2880,7 +2882,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       { status: 422, code: 'source_checksum_mismatch', when: 'The source evidence differs from its declared SHA-256 checksum.' },
     ],
   },
-  'POST /api/mesaops/admin/statutory-rule-profiles/:id/approve': {
+  'POST /api/mesaops/v1/admin/statutory-rule-profiles/:id/approve': {
     tag: 'Administration',
     operationId: 'approveMesaOpsStatutoryRuleProfile',
     summary: 'Approve and freeze a MesaOps statutory rule version',

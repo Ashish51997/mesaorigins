@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { checkPermission } from './lib/aclUtils';
-import { calculateOEE, calculateRecipeCost, calculateCompoundingYield, calculateTotalDowntime } from './lib/mfgUtils';
-import { calculateStockLevel, filterTransactionsByType } from './lib/inventoryUtils';
-import { evaluateRollDecision, generateQRMetadata, validateMachineParameters, validateDisposalMethod } from './lib/qaUtils';
-import { isCAPAOverdue, getTargetResolutionDays } from './lib/complaintUtils';
+import { checkPermission } from '@mesaops/lib/aclUtils';
+import { calculateOEE, calculateRecipeCost, calculateCompoundingYield, calculateTotalDowntime } from '@mesaops/lib/mfgUtils';
+import { calculateStockLevel, filterTransactionsByType } from '@mesaops/lib/inventoryUtils';
+import { evaluateRollDecision, generateQRMetadata, validateMachineParameters, validateDisposalMethod } from '@mesaops/lib/qaUtils';
+import { isCAPAOverdue, getTargetResolutionDays } from '@mesaops/lib/complaintUtils';
 
-import { PermissionRule, ACLRequest } from './lib/accessTypes';
-import { BOMRecipe, InventoryTransaction } from './types';
+import { PermissionRule, ACLRequest } from '@mesaops/lib/accessTypes';
+import { BOMRecipe, InventoryTransaction } from '@mesaops/types';
 
 interface TestResult {
   name: string;

@@ -16,6 +16,26 @@
   ],
   "tags": [
     {
+      "name": "Platform",
+      "description": "Cross-service health, identity, auth and organization onboarding."
+    },
+    {
+      "name": "MesaOps",
+      "description": "Plant operations: sales order execution, planning, logbooks, QA, inventory, dispatch, maintenance and plant ACL."
+    },
+    {
+      "name": "MesaERP",
+      "description": "Independent multi-company manufacturing ERP, procurement, accounting, costing and statutory control."
+    },
+    {
+      "name": "MesaLeads",
+      "description": "Configurable customer questionnaires, lead qualification, pipeline and follow-up."
+    },
+    {
+      "name": "Supplier Portal",
+      "description": "Vendor-scoped sourcing, order collaboration, compliance evidence, disputes and payment-status visibility. Supplier sessions never enter employee or journal APIs."
+    },
+    {
       "name": "Health",
       "description": "Liveness and the caller’s own identity."
     },
@@ -66,18 +86,6 @@
     {
       "name": "Onboarding",
       "description": "Create a new organization and its first owner account."
-    },
-    {
-      "name": "MesaLeads",
-      "description": "Configurable customer questionnaires, lead qualification, pipeline and follow-up."
-    },
-    {
-      "name": "MesaERP",
-      "description": "Independent multi-company manufacturing ERP, procurement, accounting, costing and statutory control."
-    },
-    {
-      "name": "Supplier Portal",
-      "description": "Vendor-scoped sourcing, order collaboration, compliance evidence, disputes and payment-status visibility. Supplier sessions never enter employee or journal APIs."
     }
   ],
   "security": [
@@ -92,6 +100,7 @@
     "/api/health": {
       "get": {
         "tags": [
+          "Platform",
           "Health"
         ],
         "operationId": "getHealth",
@@ -149,6 +158,7 @@
     "/api/auth/login": {
       "post": {
         "tags": [
+          "Platform",
           "Health"
         ],
         "operationId": "passwordLogin",
@@ -384,6 +394,7 @@
     "/api/auth/admin-login": {
       "post": {
         "tags": [
+          "Platform",
           "Onboarding"
         ],
         "operationId": "platformAdminPasswordLogin",
@@ -618,6 +629,7 @@
     "/api/auth/session-context": {
       "get": {
         "tags": [
+          "Platform",
           "Health"
         ],
         "operationId": "getSessionContext",
@@ -840,6 +852,7 @@
     "/api/auth/logout": {
       "post": {
         "tags": [
+          "Platform",
           "Health"
         ],
         "operationId": "passwordLogout",
@@ -3757,6 +3770,7 @@
     "/api/me": {
       "get": {
         "tags": [
+          "Platform",
           "Health"
         ],
         "operationId": "getCurrentUser",
@@ -3971,6 +3985,7 @@
     "/api/onboarding/access": {
       "get": {
         "tags": [
+          "Platform",
           "Onboarding"
         ],
         "operationId": "getOnboardingAccess",
@@ -4055,6 +4070,7 @@
     "/api/onboarding/organizations": {
       "get": {
         "tags": [
+          "Platform",
           "Onboarding"
         ],
         "operationId": "listOnboardingOrganizations",
@@ -4307,6 +4323,7 @@
     "/api/onboarding/services": {
       "get": {
         "tags": [
+          "Platform",
           "Onboarding"
         ],
         "operationId": "listMesaOriginsServices",
@@ -4410,6 +4427,7 @@
     "/api/onboarding/services/{id}/status": {
       "put": {
         "tags": [
+          "Platform",
           "Onboarding"
         ],
         "operationId": "setMesaOriginsServiceStatus",
@@ -4558,6 +4576,7 @@
     "/api/onboarding/bootstrap": {
       "post": {
         "tags": [
+          "Platform",
           "Onboarding"
         ],
         "operationId": "bootstrapOrganization",
@@ -4780,6 +4799,7 @@
     "/api/onboarding/organizations/{id}/services": {
       "put": {
         "tags": [
+          "Platform",
           "Onboarding"
         ],
         "operationId": "setOrganizationServices",
@@ -56805,9 +56825,10 @@
         }
       }
     },
-    "/api/members": {
+    "/api/mesaops/v1/members": {
       "get": {
         "tags": [
+          "MesaOps",
           "Sales"
         ],
         "operationId": "listMembers",
@@ -56884,9 +56905,10 @@
         }
       }
     },
-    "/api/customers": {
+    "/api/mesaops/v1/customers": {
       "get": {
         "tags": [
+          "MesaOps",
           "Sales"
         ],
         "operationId": "listCustomers",
@@ -56951,6 +56973,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Sales"
         ],
         "operationId": "createCustomer",
@@ -57096,9 +57119,10 @@
         }
       }
     },
-    "/api/inquiries": {
+    "/api/mesaops/v1/inquiries": {
       "get": {
         "tags": [
+          "MesaOps",
           "Sales"
         ],
         "operationId": "listInquiries",
@@ -57176,6 +57200,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Sales"
         ],
         "operationId": "createInquiry",
@@ -57292,9 +57317,10 @@
         }
       }
     },
-    "/api/inquiries/{id}/quote": {
+    "/api/mesaops/v1/inquiries/{id}/quote": {
       "post": {
         "tags": [
+          "MesaOps",
           "Sales"
         ],
         "operationId": "quoteInquiry",
@@ -57422,9 +57448,10 @@
         }
       }
     },
-    "/api/orders": {
+    "/api/mesaops/v1/orders": {
       "get": {
         "tags": [
+          "MesaOps",
           "Sales"
         ],
         "operationId": "listOrders",
@@ -57506,6 +57533,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Sales"
         ],
         "operationId": "confirmOrder",
@@ -57632,9 +57660,10 @@
         }
       }
     },
-    "/api/orders/{id}/cancel": {
+    "/api/mesaops/v1/orders/{id}/cancel": {
       "post": {
         "tags": [
+          "MesaOps",
           "Sales"
         ],
         "operationId": "cancelOrder",
@@ -57724,9 +57753,10 @@
         }
       }
     },
-    "/api/machines": {
+    "/api/mesaops/v1/machines": {
       "get": {
         "tags": [
+          "MesaOps",
           "Maintenance"
         ],
         "operationId": "listMachines",
@@ -57781,6 +57811,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Maintenance"
         ],
         "operationId": "createMachine",
@@ -57915,9 +57946,10 @@
         }
       }
     },
-    "/api/maintenance": {
+    "/api/mesaops/v1/maintenance": {
       "get": {
         "tags": [
+          "MesaOps",
           "Maintenance"
         ],
         "operationId": "listMaintenanceTasks",
@@ -57982,6 +58014,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Maintenance"
         ],
         "operationId": "createMaintenanceTask",
@@ -58108,9 +58141,10 @@
         }
       }
     },
-    "/api/maintenance/{id}/complete": {
+    "/api/mesaops/v1/maintenance/{id}/complete": {
       "post": {
         "tags": [
+          "MesaOps",
           "Maintenance"
         ],
         "operationId": "completeMaintenanceTask",
@@ -58190,9 +58224,10 @@
         }
       }
     },
-    "/api/operational-orders": {
+    "/api/mesaops/v1/operational-orders": {
       "get": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "listOperationalOrders",
@@ -58257,6 +58292,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "createOperationalOrder",
@@ -58456,9 +58492,10 @@
         }
       }
     },
-    "/api/operational-orders/handoffs/mesaerp": {
+    "/api/mesaops/v1/operational-orders/handoffs/mesaerp": {
       "post": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "acceptMesaErpOperationalOrderSnapshot",
@@ -58677,6 +58714,7 @@
       },
       "get": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "listMesaErpOperationalOrderHandoffs",
@@ -58775,9 +58813,10 @@
         }
       }
     },
-    "/api/operational-orders/handoffs/mesaerp/{eventId}/accept": {
+    "/api/mesaops/v1/operational-orders/handoffs/mesaerp/{eventId}/accept": {
       "post": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "acceptMesaErpOperationalOrderFromOutbox",
@@ -58916,9 +58955,10 @@
         }
       }
     },
-    "/api/planning/orders": {
+    "/api/mesaops/v1/planning/orders": {
       "get": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "listOrdersToPlan",
@@ -58982,9 +59022,10 @@
         }
       }
     },
-    "/api/planning/operators": {
+    "/api/mesaops/v1/planning/operators": {
       "get": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "listOperators",
@@ -59061,9 +59102,10 @@
         }
       }
     },
-    "/api/plans": {
+    "/api/mesaops/v1/plans": {
       "get": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "listPlans",
@@ -59128,6 +59170,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "createPlan",
@@ -59349,9 +59392,10 @@
         }
       }
     },
-    "/api/plans/{id}": {
+    "/api/mesaops/v1/plans/{id}": {
       "patch": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "updatePlan",
@@ -59557,9 +59601,10 @@
         }
       }
     },
-    "/api/plans/{id}/release": {
+    "/api/mesaops/v1/plans/{id}/release": {
       "post": {
         "tags": [
+          "MesaOps",
           "Planning"
         ],
         "operationId": "releasePlan",
@@ -59693,9 +59738,10 @@
         }
       }
     },
-    "/api/logbook/templates": {
+    "/api/mesaops/v1/logbook/templates": {
       "get": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "listLogbookTemplates",
@@ -59750,6 +59796,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "createLogbookTemplate",
@@ -59961,9 +60008,10 @@
         }
       }
     },
-    "/api/logbook/plans": {
+    "/api/mesaops/v1/logbook/plans": {
       "get": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "listPlansToLog",
@@ -60062,9 +60110,10 @@
         }
       }
     },
-    "/api/logbook/formulas": {
+    "/api/mesaops/v1/logbook/formulas": {
       "get": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "listActiveFormulas",
@@ -60143,9 +60192,10 @@
         }
       }
     },
-    "/api/logbook/tasks": {
+    "/api/mesaops/v1/logbook/tasks": {
       "get": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "listMachineTasks",
@@ -60223,9 +60273,10 @@
         }
       }
     },
-    "/api/logbook/resolve": {
+    "/api/mesaops/v1/logbook/resolve": {
       "get": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "resolveMachineLogbook",
@@ -60323,9 +60374,10 @@
         }
       }
     },
-    "/api/logbook/machine-hub": {
+    "/api/mesaops/v1/logbook/machine-hub": {
       "get": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "getMachineLogbookHub",
@@ -60470,9 +60522,10 @@
         }
       }
     },
-    "/api/logbook/ledger": {
+    "/api/mesaops/v1/logbook/ledger": {
       "get": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "listLogbookLedger",
@@ -60665,9 +60718,10 @@
         }
       }
     },
-    "/api/logbook/templates/{id}": {
+    "/api/mesaops/v1/logbook/templates/{id}": {
       "patch": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "updateLogbookTemplate",
@@ -60896,6 +60950,7 @@
       },
       "delete": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "deleteLogbookTemplate",
@@ -60990,9 +61045,10 @@
         }
       }
     },
-    "/api/logbooks/plan/{planId}": {
+    "/api/mesaops/v1/logbooks/plan/{planId}": {
       "get": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "getLogbookForPlan",
@@ -61069,9 +61125,10 @@
         }
       }
     },
-    "/api/logbooks": {
+    "/api/mesaops/v1/logbooks": {
       "post": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "openLogbook",
@@ -61182,9 +61239,10 @@
         }
       }
     },
-    "/api/logbooks/{id}": {
+    "/api/mesaops/v1/logbooks/{id}": {
       "patch": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "updateLogbook",
@@ -61426,9 +61484,10 @@
         }
       }
     },
-    "/api/logbooks/{id}/submit": {
+    "/api/mesaops/v1/logbooks/{id}/submit": {
       "post": {
         "tags": [
+          "MesaOps",
           "Manufacturing"
         ],
         "operationId": "submitLogbook",
@@ -61528,9 +61587,10 @@
         }
       }
     },
-    "/api/quality/queue": {
+    "/api/mesaops/v1/quality/queue": {
       "get": {
         "tags": [
+          "MesaOps",
           "Quality"
         ],
         "operationId": "listInspectionQueue",
@@ -61614,9 +61674,10 @@
         }
       }
     },
-    "/api/quality/inspections": {
+    "/api/mesaops/v1/quality/inspections": {
       "get": {
         "tags": [
+          "MesaOps",
           "Quality"
         ],
         "operationId": "listInspections",
@@ -61681,6 +61742,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Quality"
         ],
         "operationId": "createInspection",
@@ -61830,9 +61892,10 @@
         }
       }
     },
-    "/api/dispatch/ready": {
+    "/api/mesaops/v1/dispatch/ready": {
       "get": {
         "tags": [
+          "MesaOps",
           "Dispatch"
         ],
         "operationId": "listReadyOrders",
@@ -61909,9 +61972,10 @@
         }
       }
     },
-    "/api/dispatches": {
+    "/api/mesaops/v1/dispatches": {
       "get": {
         "tags": [
+          "MesaOps",
           "Dispatch"
         ],
         "operationId": "listDispatches",
@@ -61996,6 +62060,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Dispatch"
         ],
         "operationId": "createDispatch",
@@ -62258,9 +62323,10 @@
         }
       }
     },
-    "/api/inventory/stock": {
+    "/api/mesaops/v1/inventory/stock": {
       "get": {
         "tags": [
+          "MesaOps",
           "Inventory"
         ],
         "operationId": "listStock",
@@ -62357,9 +62423,10 @@
         }
       }
     },
-    "/api/inventory/transactions": {
+    "/api/mesaops/v1/inventory/transactions": {
       "get": {
         "tags": [
+          "MesaOps",
           "Inventory"
         ],
         "operationId": "listInventoryTransactions",
@@ -62423,9 +62490,10 @@
         }
       }
     },
-    "/api/inventory/receive": {
+    "/api/mesaops/v1/inventory/receive": {
       "post": {
         "tags": [
+          "MesaOps",
           "Inventory"
         ],
         "operationId": "receiveMaterial",
@@ -62543,9 +62611,10 @@
         }
       }
     },
-    "/api/inventory/issue": {
+    "/api/mesaops/v1/inventory/issue": {
       "post": {
         "tags": [
+          "MesaOps",
           "Inventory"
         ],
         "operationId": "issueMaterial",
@@ -62660,9 +62729,10 @@
         }
       }
     },
-    "/api/complaints/batches": {
+    "/api/mesaops/v1/complaints/batches": {
       "get": {
         "tags": [
+          "MesaOps",
           "CAPA"
         ],
         "operationId": "listComplaintBatches",
@@ -62746,9 +62816,10 @@
         }
       }
     },
-    "/api/complaints": {
+    "/api/mesaops/v1/complaints": {
       "get": {
         "tags": [
+          "MesaOps",
           "CAPA"
         ],
         "operationId": "listComplaints",
@@ -62830,6 +62901,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "CAPA"
         ],
         "operationId": "createComplaint",
@@ -62949,9 +63021,10 @@
         }
       }
     },
-    "/api/complaints/{id}/resolve": {
+    "/api/mesaops/v1/complaints/{id}/resolve": {
       "post": {
         "tags": [
+          "MesaOps",
           "CAPA"
         ],
         "operationId": "resolveComplaint",
@@ -63041,9 +63114,10 @@
         }
       }
     },
-    "/api/capas": {
+    "/api/mesaops/v1/capas": {
       "get": {
         "tags": [
+          "MesaOps",
           "CAPA"
         ],
         "operationId": "listCapas",
@@ -63107,9 +63181,10 @@
         }
       }
     },
-    "/api/capas/{id}": {
+    "/api/mesaops/v1/capas/{id}": {
       "patch": {
         "tags": [
+          "MesaOps",
           "CAPA"
         ],
         "operationId": "updateCapa",
@@ -63237,9 +63312,10 @@
         }
       }
     },
-    "/api/capas/{id}/close": {
+    "/api/mesaops/v1/capas/{id}/close": {
       "post": {
         "tags": [
+          "MesaOps",
           "CAPA"
         ],
         "operationId": "closeCapa",
@@ -63339,9 +63415,10 @@
         }
       }
     },
-    "/api/formulations": {
+    "/api/mesaops/v1/formulations": {
       "get": {
         "tags": [
+          "MesaOps",
           "Formulations"
         ],
         "operationId": "listFormulations",
@@ -63406,6 +63483,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Formulations"
         ],
         "operationId": "createFormulation",
@@ -63528,9 +63606,10 @@
         }
       }
     },
-    "/api/formulations/{id}": {
+    "/api/mesaops/v1/formulations/{id}": {
       "patch": {
         "tags": [
+          "MesaOps",
           "Formulations"
         ],
         "operationId": "updateFormulation",
@@ -63676,9 +63755,10 @@
         }
       }
     },
-    "/api/summary": {
+    "/api/mesaops/v1/summary": {
       "get": {
         "tags": [
+          "MesaOps",
           "Dashboard"
         ],
         "operationId": "getDashboardSummary",
@@ -63795,9 +63875,10 @@
         }
       }
     },
-    "/api/management/overview": {
+    "/api/mesaops/v1/management/overview": {
       "get": {
         "tags": [
+          "MesaOps",
           "Dashboard"
         ],
         "operationId": "getManagementOverview",
@@ -64055,9 +64136,10 @@
         }
       }
     },
-    "/api/me/permissions": {
+    "/api/mesaops/v1/me/permissions": {
       "get": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "getMyPermissions",
@@ -64119,9 +64201,10 @@
         }
       }
     },
-    "/api/directory": {
+    "/api/mesaops/v1/directory": {
       "get": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "listDirectory",
@@ -64195,9 +64278,10 @@
         }
       }
     },
-    "/api/screens": {
+    "/api/mesaops/v1/screens": {
       "get": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "listScreens",
@@ -64266,9 +64350,10 @@
         }
       }
     },
-    "/api/employees": {
+    "/api/mesaops/v1/employees": {
       "get": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "listEmployees",
@@ -64346,6 +64431,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "createEmployee",
@@ -64486,9 +64572,10 @@
         }
       }
     },
-    "/api/employees/{id}": {
+    "/api/mesaops/v1/employees/{id}": {
       "patch": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "updateEmployee",
@@ -64622,9 +64709,10 @@
         }
       }
     },
-    "/api/employees/{id}/password": {
+    "/api/mesaops/v1/employees/{id}/password": {
       "post": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "setEmployeePassword",
@@ -64750,9 +64838,10 @@
         }
       }
     },
-    "/api/roles": {
+    "/api/mesaops/v1/roles": {
       "get": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "listRoles",
@@ -64830,6 +64919,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "createRole",
@@ -64937,9 +65027,10 @@
         }
       }
     },
-    "/api/roles/{id}": {
+    "/api/mesaops/v1/roles/{id}": {
       "patch": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "updateRole",
@@ -65063,6 +65154,7 @@
       },
       "delete": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "deleteRole",
@@ -65157,9 +65249,10 @@
         }
       }
     },
-    "/api/employees/{id}/grants": {
+    "/api/mesaops/v1/employees/{id}/grants": {
       "get": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "listEmployeeGrants",
@@ -65243,6 +65336,7 @@
       },
       "put": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "setEmployeeGrants",
@@ -65373,9 +65467,10 @@
         }
       }
     },
-    "/api/mesaops/role-assignments": {
+    "/api/mesaops/v1/role-assignments": {
       "get": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "listMesaOpsRoleAssignments",
@@ -65457,6 +65552,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "createMesaOpsRoleAssignment",
@@ -65633,9 +65729,10 @@
         }
       }
     },
-    "/api/mesaops/role-assignments/{id}/revoke": {
+    "/api/mesaops/v1/role-assignments/{id}/revoke": {
       "post": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "revokeMesaOpsRoleAssignment",
@@ -65797,9 +65894,10 @@
         }
       }
     },
-    "/api/mesaops/admin/statutory-rule-profiles": {
+    "/api/mesaops/v1/admin/statutory-rule-profiles": {
       "get": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "listMesaOpsStatutoryRuleProfiles",
@@ -65864,6 +65962,7 @@
       },
       "post": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "createMesaOpsStatutoryRuleProfile",
@@ -66045,9 +66144,10 @@
         }
       }
     },
-    "/api/mesaops/admin/statutory-rule-profiles/{id}": {
+    "/api/mesaops/v1/admin/statutory-rule-profiles/{id}": {
       "get": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "getMesaOpsStatutoryRuleProfile",
@@ -66127,9 +66227,10 @@
         }
       }
     },
-    "/api/mesaops/admin/statutory-rule-profiles/{id}/approve": {
+    "/api/mesaops/v1/admin/statutory-rule-profiles/{id}/approve": {
       "post": {
         "tags": [
+          "MesaOps",
           "Administration"
         ],
         "operationId": "approveMesaOpsStatutoryRuleProfile",
