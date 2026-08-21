@@ -153,13 +153,16 @@ steps:
         }
         direct_version="$$(secret_version mesadesk-direct-database-url)"
         migration_job='${_SERVICE}-migrate'
+        # Cloud Run Jobs do not support --clear-cloudsql-instances (services only).
+        # Empty --set-cloudsql-instances= clears any legacy Cloud SQL attachment for Neon TCP.
         gcloud run jobs deploy "$${migration_job}" \
           --project='$PROJECT_ID' --region='${_REGION}' \
           --image='${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}-migration:$BUILD_ID' \
           --service-account='mesadesk-migrate@$PROJECT_ID.iam.gserviceaccount.com' \
+          --cpu=1 --memory=1Gi \
           --set-env-vars=NODE_ENV=production \
           --set-secrets="DIRECT_DATABASE_URL=mesadesk-direct-database-url:$${direct_version},DATABASE_URL=mesadesk-direct-database-url:$${direct_version}" \
-          --clear-cloudsql-instances \
+          --set-cloudsql-instances= \
           --tasks=1 --max-retries=0 --task-timeout=30m
         gcloud run jobs execute "$${migration_job}" --project='$PROJECT_ID' --region='${_REGION}' --wait
 
@@ -213,6 +216,7 @@ steps:
           --revision-suffix="build-$BUILD_ID" --tag="$${tag}" --no-traffic \
           --allow-unauthenticated --ingress=all --port=8080 \
           --cpu=1 --memory=1Gi --concurrency=20 --min-instances=0 --max-instances=3 --timeout=300 \
+          --cpu-throttling \
           --service-account='mesadesk-run@$PROJECT_ID.iam.gserviceaccount.com' \
           --update-env-vars="NODE_ENV=production,DEV_AUTH=0,APP_URL=$${app_url},AUTH_URL=$${app_url},TRUST_PROXY_HOPS=${_TRUST_PROXY_HOPS}" \
           --update-secrets="DATABASE_URL=mesadesk-database-url:$${database_version},AUTH_SECRET=mesadesk-auth-secret:$${auth_version},ONBOARDING_ALLOWED_EMAILS=mesadesk-onboarding-emails:$${onboarding_version},MESAORIGINS_VENDOR_BANK_ENCRYPTION_KEY=mesadesk-vendor-bank-key:$${vendor_key_version},MESAORIGINS_ERP_OPS_HANDOFF_HMAC_KEY=mesadesk-erp-ops-handoff-key:$${handoff_key_version},MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY=mesadesk-ops-statutory-key:$${statutory_key_version},MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY=mesadesk-erp-external-evidence-key:$${external_key_version}" \

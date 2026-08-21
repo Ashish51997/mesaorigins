@@ -272,6 +272,7 @@ through an incident-reviewed recovery procedure.
 
 | Symptom | Action |
 |---|---|
+| `gcloud run jobs deploy` rejects `--clear-cloudsql-instances` | Jobs only support `--set-cloudsql-instances=` (empty) to detach Cloud SQL. Keep `--clear-cloudsql-instances` on the service deploy step only. |
 | Neon safety gate fails history/protected branch | In Neon console set ≥7 day history and protect the production branch, then rerun. |
 | Snapshot API unavailable | The gate falls back to a named restore branch; if both fail, check the Neon API key scopes. |
 | Migration job cannot connect | Confirm `mesadesk-direct-database-url` is the **unpooled** Neon host with `connect_timeout=30`. |

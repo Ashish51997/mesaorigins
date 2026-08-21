@@ -171,16 +171,20 @@ print(f"Protected branch ok: {primary.get('name')} ({primary['id']})")
 PY
 
 BRANCH_ID="$(cat /tmp/neon-branch-id)"
-SNAP_NAME="pre-release-${BUILD_ID:-manual}"
+# Keep names short/safe for Neon branch fallback (alphanumeric + hyphen, <= 50).
+SNAP_BASE="pre-rel-${BUILD_ID:-manual}"
+SNAP_NAME="$(printf '%s' "$SNAP_BASE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-50)"
 echo "==> Creating pre-release snapshot ${SNAP_NAME}"
 # Neon snapshot API: POST /projects/{project_id}/branches/{branch_id}/snapshot
 # Some accounts use /snapshots; try snapshot endpoint first, fall back to branch create name.
 if ! SNAP_JSON="$(neon_post "/projects/${NEON_PROJECT_ID}/branches/${BRANCH_ID}/snapshot" \
   "{\"name\":\"${SNAP_NAME}\"}" 2>/tmp/neon-snap-err.txt)"; then
   # Fallback: create an immediate timestamped child branch as a restore point.
-  echo "Snapshot endpoint unavailable; creating restore branch instead."
+  # Append epoch so retries never collide with a leftover restore branch.
+  RESTORE_NAME="$(printf '%s-%s' "$SNAP_NAME" "$(date +%s)" | cut -c1-63)"
+  echo "Snapshot endpoint unavailable; creating restore branch ${RESTORE_NAME} instead."
   SNAP_JSON="$(neon_post "/projects/${NEON_PROJECT_ID}/branches" \
-    "{\"branch\":{\"name\":\"${SNAP_NAME}\",\"parent_id\":\"${BRANCH_ID}\"},\"endpoints\":[]}")"
+    "{\"branch\":{\"name\":\"${RESTORE_NAME}\",\"parent_id\":\"${BRANCH_ID}\"},\"endpoints\":[]}")"
 fi
 printf '%s' "$SNAP_JSON" > /tmp/neon-snapshot.json
 python3 <<'PY'
