@@ -1,9 +1,12 @@
 # Production release pipeline for MesaOrigins.
 #
 # The release is intentionally ordered as:
-#   disposable full-stack quality gate -> immutable images -> verified backup
+#   disposable full-stack quality gate -> immutable images -> DB secret gate
 #   -> role bootstrap + additive migration job -> no-traffic candidate -> candidate smoke
 #   -> traffic promotion -> stable-URL smoke -> latest tag.
+#
+# Production Postgres is Neon (TCP URLs in Secret Manager), not Cloud SQL.
+# Do not attach Cloud SQL instances to Cloud Run or call gcloud sql here.
 #
 # Required Secret Manager secrets (numeric enabled versions are resolved and
 # pinned onto each revision/job; `latest` is never mounted at runtime):
@@ -23,6 +26,8 @@ substitutions:
   # Cloud Run / secrets still use the existing mesadesk IDs.
   # Images push to Artifact Registry repo `mesaorigins`.
   # Database is Neon (Singapore); see docs/architecture/production.md.
+  # DATABASE_URL / DIRECT_DATABASE_URL must be Neon pooled + unpooled TCP URLs
+  # (not Cloud SQL Unix sockets).
   _SERVICE: mesadesk
   _REPO: mesaorigins
   # Leave empty to reuse the existing service's stable Cloud Run URL. A first
@@ -124,7 +129,7 @@ steps:
     name: gcr.io/cloud-builders/docker
     args: [push, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}-migration:$BUILD_ID']
 
-  - id: database-safety-gate
+  - id: database-secret-gate
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: bash
     args:
