@@ -15,6 +15,46 @@ set -euo pipefail
 NEON_API="${NEON_API:-https://console.neon.tech/api/v2}"
 NEON_MIN_HISTORY_SECONDS="${NEON_MIN_HISTORY_SECONDS:-604800}"
 PROJECT_ID="${PROJECT_ID:?PROJECT_ID is required}"
+BUILD_SA="${BUILD_SA:-mesadesk-build@${PROJECT_ID}.iam.gserviceaccount.com}"
+
+require_secret() {
+  local name="$1"
+  if ! gcloud secrets describe "$name" --project="$PROJECT_ID" &>/dev/null; then
+    cat >&2 <<EOF
+Missing Secret Manager secret: ${name}
+
+Create it (value is not printed by these docs), then grant the build SA:
+
+  printf '%s' 'YOUR_VALUE' | gcloud secrets create ${name} --project=${PROJECT_ID} --data-file=-
+  gcloud secrets add-iam-policy-binding ${name} \\
+    --project=${PROJECT_ID} \\
+    --member=serviceAccount:${BUILD_SA} \\
+    --role=roles/secretmanager.secretAccessor
+
+Required Neon gate secrets:
+  mesadesk-neon-project-id   Neon console project id
+  mesadesk-neon-api-key      Neon API key (console → Account settings → API keys)
+
+Or run scripts/gcp/provision.sh with:
+  MESAORIGINS_NEON_PROJECT_ID_VALUE=...
+  MESAORIGINS_NEON_API_KEY_VALUE=...
+EOF
+    exit 1
+  fi
+  local version
+  version="$(gcloud secrets versions list "$name" --project="$PROJECT_ID" --filter='state=ENABLED' --sort-by='~createTime' --limit=1 --format='value(name)')"
+  version="${version##*/}"
+  [[ "$version" =~ ^[0-9]+$ ]] || {
+    echo "Secret ${name} has no enabled version." >&2
+    exit 1
+  }
+}
+
+echo "==> Checking required Neon / database secrets exist"
+require_secret mesadesk-database-url
+require_secret mesadesk-direct-database-url
+require_secret mesadesk-neon-project-id
+require_secret mesadesk-neon-api-key
 
 secret_value() {
   local name="$1"
@@ -51,47 +91,77 @@ echo "==> Verifying Neon project ${NEON_PROJECT_ID}"
 PROJECT_JSON="$(neon_get "/projects/${NEON_PROJECT_ID}")"
 printf '%s' "$PROJECT_JSON" > /tmp/neon-project.json
 
-python3 - "$NEON_MIN_HISTORY_SECONDS" <<'PY'
-import json, sys
-min_history = int(sys.argv[1])
+# Auto-remediate common durability settings so releases do not fail one-by-one.
+python3 - "$NEON_API" "$NEON_PROJECT_ID" "$NEON_API_KEY" "$NEON_MIN_HISTORY_SECONDS" <<'PY'
+import json, sys, urllib.request
+
+api, project_id, api_key, min_history = sys.argv[1:5]
+min_history = int(min_history)
 project = json.load(open("/tmp/neon-project.json")).get("project") or json.load(open("/tmp/neon-project.json"))
-failures = []
 region = project.get("region_id") or project.get("region") or ""
 if region and "ap-southeast-1" not in region and "aws-ap-southeast-1" not in region:
-    failures.append(f"expected Neon region aws-ap-southeast-1, got {region!r}")
-# Neon exposes history retention as seconds on newer APIs; accept hours when present.
+    raise SystemExit(f"Neon production safety gate failed: expected aws-ap-southeast-1, got {region!r}")
+
 history = project.get("history_retention_seconds")
 if history is None and project.get("history_retention_hours") is not None:
     history = int(project["history_retention_hours"]) * 3600
-if history is None:
-    # Some payloads nest settings; treat missing as fail-closed for production.
-    settings = project.get("settings") or {}
-    history = settings.get("history_retention_seconds")
-    if history is None and settings.get("history_retention_hours") is not None:
-        history = int(settings["history_retention_hours"]) * 3600
-if history is None:
-    failures.append("history retention is missing; set at least 7 days in the Neon console")
-elif int(history) < min_history:
-    failures.append(f"history retention {history}s is below required {min_history}s (7 days)")
-if failures:
-    raise SystemExit("Neon production safety gate failed: " + "; ".join(failures))
+history = int(history or 0)
+
+def patch_project(body: dict) -> dict:
+    request = urllib.request.Request(
+        f"{api}/projects/{project_id}",
+        data=json.dumps(body).encode(),
+        method="PATCH",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(request) as response:
+        return json.load(response)
+
+if history < min_history:
+    print(f"Raising Neon history retention from {history}s to {min_history}s")
+    updated = patch_project({"project": {"history_retention_seconds": min_history}})
+    history = int((updated.get("project") or {}).get("history_retention_seconds") or 0)
+    if history < min_history:
+        raise SystemExit(
+            f"Neon production safety gate failed: history retention {history}s is below required {min_history}s (7 days)"
+        )
 print(f"Neon project ok (region={region or 'unspecified'}, history_seconds={history})")
 PY
 
 echo "==> Listing branches; production branch must be protected"
 BRANCHES_JSON="$(neon_get "/projects/${NEON_PROJECT_ID}/branches")"
 printf '%s' "$BRANCHES_JSON" > /tmp/neon-branches.json
-python3 <<'PY'
-import json
+python3 - "$NEON_API" "$NEON_PROJECT_ID" "$NEON_API_KEY" <<'PY'
+import json, sys, urllib.request
+
+api, project_id, api_key = sys.argv[1:4]
 payload = json.load(open("/tmp/neon-branches.json"))
 branches = payload.get("branches") or []
 if not branches:
     raise SystemExit("Neon production safety gate failed: no branches returned")
-# Prefer the default/primary branch; otherwise the first branch named main/production.
 primary = next((b for b in branches if b.get("default") or b.get("primary")), None)
 if primary is None:
     primary = next((b for b in branches if (b.get("name") or "").lower() in {"main", "production", "prod"}), branches[0])
 protected = bool(primary.get("protected") or primary.get("protection_status") == "protected")
+if not protected:
+    print(f"Protecting Neon branch {primary.get('name')!r}")
+    request = urllib.request.Request(
+        f"{api}/projects/{project_id}/branches/{primary['id']}",
+        data=json.dumps({"branch": {"protected": True}}).encode(),
+        method="PATCH",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(request) as response:
+        primary = json.load(response).get("branch") or primary
+    protected = bool(primary.get("protected") or primary.get("protection_status") == "protected")
 if not protected:
     raise SystemExit(
         f"Neon production safety gate failed: branch {primary.get('name')!r} is not protected"
