@@ -102,7 +102,23 @@ DIRECT_DATABASE_URL='postgresql://neondb_owner:REDACTED@ep-xxx.ap-southeast-1.aw
 
 Do not set `SEED=1` against production.
 
-## 3. Public origin and proxy trust
+## 3. One-shot preflight (recommended before each release)
+
+Run this from a machine with `gcloud` and Neon API access so Cloud Build does
+not fail one secret/gate step at a time:
+
+```bash
+export PROJECT_ID=football-analysis-473513
+export REGION=asia-southeast1
+./scripts/gcp/preflight-production.sh
+```
+
+It verifies Artifact Registry, required secrets + IAM, Neon Singapore region,
+7-day history, protected `main`, pooled vs unpooled URL shape (adds
+`connect_timeout=30` when missing), and dry-runs `neon-pre-release.sh`
+(including snapshot/restore-point creation).
+
+## 4. Public origin and proxy trust
 
 `APP_URL` and `AUTH_URL` are pinned to the same public HTTPS origin. The first
 release must provide it explicitly. Later releases can omit `_APP_URL` and the
@@ -131,7 +147,7 @@ gcloud builds submit --config cloudbuild.yaml \
 Do not push the working tree directly to the automatic production branch until
 the complete quality gate is green.
 
-## 4. What the release pipeline does
+## 5. What the release pipeline does
 
 `cloudbuild.yaml` performs these steps in order:
 
@@ -164,7 +180,7 @@ forward-migrated database.
 (~$0.40–$0.70 per release). Run quality-only CI on PRs; promote only from the
 release branch. See [production.md](../architecture/production.md).
 
-## 5. Scale-to-zero and cold start
+## 6. Scale-to-zero and cold start
 
 Production Cloud Run uses `min-instances=0` and default CPU throttling. The
 integration outbox drains on process start and after each outbox insert; it does
@@ -183,7 +199,7 @@ To pin always-on later (only if a 3-shift plant requires it): disable Neon
 scale-to-zero and deploy with `--min-instances=1 --no-cpu-throttling`. Both
 layers must stay awake together or Neon will never sleep.
 
-## 6. Post-release verification
+## 7. Post-release verification
 
 ```bash
 SERVICE_URL="$(gcloud run services describe mesadesk \
@@ -229,13 +245,13 @@ replace its password, also set `PLATFORM_ADMIN_ROTATE_EXISTING=1`; the password
 update and revocation of all existing sessions are atomic. Remove the temporary
 password file after storing the credential in an approved password manager.
 
-## 7. Staging
+## 8. Staging
 
 Prefer a Neon **branch** of production (scale-to-zero on) and a separate Cloud
 Run service with `min-instances=0`. Do not provision a second always-on database
 for staging.
 
-## 8. Rotation and rollback
+## 9. Rotation and rollback
 
 Adding a new secret version does not silently change a running revision. Run the
 release pipeline to pin and verify the new version.
@@ -252,7 +268,7 @@ Database migrations are not rolled back automatically. Correct a migration
 with a new forward migration. Restore from the pre-release Neon snapshot only
 through an incident-reviewed recovery procedure.
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Action |
 |---|---|
