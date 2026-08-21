@@ -7,13 +7,19 @@ coverage/
 .env*
 !.env.example
 
-# Runtime datastore — rewritten every second by the server; never a source artifact.
+# Runtime / local scratch — never source artifacts
 data.json
+branding/
+output/
+storage/
+tmp/
 
-# Local database dumps and ad-hoc connection files.
+# Local database dumps and ad-hoc connection files
 *.dump
 .cloudsql*
 .neon-urls.env
+
+# Agent tooling (vendored skills stay local unless explicitly tracked)
 .agents/
 .cursor/mcp.json
 .cursor/skills/*

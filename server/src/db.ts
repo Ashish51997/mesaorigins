@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { scheduleIntegrationOutboxDrain } from './lib/integrationOutboxNotify';
 import { tenantContext } from './lib/tenantContext';
 
 // Global models are part of the identity/tenancy plane — they are queried before
@@ -15,11 +16,35 @@ function delegateKey(model: string): string {
 
 const globalForPrisma = globalThis as unknown as { basePrisma?: PrismaClient };
 
+function createBasePrisma(): PrismaClient {
+  const client = new PrismaClient({
+    log: process.env.PRISMA_LOG === '1' ? ['query', 'warn', 'error'] : ['warn', 'error'],
+  });
+  // Notify the outbox worker after durable inserts so production can drain
+  // on-demand instead of holding Neon awake with a 2s poll loop.
+  const extended = client.$extends({
+    query: {
+      integrationOutboxEvent: {
+        async create({ args, query }) {
+          const result = await query(args);
+          scheduleIntegrationOutboxDrain();
+          return result;
+        },
+        async createMany({ args, query }) {
+          const result = await query(args);
+          scheduleIntegrationOutboxDrain();
+          return result;
+        },
+      },
+    },
+  });
+  return extended as unknown as PrismaClient;
+}
+
 // Raw client — used for global/platform work (orgs, users, memberships, auth
 // lookups, seeding) where tenant scoping must not apply.
 export const basePrisma =
-  globalForPrisma.basePrisma ??
-  new PrismaClient({ log: process.env.PRISMA_LOG === '1' ? ['query', 'warn', 'error'] : ['warn', 'error'] });
+  globalForPrisma.basePrisma ?? createBasePrisma();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.basePrisma = basePrisma;
 

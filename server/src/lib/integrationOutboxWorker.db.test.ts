@@ -4,8 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { canonicalHash } from './canonical';
 import { IntegrationOutboxWorker } from './integrationOutboxWorker';
 import { tenantContext } from './tenantContext';
-import { acceptMesaErpOperationalOrder } from '../modules/planning/service';
-import { mesaErpOperationalOrderHandoffSchema } from '../modules/planning/schemas';
+import { acceptMesaErpOperationalOrder } from '../mesaops/planning/service';
+import { mesaErpOperationalOrderHandoffSchema } from '../mesaops/planning/schemas';
 import { basePrisma } from '../db';
 
 const enabled = process.env.RUN_MESAERP_DB_INTEGRATION === '1' && Boolean(process.env.DIRECT_DATABASE_URL);
@@ -275,11 +275,41 @@ describe.skipIf(!enabled)('reliable integration outbox worker', () => {
   });
 
   it('exposes explicit start, health and graceful stop state', async () => {
-    const worker = new IntegrationOutboxWorker(direct, { organizationIds: [orgA], pollIntervalMs: 60_000, now: () => fixedNow });
-    expect(worker.healthSnapshot()).toMatchObject({ running: false, healthy: false, inFlight: false });
+    const worker = new IntegrationOutboxWorker(direct, {
+      organizationIds: [orgA],
+      pollIntervalMs: 60_000,
+      continuousPolling: true,
+      now: () => fixedNow,
+    });
+    expect(worker.healthSnapshot()).toMatchObject({
+      running: false,
+      healthy: false,
+      continuousPolling: true,
+      inFlight: false,
+    });
     worker.start();
-    expect(worker.healthSnapshot()).toMatchObject({ running: true, healthy: true, startedAt: fixedNow.toISOString() });
+    expect(worker.healthSnapshot()).toMatchObject({
+      running: true,
+      healthy: true,
+      continuousPolling: true,
+      startedAt: fixedNow.toISOString(),
+    });
     await worker.stop();
     expect(worker.healthSnapshot()).toMatchObject({ running: false, healthy: false, stoppedAt: fixedNow.toISOString() });
+  });
+
+  it('supports on-demand drain without a continuous poll timer', async () => {
+    const worker = new IntegrationOutboxWorker(direct, {
+      organizationIds: [orgA],
+      continuousPolling: false,
+      now: () => fixedNow,
+    });
+    worker.start();
+    expect(worker.healthSnapshot()).toMatchObject({
+      running: true,
+      continuousPolling: false,
+      healthy: true,
+    });
+    await worker.stop();
   });
 });

@@ -1,39 +1,42 @@
 #!/usr/bin/env bash
-# One-time GCP bootstrap for MesaOrigins (Cloud SQL + Artifact Registry + secrets + IAM).
-# Prerequisites: gcloud auth login, billing on the project.
+# One-time GCP bootstrap for MesaOrigins (Neon Postgres + Artifact Registry + secrets + IAM).
+# Prerequisites: gcloud auth login, billing on the project, Neon Launch project in aws-ap-southeast-1.
 #
 # Usage:
-#   export PROJECT_ID=mesaorigins-prod   # or your project
-#   export REGION=asia-south1
+#   export PROJECT_ID=mesaorigins-prod
+#   export REGION=asia-southeast1
+#   # Stream Neon URLs into Secret Manager (values are never printed):
+#   export MESAORIGINS_DATABASE_URL_VALUE='postgresql://app_user:...@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&pgbouncer=true&connect_timeout=30&connection_limit=5&pool_timeout=20&schema=public'
+#   export MESAORIGINS_DIRECT_DATABASE_URL_VALUE='postgresql://neondb_owner:...@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&connect_timeout=30&schema=public'
+#   export MESAORIGINS_NEON_PROJECT_ID_VALUE='your-neon-project-id'
+#   export MESAORIGINS_NEON_API_KEY_VALUE='...'   # Neon console API key; snapshot gate
 #   ./scripts/gcp/provision.sh
+#
+# Neon console (before first release):
+#   - Region: aws-ap-southeast-1 (Singapore). Do not use a non-colocated region.
+#   - Scale-to-zero: enabled (default Launch suspend ~5 minutes).
+#   - History / instant restore window: at least 7 days.
+#   - Protect the production branch.
+#   - Create least-privilege role app_user (no BYPASSRLS / superuser) for runtime.
+#   - Owner / migration role stays on DIRECT_DATABASE_URL only.
 
 set -euo pipefail
 
-
 PROJECT_ID="${PROJECT_ID:-football-analysis-473513}"
-REGION="${REGION:-asia-south1}"
-INSTANCE="${INSTANCE:-mesadesk-pg}"
-# Regional HA requires a dedicated-core tier; shared-core db-f1-micro is not a
-# suitable production financial-book database.
-EDITION="${EDITION:-ENTERPRISE}"
-TIER="${TIER:-db-custom-1-3840}"
-DB_NAME="${DB_NAME:-masspolimer}"
-DB_OWNER="${DB_OWNER:-masspolimer}"
-DB_APP="${DB_APP:-app_user}"
+REGION="${REGION:-asia-southeast1}"
 REPO="${REPO:-mesaorigins}"
 SERVICE="${SERVICE:-mesadesk}"
 SA_NAME="mesadesk-run"
 MIGRATE_SA_NAME="mesadesk-migrate"
 BUILD_SA_NAME="mesadesk-build"
 
-echo "==> Project: $PROJECT_ID  region: $REGION"
+echo "==> Project: $PROJECT_ID  region: $REGION (Neon-backed; no Cloud SQL)"
 
 gcloud config set project "$PROJECT_ID"
 
 echo "==> Enable APIs"
 gcloud services enable \
   run.googleapis.com \
-  sqladmin.googleapis.com \
   secretmanager.googleapis.com \
   artifactregistry.googleapis.com \
   cloudbuild.googleapis.com \
@@ -47,81 +50,12 @@ if ! gcloud artifacts repositories describe "$REPO" --location="$REGION" &>/dev/
     --description="MesaOrigins images"
 fi
 
-echo "==> Cloud SQL Postgres 16 ($INSTANCE)"
-if ! gcloud sql instances describe "$INSTANCE" --project="$PROJECT_ID" &>/dev/null; then
-  # Generate credentials and stream their connection URLs directly into Secret
-  # Manager. Credential values are never written to stdout.
-  OWNER_PASS="$(openssl rand -base64 24 | tr -d '=+/')"
-  APP_PASS="$(openssl rand -base64 24 | tr -d '=+/')"
-  gcloud sql instances create "$INSTANCE" \
-    --database-version=POSTGRES_16 \
-    --edition="$EDITION" \
-    --tier="$TIER" \
-    --region="$REGION" \
-    --storage-size=20 \
-    --storage-auto-increase \
-    --availability-type=REGIONAL \
-    --root-password="$OWNER_PASS" \
-    --backup-start-time=18:30 \
-    --enable-point-in-time-recovery \
-    --retained-backups-count=30 \
-    --retained-transaction-log-days=7 \
-    --deletion-protection
-
-  gcloud sql databases create "$DB_NAME" --instance="$INSTANCE"
-
-  # Cloud SQL root is `postgres`. Create app roles matching local docker-compose.
-  # Use Cloud SQL Auth Proxy later for setup-roles.sql; here create users.
-  gcloud sql users create "$DB_OWNER" --instance="$INSTANCE" --password="$OWNER_PASS" || true
-  gcloud sql users create "$DB_APP" --instance="$INSTANCE" --password="$APP_PASS" || true
-
-  SOCKET="/cloudsql/${PROJECT_ID}:${REGION}:${INSTANCE}"
-  # Prisma + Cloud SQL connector (Unix socket).
-  DATABASE_URL="postgresql://${DB_APP}:${APP_PASS}@localhost/${DB_NAME}?host=${SOCKET}&schema=public&connection_limit=5&pool_timeout=10&connect_timeout=10"
-  DIRECT_DATABASE_URL="postgresql://${DB_OWNER}:${OWNER_PASS}@localhost/${DB_NAME}?host=${SOCKET}&schema=public"
-
-  printf '%s' "$DATABASE_URL" | gcloud secrets create mesadesk-database-url --data-file=- 2>/dev/null \
-    || printf '%s' "$DATABASE_URL" | gcloud secrets versions add mesadesk-database-url --data-file=-
-  printf '%s' "$DIRECT_DATABASE_URL" | gcloud secrets create mesadesk-direct-database-url --data-file=- 2>/dev/null \
-    || printf '%s' "$DIRECT_DATABASE_URL" | gcloud secrets versions add mesadesk-direct-database-url --data-file=-
-
-  echo "Secrets mesadesk-database-url and mesadesk-direct-database-url created."
-else
-  echo "Instance $INSTANCE already exists — skipping create."
-  if [[ "${HARDEN_EXISTING_SQL:-0}" == "1" ]]; then
-    echo "==> Enabling regional HA, backups, PITR and deletion protection"
-    gcloud sql instances patch "$INSTANCE" --quiet \
-      --tier="$TIER" \
-      --availability-type=REGIONAL \
-      --backup-start-time=18:30 \
-      --enable-point-in-time-recovery \
-      --retained-backups-count=30 \
-      --retained-transaction-log-days=7 \
-      --deletion-protection
-  else
-    echo "Set HARDEN_EXISTING_SQL=1 to apply the required production durability controls."
-  fi
-fi
-
-# Cloud SQL assigns new built-in users the managed cloudsqlsuperuser database
-# role by default. The application identity must not retain that effective
-# membership. Remove every database-role assignment through the Cloud SQL Admin
-# API for both new and existing instances; protected Cloud SQL role state cannot
-# be made safe by the release migration's SQL alone.
-echo "==> Revoke default Cloud SQL database roles from $DB_APP"
-gcloud sql users assign-roles "$DB_APP" \
-  --instance="$INSTANCE" \
-  --project="$PROJECT_ID" \
-  --type=BUILT_IN \
-  --database-roles= \
-  --revoke-existing-roles
-
-# An existing instance may predate this provisioner. Never invent or print a
-# replacement connection string: accept an operator-supplied value only when a
-# required database secret is missing, and stream it directly to Secret Manager.
-ensure_database_secret() {
+# Never invent or print connection strings. Accept operator-supplied Neon URLs only
+# when a required database secret is missing, and stream them into Secret Manager.
+ensure_secret_from_env() {
   local secret_name="$1"
   local value_variable="$2"
+  local hint="$3"
   if gcloud secrets describe "$secret_name" &>/dev/null; then
     echo "Secret $secret_name already exists."
     return
@@ -130,7 +64,7 @@ ensure_database_secret() {
   local secret_value="${!value_variable:-}"
   if [[ -z "$secret_value" ]]; then
     echo "Missing required secret $secret_name." >&2
-    echo "Set $value_variable to the existing Cloud SQL socket URL and rerun; the value will not be printed." >&2
+    echo "Set $value_variable ($hint) and rerun; the value will not be printed." >&2
     exit 1
   fi
   printf '%s' "$secret_value" | gcloud secrets create "$secret_name" --data-file=-
@@ -138,25 +72,30 @@ ensure_database_secret() {
   echo "Created $secret_name."
 }
 
-ensure_database_secret mesadesk-database-url MESAORIGINS_DATABASE_URL_VALUE
-ensure_database_secret mesadesk-direct-database-url MESAORIGINS_DIRECT_DATABASE_URL_VALUE
+echo "==> Neon connection secrets"
+ensure_secret_from_env mesadesk-database-url MESAORIGINS_DATABASE_URL_VALUE \
+  "Neon pooled app_user URL (-pooler host, pgbouncer=true, connect_timeout=30)"
+ensure_secret_from_env mesadesk-direct-database-url MESAORIGINS_DIRECT_DATABASE_URL_VALUE \
+  "Neon unpooled owner URL (no -pooler, migrate/setup-roles only)"
+ensure_secret_from_env mesadesk-neon-project-id MESAORIGINS_NEON_PROJECT_ID_VALUE \
+  "Neon project id from the console"
+ensure_secret_from_env mesadesk-neon-api-key MESAORIGINS_NEON_API_KEY_VALUE \
+  "Neon API key used by the pre-release snapshot gate"
 
 echo "==> Runtime service account"
 if ! gcloud iam service-accounts describe "${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" &>/dev/null; then
   gcloud iam service-accounts create "$SA_NAME" --display-name="MesaOrigins Cloud Run"
 fi
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
-# --condition=None required when the project policy already has conditional bindings.
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/cloudsql.client" \
-  --condition=None --quiet
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/logging.logWriter" \
   --condition=None --quiet
-# Remove legacy project-wide grants. Runtime secret access is granted per
-# secret below, and image publication belongs only to the build identity.
+# Remove legacy Cloud SQL and project-wide secret grants from older bootstraps.
+gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/cloudsql.client" \
+  --condition=None --quiet 2>/dev/null || true
 gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/secretmanager.secretAccessor" \
@@ -173,10 +112,11 @@ fi
 MIGRATE_SA_EMAIL="${MIGRATE_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:${MIGRATE_SA_EMAIL}" \
-  --role="roles/cloudsql.client" --condition=None --quiet
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${MIGRATE_SA_EMAIL}" \
   --role="roles/logging.logWriter" --condition=None --quiet
+gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${MIGRATE_SA_EMAIL}" \
+  --role="roles/cloudsql.client" \
+  --condition=None --quiet 2>/dev/null || true
 
 echo "==> Dedicated Cloud Build release service account"
 if ! gcloud iam service-accounts describe "${BUILD_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" &>/dev/null; then
@@ -188,13 +128,16 @@ for role in \
   roles/artifactregistry.writer \
   roles/run.admin \
   roles/logging.logWriter \
-  roles/secretmanager.viewer \
-  roles/cloudsql.admin
+  roles/secretmanager.viewer
 do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="serviceAccount:${BUILD_SA_EMAIL}" \
     --role="$role" --condition=None --quiet
 done
+gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${BUILD_SA_EMAIL}" \
+  --role="roles/cloudsql.admin" \
+  --condition=None --quiet 2>/dev/null || true
 
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
 CLOUD_BUILD_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
@@ -211,8 +154,6 @@ for workload_identity in "$SA_EMAIL" "$MIGRATE_SA_EMAIL"; do
     --role="roles/iam.serviceAccountUser" --quiet
 done
 
-# The trigger uses BUILD_SA_EMAIL. Remove legacy privileges from the default
-# Cloud Build and Compute identities so a bypass build cannot deploy releases.
 CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 for legacy_member in "serviceAccount:${CB_SA}" "serviceAccount:${COMPUTE_SA}"; do
@@ -285,17 +226,29 @@ gcloud secrets add-iam-policy-binding mesadesk-direct-database-url \
   --member="serviceAccount:${MIGRATE_SA_EMAIL}" \
   --role="roles/secretmanager.secretAccessor" --quiet
 
+# Build identity may read Neon project id + API key for the pre-release snapshot
+# gate, and may resolve numeric secret versions (viewer already granted). Grant
+# accessor only on the Neon ops secrets — never on application crypto keys.
+for secret in mesadesk-neon-project-id mesadesk-neon-api-key; do
+  gcloud secrets add-iam-policy-binding "$secret" \
+    --member="serviceAccount:${BUILD_SA_EMAIL}" \
+    --role="roles/secretmanager.secretAccessor" --quiet
+done
+
 cat <<EOF
 
-Done (bootstrap).
+Done (Neon bootstrap).
 
 Next:
-  1. Apply roles + migrate (see DEPLOY_GCP.md § migrate)
+  1. In Neon: confirm scale-to-zero, >=7 day history, protected production branch,
+     app_user least-privilege, then run setup-roles via DIRECT_DATABASE_URL
+     (see docs/ops/deploy-gcp.md).
   2. Deploy:
        gcloud builds submit --config cloudbuild.yaml \\
-         --substitutions=_REGION=${REGION},_SERVICE=${SERVICE},_INSTANCE=${INSTANCE}
+         --service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILD_SA_EMAIL}" \\
+         --substitutions=_REGION=${REGION},_REPO=${REPO},_SERVICE=${SERVICE},_APP_URL=https://your-origin
 
-Cloud Run service account to use (optional override in deploy):
+Cloud Run service account:
   ${SA_EMAIL}
 Cloud Run migration service account:
   ${MIGRATE_SA_EMAIL}

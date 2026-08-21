@@ -1,7 +1,7 @@
 /**
  * Auth.js (Express) config — Google OAuth + Prisma database sessions.
  * Password login is handled separately (Credentials cannot use DB sessions);
- * it writes the same Session rows and cookie — see modules/auth/router.ts.
+ * it writes the same Session rows and cookie — see platform/auth/router.ts.
  */
 import type { ExpressAuthConfig } from '@auth/express';
 import Google from '@auth/express/providers/google';

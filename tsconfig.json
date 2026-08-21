@@ -15,10 +15,13 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
+    "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@shared/*": ["src/shared/*"],
+      "@platform/*": ["src/platform/*"],
+      "@mesaops/*": ["src/mesaops/*"],
+      "@mesaerp/*": ["src/mesaerp/*"],
+      "@mesaleads/*": ["src/mesaleads/*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true

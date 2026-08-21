@@ -3,41 +3,27 @@ import { ExpressAuth } from '@auth/express';
 import { requestLog } from './middleware/log';
 import { authenticate, authMode, googleSignInAvailable } from './middleware/auth';
 import { resolveTenant } from './middleware/tenant';
-import { requireService } from './middleware/serviceEntitlement';
 import { notFound, errorHandler } from './middleware/error';
-import { authRouter } from './modules/auth/router';
-import { onboardingRouter } from './modules/onboarding/router';
-import { salesRouter } from './modules/sales/router';
-import { maintenanceRouter } from './modules/maintenance/router';
-import { planningRouter } from './modules/planning/router';
-import { logbookRouter } from './modules/logbook/router';
-import { qualityRouter } from './modules/quality/router';
-import { dispatchRouter } from './modules/dispatch/router';
-import { inventoryRouter } from './modules/inventory/router';
-import { capaRouter } from './modules/capa/router';
-import { formulationRouter } from './modules/formulation/router';
-import { dashboardRouter } from './modules/dashboard/router';
-import { adminRouter } from './modules/admin/router';
-import { mesaLeadsRouter, publicMesaLeadsRouter } from './modules/mesaleads/router';
-import { mesaErpRouter, mesaErpVendorAccessRouter, supplierManagementRouter, supplierPortalRouter } from './mesaerp';
-import { mesaErpSourceToPayRouter } from './mesaerp/sourceToPayRouter';
-import { mesaErpCommercialManufacturingRouter } from './mesaerp/commercialManufacturingRouter';
-import { mesaErpIndiaComplianceRouter } from './mesaerp/indiaComplianceRouter';
-import { mesaErpValuedInventoryRouter } from './mesaerp/valuedInventoryRouter';
-import { mesaErpFinanceControlRouter } from './mesaerp/financeControlRouter';
-import { mesaErpPlanningRouter } from './mesaerp/planningRouter';
-import { mesaErpHandoffTdsRouter } from './mesaerp/handoffTdsRouter';
+import { authRouter, onboardingRouter } from './platform';
+import { mountMesaOpsRouters } from './mesaops';
+import { mesaLeadsRouter, publicMesaLeadsRouter } from './mesaleads';
+import { mountMesaErpRouters, supplierPortalRouter } from './mesaerp';
 import { createDocsRouter } from './openapi/router';
 import { collectRoutes, type DiscoveredRoute } from './openapi/routes';
 import { authConfig, authSecretConfigured } from './auth/config';
 import { publicMesaLeadsPreBodyRateLimit, readinessHandler, securityHeaders } from './runtime';
+
+export type BuildApiRouterOptions = {
+  /** Include legacy flat MesaOps paths. OpenAPI discovery always leaves this off. */
+  mesaOpsCompat?: boolean;
+};
 
 /**
  * Builds the `/api` router. Exported on its own so the OpenAPI generator can
  * walk the very same route stack the server serves, rather than a description
  * of it that could drift.
  */
-export function buildApiRouter(): Router {
+export function buildApiRouter(opts: BuildApiRouterOptions = {}): Router {
   const api = express.Router();
 
   // Public: liveness + which auth mode the API is in.
@@ -78,43 +64,10 @@ export function buildApiRouter(): Router {
 
   // MesaERP is independently entitled and mounted before the MesaOps gate.
   // A finance-only organization must never need MesaOps to use its own books.
-  api.use('/mesaerp/v1', requireService('mesaerp'), mesaErpRouter);
-  api.use('/mesaerp/v1', requireService('mesaerp'), mesaErpVendorAccessRouter);
-  api.use('/mesaerp/v1', requireService('mesaerp'), mesaErpSourceToPayRouter);
-  api.use('/mesaerp/v1', requireService('mesaerp'), mesaErpCommercialManufacturingRouter);
-  api.use('/mesaerp/v1', requireService('mesaerp'), mesaErpIndiaComplianceRouter);
-  api.use('/mesaerp/v1', requireService('mesaerp'), supplierManagementRouter);
-  api.use('/mesaerp/v1', requireService('mesaerp'), mesaErpValuedInventoryRouter);
-  api.use('/mesaerp/v1', requireService('mesaerp'), mesaErpFinanceControlRouter);
-  api.use('/mesaerp/v1', requireService('mesaerp'), mesaErpPlanningRouter);
-  api.use('/mesaerp/v1', requireService('mesaerp'), mesaErpHandoffTdsRouter);
+  mountMesaErpRouters(api);
 
-  // Every router below belongs to MesaOps. A global stop, suspended
-  // organization, or inactive assignment fails closed before domain handlers.
-  api.use(requireService('mesaops'));
-
-  // Vertical slice: customers → inquiry → quotation → order + directory.
-  api.use(salesRouter);
-  // Maintenance: machine registry + machine-linked maintenance tasks.
-  api.use(maintenanceRouter);
-  // Planning: orders-to-plan queue + machine/shift production plans.
-  api.use(planningRouter);
-  // Manufacturing: shift logbooks gated on a scheduled plan.
-  api.use(logbookRouter);
-  // Quality: roll inspection queue from submitted logbooks; a pass books FG stock.
-  api.use(qualityRouter);
-  // Dispatch: produced orders → packing/statutory evidence → physical dispatch.
-  api.use(dispatchRouter);
-  // Inventory: ledger-derived stock board + RM receive/issue.
-  api.use(inventoryRouter);
-  // CAPA: complaints on dispatched batches → closed-loop CAPA.
-  api.use(capaRouter);
-  // Formulations (BOM): coded RM-component recipes with revisions.
-  api.use(formulationRouter);
-  // Dashboard: real KPI aggregates for the per-role home screens.
-  api.use(dashboardRouter);
-  // Admin: employees, custom roles, per-employee access + the caller's permissions.
-  api.use(adminRouter);
+  // MesaOps under /mesaops/v1 (+ optional legacy flat-path compat).
+  mountMesaOpsRouters(api, { compat: opts.mesaOpsCompat });
 
   return api;
 }
@@ -122,10 +75,11 @@ export function buildApiRouter(): Router {
 /**
  * Every route this server serves, read back off the mounted stacks. The OpenAPI
  * document is built from exactly this, so it cannot describe a route that does
- * not exist — or miss one that does.
+ * not exist — or miss one that does. Compat flat paths are excluded so the
+ * contract stays on canonical `/api/mesaops/v1/*` only.
  */
 export function discoverRoutes(): DiscoveredRoute[] {
-  return collectRoutes(buildApiRouter(), '/api');
+  return collectRoutes(buildApiRouter({ mesaOpsCompat: false }), '/api');
 }
 
 /**
@@ -155,6 +109,7 @@ export function mountApi(app: Express): void {
   app.use('/api/public/mesaleads', publicMesaLeadsPreBodyRateLimit, express.json({ limit: '16mb' }));
   app.use('/api/supplier-portal/v1', express.json({ limit: '2mb' }));
   app.use('/api/mesaerp/v1', express.json({ limit: '2mb' }));
+  app.use('/api/mesaops/v1', express.json({ limit: '512kb' }));
   app.use('/api', express.json({ limit: '512kb' }));
 
   // Auth.js OAuth routes (Google callback, CSRF, sign-out). Requires AUTH_SECRET.
@@ -169,6 +124,7 @@ export function mountApi(app: Express): void {
   // before they hold a credential.
   app.use('/api', createDocsRouter(discoverRoutes));
 
+  // Runtime mounts include MesaOps compat when enabled (default outside production).
   app.use('/api', buildApiRouter());
   app.use('/api', notFound); // unknown /api/* → JSON 404, never the SPA shell
 }

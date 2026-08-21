@@ -27,7 +27,7 @@ import {
   initialCustomerComplaints,
   initialCapaRecords,
   initialMachines,
-} from '../../src/mockData';
+} from '../../src/mesaops/mockData';
 
 // Seeding is admin tooling: connect with the privileged owner role (like
 // migrations) so TRUNCATE works and inserts aren't gated by RLS.

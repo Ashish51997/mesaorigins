@@ -1,49 +1,19 @@
 #!/usr/bin/env bash
-# Run Prisma migrate + setup-roles against Cloud SQL via Auth Proxy.
+# Run Prisma migrate + setup-roles against Neon using the owner (direct) URL.
 #
 # Usage:
-#   export PROJECT_ID=football-analysis-473513 REGION=asia-south1 INSTANCE=mesadesk-pg
+#   export DIRECT_DATABASE_URL='postgresql://owner:...@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&connect_timeout=30&schema=public'
 #   ./scripts/gcp/migrate.sh
-#   SEED=1 ./scripts/gcp/migrate.sh   # optional demo data
+#   SEED=1 ./scripts/gcp/migrate.sh   # optional demo data — never against customer prod
 #
-# If DIRECT_DATABASE_URL is unset, loads mesadesk-direct-database-url from Secret
-# Manager and rewrites the Cloud SQL socket host to 127.0.0.1:$PROXY_PORT.
+# If DIRECT_DATABASE_URL is unset, loads mesadesk-direct-database-url from Secret Manager.
 
 set -euo pipefail
 
 PROJECT_ID="${PROJECT_ID:-football-analysis-473513}"
-REGION="${REGION:-asia-south1}"
-INSTANCE="${INSTANCE:-mesadesk-pg}"
-PROXY_PORT="${PROXY_PORT:-5433}"
-CONNECTION="${PROJECT_ID}:${REGION}:${INSTANCE}"
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
-
-if ! command -v cloud-sql-proxy >/dev/null 2>&1; then
-  echo "Install Cloud SQL Auth Proxy:"
-  echo "  brew install cloud-sql-proxy"
-  exit 1
-fi
-
-# Socket URL from Secret Manager → TCP URL for local Auth Proxy.
-rewrite_socket_to_tcp() {
-  local url="$1"
-  # postgresql://user:pass@localhost/db?host=/cloudsql/...&schema=public
-  # → postgresql://user:pass@127.0.0.1:PORT/db?schema=public
-  python3 - "$url" "$PROXY_PORT" <<'PY'
-import sys, re
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse, quote
-url, port = sys.argv[1], sys.argv[2]
-u = urlparse(url)
-# password may contain special chars already percent-encoded
-userinfo = u.netloc.split("@", 1)[0] if "@" in u.netloc else ""
-db = u.path.lstrip("/") or "masspolimer"
-qs = parse_qs(u.query)
-schema = (qs.get("schema") or ["public"])[0]
-print(f"postgresql://{userinfo}@127.0.0.1:{port}/{db}?schema={schema}")
-PY
-}
 
 if [[ -z "${DIRECT_DATABASE_URL:-}" ]]; then
   if ! command -v gcloud >/dev/null 2>&1; then
@@ -51,20 +21,27 @@ if [[ -z "${DIRECT_DATABASE_URL:-}" ]]; then
     exit 1
   fi
   echo "==> Loading mesadesk-direct-database-url from Secret Manager"
-  SECRET_URL="$(gcloud secrets versions access latest \
+  DIRECT_DATABASE_URL="$(gcloud secrets versions access latest \
     --secret=mesadesk-direct-database-url \
     --project="$PROJECT_ID")"
-  DIRECT_DATABASE_URL="$(rewrite_socket_to_tcp "$SECRET_URL")"
 fi
+
+case "$DIRECT_DATABASE_URL" in
+  *neon.tech*) ;;
+  *)
+    echo "DIRECT_DATABASE_URL does not look like a Neon host (expected *.neon.tech)." >&2
+    exit 1
+    ;;
+esac
+case "$DIRECT_DATABASE_URL" in
+  *-pooler.*)
+    echo "DIRECT_DATABASE_URL must be the unpooled Neon host (no -pooler)." >&2
+    exit 1
+    ;;
+esac
 
 export DIRECT_DATABASE_URL
 export DATABASE_URL="${DATABASE_URL:-$DIRECT_DATABASE_URL}"
-
-echo "==> Starting Cloud SQL Auth Proxy on :${PROXY_PORT} ($CONNECTION)"
-cloud-sql-proxy --port="$PROXY_PORT" "$CONNECTION" &
-PROXY_PID=$!
-trap 'kill $PROXY_PID 2>/dev/null || true' EXIT
-sleep 3
 
 echo "==> MesaERP preflight, runtime-role bootstrap and additive migration"
 # Keep the manual path identical to the migration image/Cloud Build contract:
