@@ -813,8 +813,8 @@ describe('MesaLeads questionnaire builder', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load MesaOps plant template' }));
 
     expect(screen.getByDisplayValue('MesaOps Plant Digitisation — Requirements Questionnaire')).toBeTruthy();
-    expect(screen.getAllByText(/Your plant already runs on strong discipline/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByDisplayValue('Contact and company')).toBeTruthy();
+    expect(screen.getAllByText(/Your team already runs the plant/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByDisplayValue('Your contact details')).toBeTruthy();
     expect(screen.getByText(/Loaded MesaOps plant digitisation template/)).toBeTruthy();
   });
 
