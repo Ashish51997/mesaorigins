@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "docs:openapi": "tsx server/scripts/emitOpenApi.ts",
     "provision:aone": "tsx server/scripts/provisionAone.ts",
+    "provision:mesaworks": "tsx server/scripts/provisionMesaWorks.ts",
     "provision:platform-admin": "tsx server/scripts/provisionPlatformAdmin.ts",
     "db:generate": "prisma generate",
     "db:up": "docker compose up -d postgres",

@@ -1,4 +1,11 @@
 import type { LeadQuestion, LeadStage, QuestionType } from './types';
+import {
+  desiredMesaOpsPlantQuestions,
+  MESAOPS_PLANT_FORM_FAMILY,
+  MESAOPS_PLANT_FORM_META,
+} from './mesaopsPlantForm';
+
+export { MESAOPS_PLANT_FORM_FAMILY, MESAOPS_PLANT_FORM_META };
 
 export const LEAD_STAGES: Array<{ id: LeadStage; label: string; short: string }> = [
   { id: 'new', label: 'New', short: 'New' },
@@ -92,6 +99,20 @@ export const IMM_FORM_QUESTIONS: LeadQuestion[] = [
   }),
   q('additional_notes', 'long_text', 'Anything else we should know?', 290, { placeholder: 'Budget, timeline, quality checks, installation constraints or other expectations' }),
 ];
+
+/** MesaOps plant-digitisation questionnaire (FormBuilder + MesaWorks provision). */
+export const MESAOPS_PLANT_FORM_QUESTIONS: LeadQuestion[] = desiredMesaOpsPlantQuestions().map((question) => ({
+  key: question.key,
+  type: question.type,
+  label: question.label,
+  helpText: question.helpText,
+  placeholder: question.placeholder,
+  required: question.required,
+  options: [...question.options],
+  validation: { ...question.validation },
+  ...(question.visibilityRule ? { visibilityRule: { ...question.visibilityRule } } : {}),
+  sortOrder: question.sortOrder,
+}));
 
 export function humanize(value: string): string {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());

@@ -4,7 +4,7 @@
 | --- | --- |
 | [architecture/](architecture/) | Current MesaOrigins platform architecture ([api-services.md](architecture/api-services.md), [production.md](architecture/production.md)) |
 | [ops/](ops/) | Local, Docker, and GCP/Neon runbooks |
-| [specs/](specs/) | Product specs and glossary (`context.md`) |
+| [specs/](specs/) | Product specs and glossary (`context.md`); client discovery: [mesaops-client-requirements-questionnaire.md](specs/mesaops-client-requirements-questionnaire.md) |
 | [adr/](adr/) | Architecture decision records |
 | [archive/](archive/) | Historical Mass Polimer / early design docs |
 | [marketing/](marketing/) | Pitch deck and related assets |

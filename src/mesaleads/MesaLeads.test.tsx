@@ -807,6 +807,17 @@ describe('MesaLeads questionnaire builder', () => {
     expect(previewView.getByText('Conditional detail')).toBeTruthy();
   });
 
+  it('loads the MesaOps plant digitisation template into a new draft', () => {
+    render(<FormBuilder form={null} onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load MesaOps plant template' }));
+
+    expect(screen.getByDisplayValue('MesaOps Plant Digitisation — Requirements Questionnaire')).toBeTruthy();
+    expect(screen.getAllByText(/Your plant already runs on strong discipline/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByDisplayValue('Contact and company')).toBeTruthy();
+    expect(screen.getByText(/Loaded MesaOps plant digitisation template/)).toBeTruthy();
+  });
+
   it('saves the configured draft before publishing a versioned public form', async () => {
     let draft: LeadForm | undefined;
     post.mockImplementation(async (path: string, body?: { name: string; description: string; questions: LeadQuestion[] }) => {
