@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { ApiError } from '@shared/lib/apiClient';
 import { createLeadFormLink, publishLeadForm, saveLeadForm } from './api';
-import { humanize, IMM_FORM_QUESTIONS, QUESTION_TYPES } from './constants';
+import { humanize, IMM_FORM_QUESTIONS, MESAOPS_PLANT_FORM_META, MESAOPS_PLANT_FORM_QUESTIONS, QUESTION_TYPES } from './constants';
 import type { LeadForm, LeadFormLink, LeadQuestion, QuestionType, VisibilityRule } from './types';
 
 const inputClass = 'min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100';
@@ -210,6 +210,16 @@ export default function FormBuilder({
   const remove = (key: string) => setQuestions((current) => normalizeOrder(current.filter((question) => question.key !== key)));
   const add = (type: QuestionType) => setQuestions((current) => [...current, newQuestion(type, (current.length + 1) * 10)]);
 
+  const loadMesaOpsPlantTemplate = () => {
+    if (locked) return;
+    setName(MESAOPS_PLANT_FORM_META.name);
+    setDescription(MESAOPS_PLANT_FORM_META.description);
+    setPrivacyNotice(MESAOPS_PLANT_FORM_META.privacyNotice);
+    setQuestions(copyQuestions(MESAOPS_PLANT_FORM_QUESTIONS));
+    setError('');
+    setNotice('Loaded MesaOps plant digitisation template. Review and save as a draft.');
+  };
+
   const save = async (): Promise<LeadForm | null> => {
     if (name.trim().length < 2 || questions.filter((question) => question.type !== 'section').length === 0) {
       setError('Add a questionnaire name and at least one question.');
@@ -320,7 +330,16 @@ export default function FormBuilder({
                 <h2 className="text-sm font-bold text-slate-900">Questions</h2>
                 <p className="mt-0.5 text-[11px] text-slate-500">Use sections to create a clear multi-step customer form.</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {!locked && (
+                  <button
+                    type="button"
+                    onClick={loadMesaOpsPlantTemplate}
+                    className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:border-blue-300 hover:text-blue-800"
+                  >
+                    Load MesaOps plant template
+                  </button>
+                )}
                 <select aria-label="Question type to add" id="question-type" defaultValue="short_text" className="min-h-10 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700">
                   {QUESTION_TYPES.map((type) => <option key={type.id} value={type.id}>{type.label}</option>)}
                 </select>

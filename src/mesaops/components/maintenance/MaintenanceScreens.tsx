@@ -14,7 +14,7 @@ import { StatusBadge, type StatusTone } from '@shared/components/ui/StatusBadge'
 import { pushToast } from '@shared/components/Notify';
 import { ApiError } from '@shared/lib/apiClient';
 import { useMachines, useCreateMachine, useMaintenanceTasks, useAddMaintenance, useCompleteMaintenance, type ApiMachine } from '@mesaops/lib/queries/maintenance';
-import { downloadMachineQr, machineQrUrl, renderMachineQrPng } from '@mesaops/lib/machineQr';
+import { downloadMachineQr, machineQrUrl, renderMachineQrSticker } from '@mesaops/lib/machineQr';
 
 export interface MaintData { onOpen: (m: string) => void; onTrace: (q: string) => void; user: string; }
 
@@ -44,7 +44,7 @@ function MachineQrPanel({ machine, onDone }: { machine: Pick<ApiMachine, 'code' 
   useEffect(() => {
     let cancelled = false;
     setDataUrl('');
-    renderMachineQrPng(machine.code, 320).then((url) => {
+    renderMachineQrSticker(machine.code, 320).then((url) => {
       if (!cancelled) setDataUrl(url);
     }).catch(() => {
       if (!cancelled) pushToast('Could not render QR code.');
@@ -78,13 +78,16 @@ function MachineQrPanel({ machine, onDone }: { machine: Pick<ApiMachine, 'code' 
     <div className="space-y-4" data-testid="machine-qr-panel">
       <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-5">
         {dataUrl ? (
-          <img src={dataUrl} alt={`QR for machine ${machine.code}`} className="h-56 w-56 rounded-xl bg-white p-2" />
+          <img
+            src={dataUrl}
+            alt={`MesaOrigins QR sticker for machine ${machine.code}`}
+            className="w-full max-w-[280px] rounded-xl bg-white p-2"
+          />
         ) : (
-          <div className="flex h-56 w-56 items-center justify-center rounded-xl bg-white text-sm text-slate-400">Generating…</div>
+          <div className="flex h-72 w-full max-w-[280px] items-center justify-center rounded-xl bg-white text-sm text-slate-400">Generating…</div>
         )}
         <div className="text-center">
-          <div className="font-mono text-xl font-bold text-slate-900">{machine.code}</div>
-          {machine.line ? <p className="mt-0.5 text-[13px] text-slate-500">{machine.line}</p> : null}
+          {machine.line ? <p className="text-[13px] text-slate-500">{machine.line}</p> : null}
           <p className="mt-2 max-w-xs text-[12px] text-slate-400">Print and paste on the machine. Authorized users who scan open the active shift log.</p>
         </div>
       </div>
