@@ -13,6 +13,7 @@ vi.mock('@mesaops/lib/machineQr', async () => {
   return {
     ...actual,
     renderMachineQrPng: vi.fn(async () => 'data:image/png;base64,AAA'),
+    renderMachineQrSticker: vi.fn(async () => 'data:image/png;base64,AAA'),
     downloadMachineQr: vi.fn(async () => undefined),
   };
 });

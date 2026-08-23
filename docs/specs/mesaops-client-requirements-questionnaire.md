@@ -85,15 +85,25 @@ For each feature: mark **I** = Include as-is · **C** = Configure · **E** = Enh
 | B2.2 | Who approves price / discount / priority? | |
 | B2.3 | Product identification: name only, SKU, drawing no., customer part no.? | |
 | B2.4 | Do you need multi-line orders, variants, or one product per order? | |
-| B2.5 | Complaint severity levels and SLA (response / close days)? | |
-| B2.6 | Must quotations / PDFs match a client letterhead template? | |
+| B2.5 | Must quotations / PDFs match a client letterhead template? | |
+
+**Complaints & CAPA questions** (when module selected)
+
+| # | Question | Answer |
+| --- | --- | --- |
+| B2.7 | How are customer complaints recorded today (register, Excel, email)? | |
+| B2.8 | Complaint types (quality, quantity, packing, delivery, …) | |
+| B2.9 | Severity levels and response / closure timelines | |
+| B2.10 | Root-cause investigation method (5-Why, batch trace, …) | |
+| B2.11 | CA / PA fields and approval chain | |
+| B2.12 | Attach sample complaint / CAPA format | |
 
 ### B3. Planning & production
 
 | Feature | Screen / capability | I/C/E/O | Notes / gaps |
 | --- | --- | --- | --- |
 | Orders to Plan | Queue of confirmed / operational demand | | |
-| Production Plan | Machine, shift D/N, operator, dates, drawing/formula/mold | | |
+| Production Plan | Machine, shift D/N, operator, dates, drawing/formula | | |
 | Task sequence | Ordered task codes on a plan | | |
 | Formulations (BOM) | Formula code + component % / lots | | |
 | Logbook templates | Pipe / coil layouts, zones, specs, rejection reasons | | |
@@ -106,17 +116,19 @@ For each feature: mark **I** = Include as-is · **C** = Configure · **E** = Enh
 
 | # | Question | Answer |
 | --- | --- | --- |
+| B3.0 | **Project scope (free text)** — client describes requirement in own words | |
 | B3.1 | Planning unit: machine × shift, line, work centre, or cell? | |
-| B3.2 | Required fields on every plan (drawing, mold, formula, supervisor, …) | |
+| B3.2 | Required fields on every plan (drawing, formula, supervisor, …) | |
 | B3.3 | Can one order split across machines / shifts / days? | |
 | B3.4 | How are operators assigned (named person, crew, skill matrix)? | |
 | B3.5 | Product families and which logbook layout each uses (pipe / coil / other) | |
-| B3.6 | Temperature zones: how many die / barrel zones per family? | |
-| B3.7 | Hourly vs continuous readings; mandatory inspection time slots | |
-| B3.8 | Scrap / waste categories you track (process, lumps, rejection, …) | |
-| B3.9 | Finished goods unit: rolls, meters, nos, kg — and packing rules | |
-| B3.10 | Sign-off: operator only, or operator + supervisor dual sign? | |
-| B3.11 | Must logbook match an existing paper form (doc no. / rev)? Attach sample. | |
+| B3.6 | Describe each logbook format (columns, shift/hourly rows, doc no. / rev) | |
+| B3.7 | Temperature zones: names, targets, limits; die / barrel zone counts | |
+| B3.8 | Hourly vs continuous readings; mandatory inspection time slots | |
+| B3.9 | How finished output is recorded (rolls, meters, weight, pieces) | |
+| B3.10 | Scrap / waste categories and rejection reasons | |
+| B3.11 | Sign-off: operator only, or operator + supervisor dual sign? | |
+| B3.12 | Attach sample paper logbook or Excel sheet | |
 
 ### B4. Quality
 
@@ -165,14 +177,19 @@ For each feature: mark **I** = Include as-is · **C** = Configure · **E** = Enh
 | Vehicle / transporter / driver / ETA | | | |
 | Statutory evidence (optional) | Invoice / e-way bill verified evidence | | |
 
-**Dispatch questions**
+**Dispatch & packing questions**
 
 | # | Question | Answer |
 | --- | --- | --- |
-| B6.1 | Gate pass / packing list fields required | |
-| B6.2 | Partial dispatch allowed? | |
-| B6.3 | Job-work / transfer / return movements needed? | |
-| B6.4 | Invoice / e-way bill: MesaERP, external, or manual attach? | |
+| B6.1 | How finished goods are packed (rolls, bundles, cartons, labels) | |
+| B6.2 | Packing label fields (product, lot, weight, PO, …) | |
+| B6.3 | Weight check at packing or dispatch? | |
+| B6.4 | Steps from QA pass to gate out (who signs at each step) | |
+| B6.5 | Gate pass / delivery challan / packing list fields | |
+| B6.6 | Partial dispatch allowed? How is balance tracked? | |
+| B6.7 | Documents that must travel with shipment | |
+| B6.8 | Job-work / transfer / return movements needed? | |
+| B6.9 | Invoice / e-way bill: MesaERP, external, or manual attach? | |
 
 ### B7. Maintenance
 
