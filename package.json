@@ -21,6 +21,8 @@
     "docs:openapi": "tsx server/scripts/emitOpenApi.ts",
     "provision:aone": "tsx server/scripts/provisionAone.ts",
     "provision:mesaworks": "tsx server/scripts/provisionMesaWorks.ts",
+    "dns:google-workspace": "bash scripts/cloudflare-google-workspace-dns.sh",
+    "deploy:path-router": "bash scripts/deploy-path-router.sh",
     "provision:platform-admin": "tsx server/scripts/provisionPlatformAdmin.ts",
     "db:generate": "prisma generate",
     "db:up": "docker compose up -d postgres",

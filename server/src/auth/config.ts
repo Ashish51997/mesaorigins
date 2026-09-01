@@ -47,8 +47,8 @@ export const authConfig: ExpressAuthConfig = {
     maxAge: SESSION_MAX_AGE_SEC,
   },
   pages: {
-    signIn: '/',
-    error: '/',
+    signIn: '/login',
+    error: '/login',
   },
   callbacks: {
     async signIn({ user, account }) {

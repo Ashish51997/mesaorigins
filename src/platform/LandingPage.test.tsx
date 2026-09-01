@@ -5,7 +5,7 @@ import { getOrganizationId, setOrganizationId } from '@shared/lib/apiIdentity';
 import LandingPage from './LandingPage';
 
 const fetchMock = vi.fn();
-const onEnterService = vi.fn();
+const onEnterWorkspace = vi.fn();
 
 const organizationUser = {
   userId: 'user-1',
@@ -22,24 +22,24 @@ const organizationUser = {
 
 const mesaOps = {
   id: 'mesaops',
-  name: 'MesaOps',
-  description: 'Manufacturing operations workspace.',
+  name: 'MesaPlant',
+  description: 'Plan machines and shifts, execute, QA, move operational stock, and dispatch.',
   status: 'active',
   sortOrder: 10,
 };
 
 const mesaLeads = {
   id: 'mesaleads',
-  name: 'MesaLeads',
-  description: 'Lead qualification and quotation workspace.',
+  name: 'MesaSell',
+  description: 'Win the order — enquiry, technical review, quotation, and customer decision.',
   status: 'active',
   sortOrder: 20,
 };
 
 const mesaErp = {
   id: 'mesaerp',
-  name: 'MesaERP',
-  description: 'Manufacturing business ERP and finance workspace.',
+  name: 'MesaBook',
+  description: 'Run the business books — procurement, valued inventory, costing, finance, and tax.',
   status: 'active',
   sortOrder: 30,
 };
@@ -100,7 +100,7 @@ function mockSignedOutLanding(loginResponse?: ReturnType<typeof jsonResponse>) {
 }
 
 function openOrganizationLogin() {
-  render(<LandingPage onEnterService={onEnterService} />);
+  render(<LandingPage onEnterWorkspace={onEnterWorkspace} />);
   fireEvent.click(screen.getByRole('button', { name: 'Organization login' }));
 }
 
@@ -113,7 +113,7 @@ function submitOrganizationLogin() {
 describe('MesaOrigins landing page', () => {
   beforeEach(() => {
     fetchMock.mockReset();
-    onEnterService.mockReset();
+    onEnterWorkspace.mockReset();
     vi.stubGlobal('fetch', fetchMock);
     window.localStorage.clear();
     window.sessionStorage.clear();
@@ -126,7 +126,7 @@ describe('MesaOrigins landing page', () => {
 
   it('offers separate entry points for administrators and organizations', () => {
     mockSignedOutLanding();
-    render(<LandingPage onEnterService={onEnterService} />);
+    render(<LandingPage onEnterWorkspace={onEnterWorkspace} />);
 
     const adminLogin = screen.getByRole('link', { name: 'Admin login' });
     expect(adminLogin.getAttribute('href')).toBe('/admin');
@@ -136,7 +136,7 @@ describe('MesaOrigins landing page', () => {
 
   it('keeps a fresh DEV_AUTH visit on the two-login entry screen', async () => {
     mockSignedOutLanding();
-    render(<LandingPage onEnterService={onEnterService} />);
+    render(<LandingPage onEnterWorkspace={onEnterWorkspace} />);
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/auth/session-context', {
       credentials: 'include',
@@ -144,7 +144,7 @@ describe('MesaOrigins landing page', () => {
     }));
     expect(screen.getByRole('link', { name: 'Admin login' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Organization login' })).toBeTruthy();
-    expect(onEnterService).not.toHaveBeenCalled();
+    expect(onEnterWorkspace).not.toHaveBeenCalled();
   });
 
   it('submits organization credentials through the existing auth endpoint', async () => {
@@ -160,43 +160,72 @@ describe('MesaOrigins landing page', () => {
     }));
   });
 
-  it('enters the only active service immediately after sign-in', async () => {
+  it('routes owners with MesaPlant to Command immediately after sign-in', async () => {
+    mockSignedOutLanding(authResponse([mesaOps]));
+    openOrganizationLogin();
+    submitOrganizationLogin();
+
+    await waitFor(() => expect(onEnterWorkspace).toHaveBeenCalledWith({
+      uid: 'emp-user-1',
+      email: 'owner@acme.test',
+      displayName: 'Asha Rao',
+      role: 'Owner',
+      isFirebase: false,
+    }, '/command'));
+    expect(screen.queryByRole('heading', { name: 'Choose a product' })).toBeNull();
+  });
+
+  it('enters the only active commercial module immediately after sign-in', async () => {
     mockSignedOutLanding(authResponse([mesaLeads]));
     openOrganizationLogin();
     submitOrganizationLogin();
 
-    await waitFor(() => expect(onEnterService).toHaveBeenCalledWith({
+    await waitFor(() => expect(onEnterWorkspace).toHaveBeenCalledWith({
       uid: 'emp-user-1',
       email: 'owner@acme.test',
       displayName: 'Asha Rao',
       role: 'Owner',
       isFirebase: false,
-    }, 'mesaleads'));
-    expect(screen.queryByRole('heading', { name: 'Choose a service' })).toBeNull();
+    }, '/mesaleads'));
+    expect(screen.queryByRole('heading', { name: 'Choose a product' })).toBeNull();
   });
 
   it.each([
-    ['MesaOps', 'mesaops'],
-    ['MesaLeads', 'mesaleads'],
-    ['MesaERP', 'mesaerp'],
-  ])('lets a multi-service organization enter %s', async (serviceName, serviceId) => {
+    ['MesaSell', '/mesaleads'],
+    ['MesaBook', '/mesaerp'],
+  ])('lets a multi-module owner choose %s from the grouped picker', async (serviceName, destination) => {
+    mockSignedOutLanding(authResponse([mesaLeads, mesaErp]));
+    openOrganizationLogin();
+    submitOrganizationLogin();
+
+    expect(await screen.findByRole('heading', { name: 'Choose a product' })).toBeTruthy();
+    expect(screen.getByText('Acme Plastics')).toBeTruthy();
+    expect(onEnterWorkspace).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: `Open ${serviceName}` }));
+
+    expect(onEnterWorkspace).toHaveBeenCalledWith({
+      uid: 'emp-user-1',
+      email: 'owner@acme.test',
+      displayName: 'Asha Rao',
+      role: 'Owner',
+      isFirebase: false,
+    }, destination);
+  });
+
+  it('routes owners with every module straight to Command without a picker', async () => {
     mockSignedOutLanding(authResponse([mesaOps, mesaLeads, mesaErp]));
     openOrganizationLogin();
     submitOrganizationLogin();
 
-    expect(await screen.findByRole('heading', { name: 'Choose a service' })).toBeTruthy();
-    expect(screen.getByText('Acme Plastics')).toBeTruthy();
-    expect(onEnterService).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: `Open ${serviceName}` }));
-
-    expect(onEnterService).toHaveBeenCalledWith({
+    await waitFor(() => expect(onEnterWorkspace).toHaveBeenCalledWith({
       uid: 'emp-user-1',
       email: 'owner@acme.test',
       displayName: 'Asha Rao',
       role: 'Owner',
       isFirebase: false,
-    }, serviceId);
+    }, '/command'));
+    expect(screen.queryByRole('heading', { name: 'Choose a product' })).toBeNull();
   });
 
   it('shows a clear message when the organization has no active services', async () => {
@@ -206,7 +235,7 @@ describe('MesaOrigins landing page', () => {
 
     const message = await screen.findByRole('alert');
     expect(message.textContent).toContain('No services are available');
-    expect(onEnterService).not.toHaveBeenCalled();
+    expect(onEnterWorkspace).not.toHaveBeenCalled();
   });
 
   it('keeps the organization on the login form when authentication fails', async () => {
@@ -217,10 +246,10 @@ describe('MesaOrigins landing page', () => {
     submitOrganizationLogin();
 
     expect((await screen.findByRole('alert')).textContent).toContain('Invalid email or password.');
-    expect(onEnterService).not.toHaveBeenCalled();
+    expect(onEnterWorkspace).not.toHaveBeenCalled();
   });
 
-  it('restores a valid cookie session and shows its service choices without another login', async () => {
+  it('restores a valid cookie session into Command for an owner with MesaPlant', async () => {
     expect(window.localStorage.getItem('erp_session')).toBeNull();
     fetchMock.mockImplementation(async (input: string | URL | Request) => {
       const url = String(input);
@@ -228,45 +257,44 @@ describe('MesaOrigins landing page', () => {
       throw new Error(`Unexpected fetch ${url}`);
     });
 
-    render(<LandingPage onEnterService={onEnterService} />);
+    render(<LandingPage onEnterWorkspace={onEnterWorkspace} />);
 
-    expect(await screen.findByRole('heading', { name: 'Choose a service' })).toBeTruthy();
-    expect(screen.getByText('Acme Plastics')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Organization login' })).toBeNull();
+    await waitFor(() => expect(onEnterWorkspace).toHaveBeenCalledWith({
+      uid: 'emp-user-1',
+      email: 'owner@acme.test',
+      displayName: 'Asha Rao',
+      role: 'Owner',
+      isFirebase: false,
+    }, '/command'));
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/session-context', {
       credentials: 'include',
       headers: undefined,
     });
     expect(fetchMock.mock.calls.some(([url]) => String(url) === '/api/me')).toBe(false);
-    expect(onEnterService).not.toHaveBeenCalled();
   });
 
-  it('asks a multi-organization user to choose an organization before its services', async () => {
+  it('asks a multi-organization user to choose an organization before routing by role', async () => {
     mockSignedOutLanding(authResponse([mesaOps], multiOrganizations));
     openOrganizationLogin();
     submitOrganizationLogin();
 
     expect(await screen.findByRole('heading', { name: 'Choose an organization' })).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: 'Choose a service' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Choose a product' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Northstar Manufacturing' }));
 
-    expect(await screen.findByRole('heading', { name: 'Choose a service' })).toBeTruthy();
-    expect(getOrganizationId()).toBe('org-northstar');
-    expect(window.sessionStorage.getItem('mesaorigins_organization')).toBe('org-northstar');
-    expect(onEnterService).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open MesaLeads' }));
-    expect(onEnterService).toHaveBeenCalledWith({
+    await waitFor(() => expect(onEnterWorkspace).toHaveBeenCalledWith({
       uid: 'emp-user-1',
       email: 'owner@acme.test',
       displayName: 'Asha Rao',
       role: 'Sales Executive',
       isFirebase: false,
-    }, 'mesaleads');
+    }, '/mesaleads'));
+    expect(getOrganizationId()).toBe('org-northstar');
+    expect(window.sessionStorage.getItem('mesaorigins_organization')).toBe('org-northstar');
   });
 
-  it('restores a cookie session into the organization chooser before routing its single service', async () => {
+  it('restores a cookie session into the organization chooser before role-based routing', async () => {
     expect(window.localStorage.getItem('erp_session')).toBeNull();
     fetchMock.mockImplementation(async (input: string | URL | Request) => {
       const url = String(input);
@@ -274,18 +302,18 @@ describe('MesaOrigins landing page', () => {
       throw new Error(`Unexpected fetch ${url}`);
     });
 
-    render(<LandingPage onEnterService={onEnterService} />);
+    render(<LandingPage onEnterWorkspace={onEnterWorkspace} />);
 
     expect(await screen.findByRole('heading', { name: 'Choose an organization' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Open Acme Plastics' }));
 
     expect(getOrganizationId()).toBe('org-acme');
-    expect(onEnterService).toHaveBeenCalledWith({
+    expect(onEnterWorkspace).toHaveBeenCalledWith({
       uid: 'emp-user-1',
       email: 'owner@acme.test',
       displayName: 'Asha Rao',
       role: 'Owner',
       isFirebase: false,
-    }, 'mesaops');
+    }, '/command');
   });
 });

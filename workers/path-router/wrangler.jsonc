@@ -1,0 +1,24 @@
+{
+  "name": "mesaorigins",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-31",
+  "workers_dev": false,
+  // Public upstream origins (not secrets). Override at deploy time if they change.
+  "vars": {
+    "APP_ORIGIN": "https://mesadesk-4sdtmcjrcq-as.a.run.app",
+    "MARKETING_ORIGIN": "https://mesa-website-eight.vercel.app"
+  },
+  "routes": [
+    {
+      "pattern": "mesaorigins.com/*",
+      "zone_name": "mesaorigins.com"
+    },
+    {
+      "pattern": "www.mesaorigins.com/*",
+      "zone_name": "mesaorigins.com"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

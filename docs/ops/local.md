@@ -3,7 +3,7 @@
 Every developer runs **the same stack on their own machine**:
 
 - Docker Postgres 16 on `localhost:5432`
-- Node app via `npm run dev` on `http://localhost:3000`
+- Node app via `npm run dev` on `http://localhost:4000` (port **4000** — NoBroker hood-ui uses **3000** on the same machine)
 - Demo seed data (optional after first migrate)
 
 Do **not** point day-to-day development at a shared Neon/Cloud SQL database. Shared DBs get wiped when anyone re-seeds and fight over migrations.
@@ -58,18 +58,22 @@ npm run db:up    # if Postgres is not already running
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:4000/login (organization / admin entry). Direct `/` redirects to `/login` in development.
 
 Organization login (after seed):
 
 - Email: `deepak.bansal@masspolymer.in`
 - Password: `mesaorigins123` (or whatever you set in `SEED_USER_PASSWORD`)
 
+Service picker shows customer-facing names **MesaPlant**, **MesaSell**, **MesaBook** (API route IDs remain `mesaops` / `mesaleads` / `mesaerp`). Product catalog JSON: `GET /api/product-catalog`.
+
+Marketing site (`mesa-website`) runs separately on `http://localhost:5173`. Point its Login CTA at this app with `VITE_LOGIN_URL=http://localhost:4000/login`. Production path routing: [marketing-deploy.md](./marketing-deploy.md), [cloudflare-path-routing.md](./cloudflare-path-routing.md).
+
 ## Smoke checks
 
 ```bash
-curl --fail http://localhost:3000/api/health
-curl --fail -H 'x-dev-user: EMP-002' http://localhost:3000/api/me
+curl --fail http://localhost:4000/api/health
+curl --fail -H 'x-dev-user: EMP-002' http://localhost:4000/api/me
 ```
 
 ## Schema changes

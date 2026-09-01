@@ -398,7 +398,7 @@ describe('MesaLeads organization dashboard', () => {
 
     expect(await screen.findByRole('heading', { name: 'Session expired' })).toBeTruthy();
     const signIn = screen.getByRole('link', { name: 'Back to sign in' });
-    expect(signIn.getAttribute('href')).toBe('/');
+    expect(signIn.getAttribute('href')).toBe('/login');
     expect(window.localStorage.getItem('erp_session')).toBeNull();
     expect(window.sessionStorage.getItem('mesaorigins_dev_identity')).toBeNull();
     expect(window.sessionStorage.getItem('mesaorigins_organization')).toBeNull();

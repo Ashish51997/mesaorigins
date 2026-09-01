@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { basePrisma } from '../db';
 import { ADMIN_ROLES, ROLE_DEFAULT_SCREENS } from './permissions';
+import { presentService } from '../platform/productCatalog';
 
 export interface ServiceAccessSummary {
   id: string;
@@ -98,7 +99,7 @@ async function activeServicesForOrganization(organizationId: string): Promise<Se
     ],
   });
 
-  return assignments.map(({ service }) => service);
+  return assignments.map(({ service }) => presentService(service));
 }
 
 async function organizationAccess(membership: MembershipWithIdentity): Promise<OrganizationAccessSummary> {

@@ -51,8 +51,8 @@ services:
       PORT: 3000
       # Production-mode startup is fail-closed. These predictable values are
       # local Compose defaults only; shared deployments use Secret Manager.
-      APP_URL: ${MESAORIGINS_APP_URL:-https://localhost:${MESAORIGINS_APP_PORT:-3000}}
-      AUTH_URL: ${MESAORIGINS_APP_URL:-https://localhost:${MESAORIGINS_APP_PORT:-3000}}
+      APP_URL: ${MESAORIGINS_APP_URL:-https://localhost:${MESAORIGINS_APP_PORT:-4000}}
+      AUTH_URL: ${MESAORIGINS_APP_URL:-https://localhost:${MESAORIGINS_APP_PORT:-4000}}
       DEV_AUTH: ${MESAORIGINS_DEV_AUTH:-0}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       AUTH_SECRET: ${AUTH_SECRET:-local-compose-auth-secret-change-before-sharing}
@@ -62,7 +62,7 @@ services:
       MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY: ${MESAORIGINS_OPS_STATUTORY_EVIDENCE_HMAC_KEY:-AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=}
       MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY: ${MESAERP_EXTERNAL_EVIDENCE_HMAC_KEY:-AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=}
     ports:
-      - "${MESAORIGINS_APP_PORT:-3000}:3000"
+      - "${MESAORIGINS_APP_PORT:-4000}:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully

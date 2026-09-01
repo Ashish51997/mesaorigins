@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import Logo from '@shared/components/Logo';
 import { getOrganizationId, setOrganizationId } from '@shared/lib/apiIdentity';
+import { catalogName, productGroupLabel, resolvePostLoginDestination, servicePath } from '@shared/lib/productHome';
+import './loginTheme.css';
 
 export type OrganizationSession = {
   uid: string;
@@ -50,12 +52,10 @@ type AuthenticatedOrganization = OrganizationAccess & {
 };
 
 type LandingPageProps = {
-  onEnterService: (session: OrganizationSession, serviceId: string) => void;
+  onEnterWorkspace: (session: OrganizationSession, destination: string) => void;
 };
 
 type View = 'entry' | 'organization-login' | 'organization-picker' | 'service-picker' | 'no-services';
-
-const inputClass = 'mt-1.5 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-2 focus:ring-blue-100 sm:text-sm';
 
 const serviceIcons: Record<string, typeof Boxes> = {
   mesaops: Boxes,
@@ -73,14 +73,9 @@ function toSession(user: AuthenticatedOrganization): OrganizationSession {
   };
 }
 
-export function servicePath(serviceId: string): string | null {
-  if (serviceId === 'mesaops') return '/mesaops';
-  if (serviceId === 'mesaleads') return '/mesaleads';
-  if (serviceId === 'mesaerp') return '/mesaerp';
-  return null;
-}
+export { servicePath } from '@shared/lib/productHome';
 
-export default function LandingPage({ onEnterService }: LandingPageProps) {
+export default function LandingPage({ onEnterWorkspace }: LandingPageProps) {
   const [view, setView] = useState<View>('entry');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -98,22 +93,26 @@ export default function LandingPage({ onEnterService }: LandingPageProps) {
     setOrganizationId('');
   };
 
-  const enterService = (serviceId: string, selectedOrganization = organization) => {
-    if (!selectedOrganization || !servicePath(serviceId)) return;
+  const enterWorkspace = (destination: string, selectedOrganization = organization) => {
+    if (!selectedOrganization || !destination) return;
     setOrganizationId(selectedOrganization.organizationId);
-    onEnterService(toSession(selectedOrganization), serviceId);
+    onEnterWorkspace(toSession(selectedOrganization), destination);
+  };
+
+  const enterService = (serviceId: string, selectedOrganization = organization) => {
+    const destination = servicePath(serviceId);
+    if (!destination) return;
+    enterWorkspace(destination, selectedOrganization);
   };
 
   const openOrganization = (selectedOrganization: OrganizationAccess) => {
     const normalized = { ...selectedOrganization, services: selectedOrganization.services ?? [] };
     setOrganization(normalized);
     setOrganizationId(normalized.organizationId);
-    if (normalized.services.length === 1) {
-      const onlyService = normalized.services[0];
-      if (servicePath(onlyService.id)) {
-        enterService(onlyService.id, normalized);
-        return;
-      }
+    const destination = resolvePostLoginDestination(normalized.role, normalized.services);
+    if (destination) {
+      enterWorkspace(destination, normalized);
+      return;
     }
     setView(normalized.services.length > 1 ? 'service-picker' : 'no-services');
   };
@@ -208,173 +207,189 @@ export default function LandingPage({ onEnterService }: LandingPageProps) {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 font-sans text-slate-700 sm:p-8" id="landing-page-root">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-6xl items-center sm:min-h-[calc(100vh-4rem)]">
-        <div className="grid w-full overflow-hidden rounded-xl border border-slate-200 bg-white md:grid-cols-2">
-          <section className="hidden min-h-[640px] bg-[#102A65] p-10 text-white md:flex md:flex-col lg:p-12">
+    <main className="login-shell" id="landing-page-root">
+      <div className="login-wrap">
+        <div className="login-card">
+          <section className="login-hero">
             <a href="/" aria-label="MesaOrigins home" className="flex items-center gap-3 self-start">
               <Logo className="h-10 w-10 shrink-0" />
               <div>
-                <p className="text-lg font-extrabold leading-none">MesaOrigins</p>
-                <p className="mt-1 text-xs text-blue-200">Parent service platform</p>
+                <p className="text-lg font-extrabold leading-none text-white">MesaOrigins</p>
+                <p className="mt-1 text-xs text-white/80">One Platform. Every Operation.</p>
               </div>
             </a>
 
             <div className="my-auto max-w-md">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-blue-50">
+              <div className="login-hero-badge">
                 <Factory className="h-4 w-4" /> Secure workspace access
               </div>
-              <h1 className="text-4xl font-extrabold leading-tight tracking-tight !text-white">One secure entrance to every service.</h1>
-              <p className="mt-4 max-w-sm text-sm leading-6 text-blue-100">
+              <h1>One secure entrance to every service.</h1>
+              <p>
                 Administrators manage the platform. Organization teams sign in once and continue to the services assigned to their workspace.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
+              <div className="login-hero-stat">
                 <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-                <p className="mt-3 text-sm font-bold">Assignment-aware</p>
-                <p className="mt-1 text-xs leading-5 text-blue-200">Only active services are shown.</p>
+                <p className="mt-3">Assignment-aware</p>
+                <p>Only active services are shown.</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
-                <LockKeyhole className="h-5 w-5 text-blue-200" />
-                <p className="mt-3 text-sm font-bold">Smart routing</p>
-                <p className="mt-1 text-xs leading-5 text-blue-200">Single-service teams enter directly.</p>
+              <div className="login-hero-stat">
+                <LockKeyhole className="h-5 w-5 text-white/80" />
+                <p className="mt-3">Smart routing</p>
+                <p>Single-service teams enter directly.</p>
               </div>
             </div>
           </section>
 
-          <section aria-live="polite" className="flex min-h-[640px] items-center p-6 sm:p-10 lg:p-12">
-            <div className="mx-auto w-full max-w-sm">
-              <div className="mb-8 flex items-center gap-3 md:hidden">
+          <section aria-live="polite" className="login-panel">
+            <div className="login-panel-inner">
+              <div className="login-mobile-brand">
                 <Logo className="h-10 w-10" />
                 <div>
-                  <p className="font-extrabold leading-none text-slate-900">MesaOrigins</p>
-                  <p className="mt-1 text-xs text-slate-500">One platform. Every operation.</p>
+                  <strong>MesaOrigins</strong>
+                  <span>One platform. Every operation.</span>
                 </div>
               </div>
-          {view === 'entry' && (
-            <>
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700">Welcome</p>
-              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">How would you like to sign in?</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Choose the account type that matches the work you need to do.</p>
 
-              <div className="mt-6 space-y-3">
-                <a href="/admin" aria-label="Admin login" className="group flex min-h-28 items-center gap-4 rounded-xl border border-slate-200 p-4 transition hover:border-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700 group-hover:bg-white group-hover:text-blue-700"><ShieldCheck className="h-6 w-6" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-extrabold text-slate-900">Administrator</span>
-                    <span className="mt-1 block text-xs leading-5 text-slate-500">Manage organizations, onboarding and service availability.</span>
-                  </span>
-                  <ArrowRight className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-700" />
-                </a>
+              <a href="/" className="login-back">← Back to website</a>
 
-                <button type="button" aria-label="Organization login" onClick={() => { setView('organization-login'); setError(''); }} className="group flex min-h-28 w-full items-center gap-4 rounded-xl border border-slate-200 p-4 text-left transition hover:border-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 group-hover:bg-white"><Building2 className="h-6 w-6" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-extrabold text-slate-900">Organization</span>
-                    <span className="mt-1 block text-xs leading-5 text-slate-500">Open your team’s assigned MesaOrigins services.</span>
-                  </span>
-                  <ArrowRight className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-700" />
-                </button>
-              </div>
-            </>
-          )}
+              {view === 'entry' && (
+                <>
+                  <p className="login-overline mt-5">Welcome</p>
+                  <h2 className="login-title">How would you like to sign in?</h2>
+                  <p className="login-subtitle">Choose the account type that matches the work you need to do.</p>
 
-          {view === 'organization-login' && (
-            <>
-              <button type="button" onClick={reset} className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900">
-                <ArrowLeft className="h-4 w-4" /> Back to access options
-              </button>
-              <div className="mt-4 flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-blue-700"><Building2 className="h-5 w-5" /></div>
-              <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900">Organization sign in</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Use the email and password provided by your organization administrator.</p>
-              <form onSubmit={submit} className="mt-6 space-y-4">
-                <label className="block">
-                  <span className="text-xs font-bold text-slate-700">Email</span>
-                  <input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="name@organization.com" className={inputClass} />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-bold text-slate-700">Password</span>
-                  <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required className={inputClass} />
-                </label>
-                {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-800">{error}</div>}
-                <button type="submit" disabled={busy} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-wait disabled:opacity-60">
-                  {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {busy ? 'Signing in…' : 'Sign in'}
-                </button>
-              </form>
-            </>
-          )}
+                  <div className="mt-6 space-y-3">
+                    <a href="/admin" aria-label="Admin login" className="login-option">
+                      <span className="login-option-icon"><ShieldCheck className="h-6 w-6" /></span>
+                      <span className="min-w-0 flex-1">
+                        <strong>Administrator</strong>
+                        <span>Manage organizations, onboarding and service availability.</span>
+                      </span>
+                      <ArrowRight className="h-5 w-5 shrink-0 text-[var(--login-muted)]" />
+                    </a>
 
-          {view === 'service-picker' && organization && (
-            <>
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700">{organization.organizationName}</p>
-              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">Choose a service</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">You have access to multiple services. Choose where you want to work now.</p>
-              <div className="mt-6 space-y-3">
-                {organization.services.map((service) => {
-                  const Icon = serviceIcons[service.id] ?? Boxes;
-                  const supported = Boolean(servicePath(service.id));
-                  return (
-                    <article key={service.id} className="rounded-xl border border-slate-200 p-4">
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700"><Icon className="h-5 w-5" /></span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-sm font-extrabold text-slate-900">{service.name}</h3>
-                            <span className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">Active</span>
-                          </div>
-                          <p className="mt-1 text-xs leading-5 text-slate-500">{service.description}</p>
-                        </div>
-                      </div>
-                      <button type="button" disabled={!supported} onClick={() => enterService(service.id)} className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white transition hover:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-500">
-                        {supported ? `Open ${service.name}` : `${service.name} is not configured`}
-                        {supported && <ArrowRight className="h-4 w-4" />}
-                      </button>
-                    </article>
-                  );
-                })}
-              </div>
-              <button type="button" onClick={reset} className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900"><ArrowLeft className="h-4 w-4" /> Sign in with another account</button>
-            </>
-          )}
-
-          {view === 'organization-picker' && (
-            <>
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700">Organization access</p>
-              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">Choose an organization</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">This account belongs to more than one organization. Choose the workspace you want to open.</p>
-              <div className="mt-6 space-y-3">
-                {organizations.map((item) => (
-                  <article key={item.membershipId ?? item.organizationId} className="rounded-xl border border-slate-200 p-4">
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700"><Building2 className="h-5 w-5" /></span>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-extrabold text-slate-900">{item.organizationName}</h3>
-                        <p className="mt-1 text-xs leading-5 text-slate-500">{item.services.length} active {item.services.length === 1 ? 'service' : 'services'} · {item.role}</p>
-                      </div>
-                    </div>
-                    <button type="button" onClick={() => openOrganization(item)} className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white transition hover:bg-blue-800">
-                      Open {item.organizationName}<ArrowRight className="h-4 w-4" />
+                    <button type="button" aria-label="Organization login" onClick={() => { setView('organization-login'); setError(''); }} className="login-option">
+                      <span className="login-option-icon"><Building2 className="h-6 w-6" /></span>
+                      <span className="min-w-0 flex-1">
+                        <strong>Organization</strong>
+                        <span>Open your team’s assigned MesaOrigins services.</span>
+                      </span>
+                      <ArrowRight className="h-5 w-5 shrink-0 text-[var(--login-muted)]" />
                     </button>
-                  </article>
-                ))}
-              </div>
-              <button type="button" onClick={reset} className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900"><ArrowLeft className="h-4 w-4" /> Sign in with another account</button>
-            </>
-          )}
+                  </div>
+                </>
+              )}
 
-          {view === 'no-services' && organization && (
-            <>
-              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-50 text-amber-700"><LockKeyhole className="h-5 w-5" /></div>
-              <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900">Service access needed</h2>
-              <div role="alert" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                No services are available for <strong>{organization.organizationName}</strong>. Ask your MesaOrigins administrator to activate at least one service.
-              </div>
-              <button type="button" onClick={reset} className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"><ArrowLeft className="h-4 w-4" /> Back to sign in</button>
-            </>
-          )}
+              {view === 'organization-login' && (
+                <>
+                  <button type="button" onClick={reset} className="login-btn-ghost mt-4">
+                    <ArrowLeft className="h-4 w-4" /> Back to access options
+                  </button>
+                  <div className="login-icon-tile mt-4"><Building2 className="h-5 w-5" /></div>
+                  <h2 className="login-title">Organization sign in</h2>
+                  <p className="login-subtitle">Use the email and password provided by your organization administrator.</p>
+                  <form onSubmit={submit} className="mt-6 space-y-4">
+                    <label className="block">
+                      <span className="login-label">Email</span>
+                      <input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="name@organization.com" className="login-input" />
+                    </label>
+                    <label className="block">
+                      <span className="login-label">Password</span>
+                      <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required className="login-input" />
+                    </label>
+                    {error && <div role="alert" className="login-alert-error">{error}</div>}
+                    <button type="submit" disabled={busy} className="login-btn-primary">
+                      {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {busy ? 'Signing in…' : 'Sign in'}
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {view === 'service-picker' && organization && (
+                <>
+                  <p className="login-overline">{organization.organizationName}</p>
+                  <h2 className="login-title">Choose a product</h2>
+                  <p className="login-subtitle">Your account has access to more than one module. Pick where you want to work now.</p>
+                  <div className="mt-6 space-y-6">
+                    {(['Operations', 'Commercial'] as const).map((group) => {
+                      const groupServices = organization.services.filter(
+                        (service) => productGroupLabel(service.id) === group && servicePath(service.id),
+                      );
+                      if (groupServices.length === 0) return null;
+                      return (
+                        <section key={group}>
+                          <h3 className="login-group-label">{group}</h3>
+                          <div className="mt-3 space-y-3">
+                            {groupServices.map((service) => {
+                              const Icon = serviceIcons[service.id] ?? Boxes;
+                              const displayName = catalogName(service.id, service.name);
+                              return (
+                                <article key={service.id} className="login-service-card">
+                                  <div className="flex items-start gap-3">
+                                    <span className="login-icon-tile"><Icon className="h-5 w-5" /></span>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h4>{displayName}</h4>
+                                        <span className="login-badge-active">Active</span>
+                                      </div>
+                                      <p>{service.description}</p>
+                                    </div>
+                                  </div>
+                                  <button type="button" onClick={() => enterService(service.id)} className="login-btn-primary mt-4">
+                                    Open {displayName}
+                                    <ArrowRight className="h-4 w-4" />
+                                  </button>
+                                </article>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      );
+                    })}
+                  </div>
+                  <button type="button" onClick={reset} className="login-btn-ghost mt-5"><ArrowLeft className="h-4 w-4" /> Sign in with another account</button>
+                </>
+              )}
+
+              {view === 'organization-picker' && (
+                <>
+                  <p className="login-overline">Organization access</p>
+                  <h2 className="login-title">Choose an organization</h2>
+                  <p className="login-subtitle">This account belongs to more than one organization. Choose the workspace you want to open.</p>
+                  <div className="mt-6 space-y-3">
+                    {organizations.map((item) => (
+                      <article key={item.membershipId ?? item.organizationId} className="login-service-card">
+                        <div className="flex items-start gap-3">
+                          <span className="login-icon-tile"><Building2 className="h-5 w-5" /></span>
+                          <div className="min-w-0 flex-1">
+                            <h3>{item.organizationName}</h3>
+                            <p>{item.services.length} active {item.services.length === 1 ? 'service' : 'services'} · {item.role}</p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => openOrganization(item)} className="login-btn-primary mt-4">
+                          Open {item.organizationName}<ArrowRight className="h-4 w-4" />
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                  <button type="button" onClick={reset} className="login-btn-ghost mt-5"><ArrowLeft className="h-4 w-4" /> Sign in with another account</button>
+                </>
+              )}
+
+              {view === 'no-services' && organization && (
+                <>
+                  <div className="login-icon-tile login-icon-tile--warn mt-4"><LockKeyhole className="h-5 w-5" /></div>
+                  <h2 className="login-title">Service access needed</h2>
+                  <div role="alert" className="login-alert-warn mt-4">
+                    No services are available for <strong>{organization.organizationName}</strong>. Ask your MesaOrigins administrator to activate at least one service.
+                  </div>
+                  <button type="button" onClick={reset} className="login-btn-ghost mt-5"><ArrowLeft className="h-4 w-4" /> Back to sign in</button>
+                </>
+              )}
             </div>
           </section>
         </div>

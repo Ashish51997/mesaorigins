@@ -55,9 +55,13 @@ export interface RouteDoc {
 
 export const TAGS: { name: string; description: string }[] = [
   { name: 'Platform', description: 'Cross-service health, identity, auth and organization onboarding.' },
-  { name: 'MesaOps', description: 'Plant operations: sales order execution, planning, logbooks, QA, inventory, dispatch, maintenance and plant ACL.' },
-  { name: 'MesaERP', description: 'Independent multi-company manufacturing ERP, procurement, accounting, costing and statutory control.' },
-  { name: 'MesaLeads', description: 'Configurable customer questionnaires, lead qualification, pipeline and follow-up.' },
+  { name: 'MesaPlant', description: 'Plant operations: sales order execution, planning, logbooks, QA, inventory, dispatch, maintenance and plant ACL.' },
+  { name: 'MesaBook', description: 'Independent multi-company manufacturing books — procurement, accounting, costing and statutory control.' },
+  { name: 'MesaSell', description: 'Configurable customer questionnaires, lead qualification, pipeline and follow-up.' },
+  // Legacy API service ids still used as OpenAPI tags in route docs.
+  { name: 'MesaOps', description: 'Alias of MesaPlant — plant operations API surface (`/api/mesaops`).' },
+  { name: 'MesaERP', description: 'Alias of MesaBook — commercial books API surface (`/api/mesaerp`).' },
+  { name: 'MesaLeads', description: 'Alias of MesaSell — commercial leads API surface (`/api/mesaleads`).' },
   { name: 'Supplier Portal', description: 'Vendor-scoped sourcing, order collaboration, compliance evidence, disputes and payment-status visibility. Supplier sessions never enter employee or journal APIs.' },
   { name: 'Health', description: 'Liveness and the caller’s own identity.' },
   { name: 'Sales', description: 'Customers, inquiries, quotations and sales orders — the head of the value chain.' },
@@ -1506,6 +1510,43 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
       google: { type: 'boolean', description: 'True when AUTH_GOOGLE_ID/SECRET are configured' },
     }),
     public: true,
+  },
+  'GET /api/product-catalog': {
+    tag: 'Platform',
+    operationId: 'getProductCatalog',
+    summary: 'Public product catalog',
+    description: 'Customer-facing product names, packages and surfaces. No secrets.',
+    responseDescription: 'Catalog modules, packages and navigation surfaces.',
+    responseSchema: obj({
+      modules: { type: 'array', items: { type: 'object', additionalProperties: true } },
+      packages: { type: 'array', items: { type: 'object', additionalProperties: true } },
+      surfaces: { type: 'array', items: { type: 'object', additionalProperties: true } },
+    }),
+  },
+  'GET /api/command/exceptions': {
+    tag: 'Platform',
+    operationId: 'listCommandExceptions',
+    summary: 'List command exceptions for the current organization',
+    description: 'Cross-module attention items for the Command landing surface.',
+    responseDescription: 'Organization id, as-of timestamp and exception list.',
+    responseSchema: obj({
+      organizationId: str,
+      asOf: { type: 'string', format: 'date-time' },
+      exceptions: { type: 'array', items: { type: 'object', additionalProperties: true } },
+    }),
+  },
+  'GET /api/command/organization-products': {
+    tag: 'Platform',
+    operationId: 'listOrganizationProducts',
+    summary: 'List active and available products for the organization',
+    description: 'Compares catalog modules to the caller’s active service entitlements.',
+    responseDescription: 'Active modules, available modules, surfaces and packages.',
+    responseSchema: obj({
+      active: { type: 'array', items: { type: 'object', additionalProperties: true } },
+      available: { type: 'array', items: { type: 'object', additionalProperties: true } },
+      surfaces: { type: 'array', items: { type: 'object', additionalProperties: true } },
+      packages: { type: 'array', items: { type: 'object', additionalProperties: true } },
+    }),
   },
   'GET /api/me': {
     tag: 'Health',

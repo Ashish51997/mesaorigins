@@ -205,9 +205,9 @@ async function main(): Promise<void> {
 
   await prisma.service.createMany({
     data: [
-      { id: 'mesaops', name: 'MesaOps', description: 'Manufacturing operations, planning, quality, inventory and dispatch.', status: 'active', sortOrder: 10 },
-      { id: 'mesaleads', name: 'MesaLeads', description: 'Lead management and sales pipeline workspace.', status: 'active', sortOrder: 20 },
-      { id: 'mesaerp', name: 'MesaERP', description: 'Manufacturing business ERP, procurement, costing, accounting and statutory control.', status: 'active', sortOrder: 30 },
+      { id: 'mesaops', name: 'MesaPlant', description: 'Plan machines and shifts, execute, QA, move operational stock, and dispatch.', status: 'active', sortOrder: 10 },
+      { id: 'mesaleads', name: 'MesaSell', description: 'Win the order — enquiry, technical review, quotation, and customer decision.', status: 'active', sortOrder: 20 },
+      { id: 'mesaerp', name: 'MesaBook', description: 'Run the business books — procurement, valued inventory, costing, finance, and tax.', status: 'active', sortOrder: 30 },
     ],
   });
   await prisma.permission.createMany({

@@ -10,7 +10,7 @@ import { startIntegrationOutboxWorker, stopIntegrationOutboxWorker } from './lib
 
 // Boots the ERP backend: the REST API + the SPA (Vite middleware in dev, static
 // dist in prod). Replaces the old top-level server.ts.
-const PORT = Number(process.env.PORT ?? 3000);
+const PORT = Number(process.env.PORT ?? 4000);
 
 async function start(): Promise<void> {
   assertProductionConfig();
@@ -51,13 +51,21 @@ async function start(): Promise<void> {
       dotfiles: 'deny',
       index: false,
       setHeaders(res, filePath) {
-        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        if (
+          filePath.includes(`${path.sep}assets${path.sep}`)
+          || filePath.includes(`${path.sep}app-assets${path.sep}`)
+        ) {
           res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         } else if (filePath.endsWith(`${path.sep}sw.js`) || filePath.endsWith(`${path.sep}manifest.webmanifest`)) {
           res.setHeader('Cache-Control', 'no-cache');
         }
       },
     }));
+    app.get('/', (_req, res) => {
+      // Marketing homepage is served by Vercel at the public apex domain.
+      // Direct Cloud Run hits on / should not serve the app SPA shell.
+      res.redirect(302, 'https://mesaorigins.com');
+    });
     app.get('*', (req, res) => {
       // A missing asset, API/auth path or server-bundle probe must never receive
       // the SPA shell. Only extensionless browser navigations use client routing.

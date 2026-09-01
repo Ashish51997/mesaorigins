@@ -26,6 +26,7 @@ import OrganizationOnboardingPanel, {
   type CreatedOrganization,
   type OrganizationSummary,
 } from './OrganizationOnboardingPanel';
+import './loginTheme.css';
 
 type ServiceStatus = 'running' | 'paused' | 'stopped';
 type ServiceCatalogStatus = 'active' | 'paused' | 'stopped';
@@ -60,8 +61,8 @@ type AdminAuthState = 'checking' | 'signedOut' | 'authenticated';
 const SERVICES: ServiceDefinition[] = [
   {
     id: 'mesaops',
-    name: 'MesaOps',
-    description: 'Manufacturing operations, planning, quality, inventory and dispatch workspace.',
+    name: 'MesaPlant',
+    description: 'Plan machines and shifts, execute, QA, move operational stock, and dispatch.',
     category: 'Operations',
     version: 'Production',
     href: '/mesaops',
@@ -69,18 +70,18 @@ const SERVICES: ServiceDefinition[] = [
   },
   {
     id: 'mesaleads',
-    name: 'MesaLeads',
-    description: 'Configurable customer questionnaires, lead qualification, technical review, quotations and follow-up.',
-    category: 'Sales',
+    name: 'MesaSell',
+    description: 'Win the order — enquiry, technical review, quotation, and customer decision.',
+    category: 'Commercial',
     version: 'Beta',
     href: '/mesaleads',
     icon: CloudCog,
   },
   {
     id: 'mesaerp',
-    name: 'MesaERP',
-    description: 'Manufacturing ERP for vendors, procurement, valued inventory, costing, finance and statutory control.',
-    category: 'Business ERP',
+    name: 'MesaBook',
+    description: 'Run the business books — procurement, valued inventory, costing, finance, and tax.',
+    category: 'Commercial',
     version: 'V1',
     href: '/mesaerp',
     icon: Building2,
@@ -175,59 +176,59 @@ function AdminLogin({
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 font-sans sm:p-8">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-5xl items-center sm:min-h-[calc(100vh-4rem)]">
-        <div className="grid w-full overflow-hidden rounded-xl border border-slate-200 bg-white md:grid-cols-2">
-          <section className="relative hidden min-h-[570px] overflow-hidden bg-[#102A65] p-10 text-white md:flex md:flex-col">
-            <div className="absolute -right-28 -top-28 h-72 w-72 rounded-full border border-white/10" />
-            <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full border border-white/10" />
+    <main className="login-shell">
+      <div className="login-wrap">
+        <div className="login-card">
+          <section className="login-hero" style={{ minHeight: 570 }}>
             <div className="relative flex items-center gap-3">
               <Logo className="h-10 w-10" />
               <div>
-                <p className="text-lg font-extrabold leading-none">MesaOrigins</p>
-                <p className="mt-1 text-xs text-blue-200">Parent service platform</p>
+                <p className="text-lg font-extrabold leading-none text-white">MesaOrigins</p>
+                <p className="mt-1 text-xs text-white/80">Parent service platform</p>
               </div>
             </div>
             <div className="relative my-auto max-w-md">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-blue-50">
+              <div className="login-hero-badge">
                 <ShieldCheck className="h-4 w-4" /> Secure administration
               </div>
-              <h1 className="text-4xl font-extrabold leading-tight tracking-tight !text-white">Every MesaOrigins service, one control center.</h1>
-              <p className="mt-4 max-w-sm text-sm leading-6 text-blue-100">Monitor availability, control service state and open each workspace without switching consoles.</p>
+              <h1>Every MesaOrigins service, one control center.</h1>
+              <p>Monitor availability, control service state and open each workspace without switching consoles.</p>
             </div>
             <div className="relative grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
-                <p className="text-2xl font-bold">03</p>
-                <p className="mt-1 text-xs text-blue-200">Service families</p>
+              <div className="login-hero-stat">
+                <p className="text-2xl font-bold text-white">03</p>
+                <p>Service families</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
-                <p className="text-2xl font-bold">01</p>
-                <p className="mt-1 text-xs text-blue-200">Control center</p>
+              <div className="login-hero-stat">
+                <p className="text-2xl font-bold text-white">01</p>
+                <p>Control center</p>
               </div>
             </div>
           </section>
 
-          <section className="flex min-h-[570px] items-center p-6 sm:p-10 lg:p-12">
-            <div className="mx-auto w-full max-w-sm">
-              <div className="mb-8 flex items-center gap-3 md:hidden">
+          <section className="login-panel" style={{ minHeight: 570 }}>
+            <div className="login-panel-inner">
+              <div className="login-mobile-brand">
                 <Logo className="h-10 w-10" />
                 <div>
-                  <p className="font-extrabold leading-none text-slate-900">MesaOrigins</p>
-                  <p className="mt-1 text-xs text-slate-500">Service administration</p>
+                  <strong>MesaOrigins</strong>
+                  <span>Service administration</span>
                 </div>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-sky-50 text-sky-700">
+              <a href="/" className="login-back">← Back to website</a>
+              <a href="/login" className="login-btn-ghost mt-3">← Organization sign in</a>
+              <div className="login-icon-tile mt-4">
                 <LockKeyhole className="h-5 w-5" />
               </div>
-              <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-slate-900">Admin sign in</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <h2 className="login-title">Admin sign in</h2>
+              <p className="login-subtitle">
                 {mode === 'production'
                   ? 'Use your MesaOrigins administrator email and password to open the service console.'
                   : 'Use the isolated local-development administrator credentials.'}
               </p>
               <form className="mt-7 space-y-4" onSubmit={submit}>
                 <label className="block">
-                  <span className="text-[13px] font-semibold text-slate-700">{mode === 'production' ? 'Email address' : 'User ID'}</span>
+                  <span className="login-label">{mode === 'production' ? 'Email address' : 'User ID'}</span>
                   <input
                     type={mode === 'production' ? 'email' : 'text'}
                     value={identifier}
@@ -236,11 +237,11 @@ function AdminLogin({
                     autoFocus
                     required
                     placeholder={mode === 'production' ? 'admin@yourcompany.com' : 'Enter user ID'}
-                    className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-base text-slate-900 outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 sm:text-sm"
+                    className="login-input"
                   />
                 </label>
                 <label className="block">
-                  <span className="text-[13px] font-semibold text-slate-700">Password</span>
+                  <span className="login-label">Password</span>
                   <input
                     type="password"
                     value={password}
@@ -248,18 +249,18 @@ function AdminLogin({
                     autoComplete="current-password"
                     required
                     placeholder="Enter password"
-                    className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-base text-slate-900 outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 sm:text-sm"
+                    className="login-input"
                   />
                 </label>
                 {error && (
-                  <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700">{error}</div>
+                  <div role="alert" className="login-alert-error">{error}</div>
                 )}
-                <button type="submit" disabled={busy} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="submit" disabled={busy} className="login-btn-primary">
                   {busy ? 'Signing in…' : 'Open control center'} {!busy && <ArrowUpRight className="h-4 w-4" />}
                 </button>
               </form>
-              <div className="mt-6 flex items-center gap-2 border-t border-slate-100 pt-5 text-xs text-slate-400">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              <div className="login-footer-note">
+                <ShieldCheck className="h-4 w-4 text-emerald-400" />
                 {mode === 'production' ? 'Protected by server-verified administrator access' : 'Temporary local administrator access'}
               </div>
             </div>
@@ -507,7 +508,7 @@ export default function ServiceAdminPortal() {
           <Logo className="h-9 w-9 shrink-0" />
           <div>
             <p className="font-extrabold leading-none text-slate-900">MesaOrigins</p>
-            <p className="mt-1 text-[11px] font-medium text-slate-400">ADMIN CONSOLE</p>
+            <p className="mt-1 text-[11px] font-medium text-slate-400">Platform Control</p>
           </div>
         </div>
         <nav aria-label="Admin navigation" className="flex-1 space-y-1 p-3">
@@ -547,12 +548,12 @@ export default function ServiceAdminPortal() {
             <Logo className="h-8 w-8" />
             <div>
               <p className="text-sm font-extrabold leading-none text-slate-900">MesaOrigins</p>
-              <p className="mt-1 text-[10px] font-medium text-slate-400">ADMIN CONSOLE</p>
+              <p className="mt-1 text-[10px] font-medium text-slate-400">Platform Control</p>
             </div>
           </div>
           <div className="hidden lg:block">
-            <p className="text-sm font-semibold text-slate-800">Service control center</p>
-            <p className="text-xs text-slate-400">Parent platform · MesaOrigins</p>
+            <p className="text-sm font-semibold text-slate-800">Platform Control</p>
+            <p className="text-xs text-slate-400">MesaWorks · org provisioning and entitlements</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 sm:flex">
@@ -569,10 +570,10 @@ export default function ServiceAdminPortal() {
           <section id="overview" className="flex flex-col justify-between gap-4 scroll-mt-20 sm:flex-row sm:items-end">
             <div>
               <div className="inline-flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-700">
-                <ShieldCheck className="h-3.5 w-3.5" /> Admin workspace
+                <ShieldCheck className="h-3.5 w-3.5" /> MesaWorks workspace
               </div>
               <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Good to see you, Admin</h1>
-              <p className="mt-1.5 max-w-2xl text-sm text-slate-500">Monitor and control every service registered under the MesaOrigins platform.</p>
+              <p className="mt-1.5 max-w-2xl text-sm text-slate-500">Provision organizations, entitlements, and first administrators. Customer org admins use Organization Control inside MesaOrigins.</p>
             </div>
             <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
               <Activity className="h-4 w-4 text-emerald-600" /> Updated just now

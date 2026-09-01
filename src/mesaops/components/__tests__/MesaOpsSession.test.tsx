@@ -99,11 +99,11 @@ describe('MesaOps authenticated session boundary', () => {
     const expectedDenialNoise = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     renderWithQuery(<App />);
 
-    const heading = await screen.findByRole('heading', { name: 'MesaOps is not assigned' });
+    const heading = await screen.findByRole('heading', { name: 'MesaPlant is not assigned' });
     expect(heading).toBeTruthy();
-    expect(screen.getByText(/MesaOps is not active for this organization/)).toBeTruthy();
+    expect(screen.getByText(/MesaPlant is not active for this organization/)).toBeTruthy();
     const back = screen.getByRole('link', { name: 'Return to sign in' });
-    expect(back.getAttribute('href')).toBe('/');
+    expect(back.getAttribute('href')).toBe('/login');
     expect(document.querySelector('#applet-root')).toBeNull();
     expect(screen.queryByText('Management dashboard mock')).toBeNull();
     expect(post).not.toHaveBeenCalledWith('/data', expect.anything());

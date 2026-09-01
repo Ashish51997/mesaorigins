@@ -20,16 +20,28 @@
       "description": "Cross-service health, identity, auth and organization onboarding."
     },
     {
-      "name": "MesaOps",
+      "name": "MesaPlant",
       "description": "Plant operations: sales order execution, planning, logbooks, QA, inventory, dispatch, maintenance and plant ACL."
     },
     {
+      "name": "MesaBook",
+      "description": "Independent multi-company manufacturing books — procurement, accounting, costing and statutory control."
+    },
+    {
+      "name": "MesaSell",
+      "description": "Configurable customer questionnaires, lead qualification, pipeline and follow-up."
+    },
+    {
+      "name": "MesaOps",
+      "description": "Alias of MesaPlant — plant operations API surface (`/api/mesaops`)."
+    },
+    {
       "name": "MesaERP",
-      "description": "Independent multi-company manufacturing ERP, procurement, accounting, costing and statutory control."
+      "description": "Alias of MesaBook — commercial books API surface (`/api/mesaerp`)."
     },
     {
       "name": "MesaLeads",
-      "description": "Configurable customer questionnaires, lead qualification, pipeline and follow-up."
+      "description": "Alias of MesaSell — commercial leads API surface (`/api/mesaleads`)."
     },
     {
       "name": "Supplier Portal",
@@ -3961,6 +3973,234 @@
           },
           "403": {
             "description": "- `organization_not_available` — x-org does not identify a non-inactive membership owned by the signed-in user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal` — unhandled server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/command/exceptions": {
+      "get": {
+        "tags": [
+          "Platform"
+        ],
+        "operationId": "listCommandExceptions",
+        "summary": "List command exceptions for the current organization",
+        "description": "Cross-module attention items for the Command landing surface.",
+        "parameters": [
+          {
+            "name": "x-org",
+            "in": "header",
+            "required": false,
+            "description": "Select one of the authenticated user's non-inactive organization memberships by id or slug. Foreign selections fail closed.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organization id, as-of timestamp and exception list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "organizationId": {
+                      "type": "string"
+                    },
+                    "asOf": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "exceptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated` — no usable credential, or no membership resolved for it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal` — unhandled server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/command/organization-products": {
+      "get": {
+        "tags": [
+          "Platform"
+        ],
+        "operationId": "listOrganizationProducts",
+        "summary": "List active and available products for the organization",
+        "description": "Compares catalog modules to the caller’s active service entitlements.",
+        "parameters": [
+          {
+            "name": "x-org",
+            "in": "header",
+            "required": false,
+            "description": "Select one of the authenticated user's non-inactive organization memberships by id or slug. Foreign selections fail closed.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active modules, available modules, surfaces and packages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "active": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "available": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "surfaces": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "packages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated` — no usable credential, or no membership resolved for it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`internal` — unhandled server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/product-catalog": {
+      "get": {
+        "tags": [
+          "Platform"
+        ],
+        "operationId": "getProductCatalog",
+        "summary": "Public product catalog",
+        "description": "Customer-facing product names, packages and surfaces. No secrets.",
+        "parameters": [
+          {
+            "name": "x-org",
+            "in": "header",
+            "required": false,
+            "description": "Select one of the authenticated user's non-inactive organization memberships by id or slug. Foreign selections fail closed.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalog modules, packages and navigation surfaces.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "modules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "packages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "surfaces": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated` — no usable credential, or no membership resolved for it.",
             "content": {
               "application/json": {
                 "schema": {
