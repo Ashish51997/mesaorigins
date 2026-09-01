@@ -422,7 +422,7 @@ export function OrganizationsDirectory({
                   <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-blue-700">MesaLeads profile</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-blue-700">MesaSell profile</p>
                         <p className="mt-1 text-xs font-bold text-slate-800">
                           {organization.mesaLeadsProfile.brandName || organization.mesaLeadsProfile.legalName}
                         </p>

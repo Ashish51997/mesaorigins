@@ -222,11 +222,11 @@ export function RolesAccess() {
         ]}
       />
       <Card
-        title="MesaOps plant scope"
+        title="MesaPlant plant scope"
         right={<button type="button" onClick={() => setShowPlantAssignment(true)} disabled={!employees.length || !roles.length} className={btn}><Plus className="w-4 h-4" /> Assign plant access</button>}
       >
         <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs leading-5 text-blue-900">
-          Machine plans, logbooks, QA, stores and dispatch stay inside MesaOps. Plant access is explicit and default-deny: assign one or more plant codes, or deliberately leave the plant blank to grant all plants.
+          Machine plans, logbooks, QA, stores and dispatch stay inside MesaPlant. Plant access is explicit and default-deny: assign one or more plant codes, or deliberately leave the plant blank to grant all plants.
         </div>
         {assignmentsQ.isLoading ? <p className="py-6 text-center text-sm text-slate-500">Loading plant assignments…</p> : assignments.length ? (
           <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
@@ -235,7 +235,7 @@ export function RolesAccess() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{assignments.map((assignment) => <tr key={assignment.id} className="align-top"><td className="px-3 py-3"><p className="font-bold text-slate-900 dark:text-white">{assignment.membership.user.name}</p><p className="mt-0.5 text-[11px] text-slate-500">{assignment.membership.user.email}</p></td><td className="px-3 py-3">{assignment.role.name}</td><td className="px-3 py-3"><span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-indigo-700"><Factory className="h-3.5 w-3.5" />{assignment.plantCode ?? 'ALL PLANTS'}</span></td><td className="px-3 py-3 text-xs text-slate-500">{assignment.validFrom ? new Date(assignment.validFrom).toLocaleString() : 'Immediate'}<br />to {assignment.validTo ? new Date(assignment.validTo).toLocaleString() : 'open-ended'}</td><td className="px-3 py-3"><StatusBadge tone={assignment.status === 'active' ? 'success' : 'neutral'}>{assignment.status}</StatusBadge>{assignment.revocationReason && <p className="mt-1 max-w-48 text-[10px] text-slate-500">{assignment.revocationReason}</p>}</td><td className="px-3 py-3 text-right">{assignment.status === 'active' && <button type="button" onClick={() => setRevoking(assignment)} className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-rose-200 px-2.5 text-xs font-bold text-rose-700 hover:bg-rose-50"><Ban className="h-3.5 w-3.5" /> Revoke</button>}</td></tr>)}</tbody>
             </table>
           </div>
-        ) : <EmptyState icon={<Factory className="w-8 h-8" />} title="No plant assignments." hint="MesaOps plant workflows remain unavailable until an administrator assigns a plant or explicit all-plants access." />}
+        ) : <EmptyState icon={<Factory className="w-8 h-8" />} title="No plant assignments." hint="MesaPlant workflows remain unavailable until an administrator assigns a plant or explicit all-plants access." />}
       </Card>
       {showAdd && <RoleModal onClose={() => setShowAdd(false)} />}
       {editing && <RoleModal role={editing} onClose={() => setEditing(null)} />}
@@ -261,9 +261,9 @@ function PlantAssignmentModal({ employees, roles, onClose }: { employees: ApiEmp
         validFrom: form.validFrom ? new Date(form.validFrom).toISOString() : null,
         validTo: form.validTo ? new Date(form.validTo).toISOString() : null,
       },
-    }, { onSuccess: () => { pushToast('MesaOps plant access assigned.'); onClose(); }, onError: (error) => pushToast(errMsg(error)) });
+    }, { onSuccess: () => { pushToast('MesaPlant plant access assigned.'); onClose(); }, onError: (error) => pushToast(errMsg(error)) });
   };
-  return <Modal title="Assign MesaOps plant access" onClose={onClose} wide>
+  return <Modal title="Assign MesaPlant plant access" onClose={onClose} wide>
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <Field label="Employee"><select aria-label="Plant assignment employee" className={inCls} value={form.membershipId} onChange={(event) => setForm({ ...form, membershipId: event.target.value })}>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.user.name} · {employee.employeeCode}</option>)}</select></Field>
       <Field label="Operational role"><select aria-label="Plant assignment role" className={inCls} value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></Field>
@@ -273,7 +273,7 @@ function PlantAssignmentModal({ employees, roles, onClose }: { employees: ApiEmp
       <Field label="Valid to (optional)"><input aria-label="Plant access valid to" type="datetime-local" className={inCls} value={form.validTo} onChange={(event) => setForm({ ...form, validTo: event.target.value })} /></Field>
     </div>
     {!validWindow && <p role="alert" className="text-xs font-semibold text-rose-700">Valid to must be on or after valid from.</p>}
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-900"><strong>Scope change.</strong> This creates an explicit MesaOps assignment. For this employee, unlisted plants will be denied unless an all-plants assignment is also active.</div>
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-900"><strong>Scope change.</strong> This creates an explicit MesaPlant assignment. For this employee, unlisted plants will be denied unless an all-plants assignment is also active.</div>
     <ModalActions onClose={onClose} onSubmit={submit} disabled={!form.membershipId || !form.roleId || !validWindow || create.isPending} label="Assign access" />
   </Modal>;
 }
@@ -285,7 +285,7 @@ function RevokePlantAssignmentModal({ assignment, onClose }: { assignment: ApiMe
   const submit = () => {
     if (reason.trim().length < 3 || revoke.isPending) return;
     revoke.mutate({ assignmentId: assignment.id, expectedVersion: assignment.rowVersion, reason: reason.trim(), requestKey }, {
-      onSuccess: () => { pushToast('MesaOps plant access revoked.'); onClose(); },
+      onSuccess: () => { pushToast('MesaPlant plant access revoked.'); onClose(); },
       onError: (error) => pushToast(errMsg(error)),
     });
   };

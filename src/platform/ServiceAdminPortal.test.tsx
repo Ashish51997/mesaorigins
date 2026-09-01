@@ -16,21 +16,21 @@ const put = api.put as ReturnType<typeof vi.fn>;
 const serviceCatalog = [
   {
     id: 'mesaops',
-    name: 'MesaOps',
+    name: 'MesaPlant',
     description: 'Manufacturing operations workspace.',
     status: 'active',
     sortOrder: 10,
   },
   {
     id: 'mesaleads',
-    name: 'MesaLeads',
+    name: 'MesaSell',
     description: 'Lead management service placeholder.',
     status: 'preview',
     sortOrder: 20,
   },
   {
     id: 'mesaerp',
-    name: 'MesaERP',
+    name: 'MesaBook',
     description: 'Manufacturing business ERP, accounting and procurement.',
     status: 'active',
     sortOrder: 30,
@@ -128,7 +128,7 @@ describe('MesaOrigins service admin portal', () => {
     expect(screen.queryByText('Good to see you, Admin')).toBeNull();
   });
 
-  it('shows MesaOps, MesaLeads and MesaERP after a successful local-development sign in', async () => {
+  it('shows MesaPlant, MesaSell and MesaBook after a successful local-development sign in', async () => {
     render(<ServiceAdminPortal />);
 
     fireEvent.change(await screen.findByLabelText('User ID'), { target: { value: 'admin' } });
@@ -136,9 +136,9 @@ describe('MesaOrigins service admin portal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open control center' }));
 
     expect(await screen.findByText('Good to see you, Admin')).toBeTruthy();
-    const mesaOpsCard = screen.getByRole('heading', { name: 'MesaOps' }).closest('article');
-    const mesaLeadsCard = screen.getByRole('heading', { name: 'MesaLeads' }).closest('article');
-    const mesaErpCard = screen.getByRole('heading', { name: 'MesaERP' }).closest('article');
+    const mesaOpsCard = screen.getByRole('heading', { name: 'MesaPlant' }).closest('article');
+    const mesaLeadsCard = screen.getByRole('heading', { name: 'MesaSell' }).closest('article');
+    const mesaErpCard = screen.getByRole('heading', { name: 'MesaBook' }).closest('article');
     expect(mesaOpsCard).toBeTruthy();
     expect(mesaLeadsCard).toBeTruthy();
     expect(mesaErpCard).toBeTruthy();
@@ -152,13 +152,13 @@ describe('MesaOrigins service admin portal', () => {
     window.sessionStorage.setItem('mesaorigins_admin_session', 'active');
     render(<ServiceAdminPortal />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Stop MesaOps' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop MesaPlant' }));
 
     await waitFor(() => expect(put).toHaveBeenCalledWith(
       '/onboarding/services/mesaops/status',
       { status: 'stopped' },
     ));
-    expect(await screen.findByText('MesaOps stopped')).toBeTruthy();
+    expect(await screen.findByText('MesaPlant stopped')).toBeTruthy();
     await waitFor(() => expect(window.localStorage.getItem('mesaorigins_service_states')).toContain('"mesaops":"stopped"'));
   });
 
@@ -167,10 +167,10 @@ describe('MesaOrigins service admin portal', () => {
     put.mockRejectedValueOnce(new Error('Control plane unavailable'));
     render(<ServiceAdminPortal />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Stop MesaOps' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop MesaPlant' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('Its previous status was kept');
-    expect((screen.getByRole('button', { name: 'Stop MesaOps' }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', { name: 'Stop MesaPlant' }) as HTMLButtonElement).disabled).toBe(false);
     expect(window.localStorage.getItem('mesaorigins_service_states')).toContain('"mesaops":"running"');
   });
 
@@ -184,7 +184,7 @@ describe('MesaOrigins service admin portal', () => {
     fireEvent.change(screen.getByLabelText('First owner name'), { target: { value: 'Priya Sharma' } });
     fireEvent.change(screen.getByLabelText('Owner email'), { target: { value: 'priya@acme.test' } });
     fireEvent.change(screen.getByLabelText('Temporary password'), { target: { value: 'temporary-123' } });
-    const mesaLeads = await screen.findByRole('checkbox', { name: /MesaLeads/ });
+    const mesaLeads = await screen.findByRole('checkbox', { name: /MesaSell/ });
     fireEvent.click(mesaLeads);
     fireEvent.click(screen.getByRole('button', { name: 'Create organization' }));
 
@@ -220,13 +220,13 @@ describe('MesaOrigins service admin portal', () => {
     render(<ServiceAdminPortal />);
 
     const organization = await screen.findByRole('article', { name: 'Northstar Manufacturing' });
-    fireEvent.click(within(organization).getByRole('button', { name: 'Add MesaLeads to Northstar Manufacturing' }));
+    fireEvent.click(within(organization).getByRole('button', { name: 'Add MesaSell to Northstar Manufacturing' }));
 
     await waitFor(() => expect(put).toHaveBeenCalledWith(
       '/onboarding/organizations/org-northstar/services',
       { serviceIds: ['mesaops', 'mesaleads'] },
     ));
-    const assigned = within(organization).getByRole('button', { name: 'Remove MesaLeads from Northstar Manufacturing' });
+    const assigned = within(organization).getByRole('button', { name: 'Remove MesaSell from Northstar Manufacturing' });
     expect(assigned.getAttribute('aria-pressed')).toBe('true');
   });
 
@@ -235,7 +235,7 @@ describe('MesaOrigins service admin portal', () => {
     render(<ServiceAdminPortal />);
 
     const organization = await screen.findByRole('article', { name: 'Northstar Manufacturing' });
-    const onlyService = within(organization).getByRole('button', { name: 'Remove MesaOps from Northstar Manufacturing' });
+    const onlyService = within(organization).getByRole('button', { name: 'Remove MesaPlant from Northstar Manufacturing' });
     expect((onlyService as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(onlyService);
     expect(put).not.toHaveBeenCalled();

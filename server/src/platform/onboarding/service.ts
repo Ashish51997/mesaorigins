@@ -3,15 +3,19 @@ import { ApiError } from '../../middleware/error';
 import { ADMIN_ROLES, ROLE_DEFAULT_SCREENS } from '../../lib/permissions';
 import { hashPassword } from '../../lib/password';
 import type { BootstrapOrg, OrganizationServicesInput, ServiceStatusInput } from './schemas';
+import { listProductCatalogPublic, presentService } from '../productCatalog';
 const BUILT_IN_ROLES = [...new Set(['Owner', 'Administrator', ...Object.keys(ROLE_DEFAULT_SCREENS)])];
 
-const serviceDto = (service: { id: string; name: string; description: string; status: string; sortOrder: number }) => ({
-  id: service.id,
-  name: service.name,
-  description: service.description,
-  status: service.status,
-  sortOrder: service.sortOrder,
-});
+const serviceDto = (service: { id: string; name: string; description: string; status: string; sortOrder: number }) =>
+  presentService({
+    id: service.id,
+    name: service.name,
+    description: service.description,
+    status: service.status,
+    sortOrder: service.sortOrder,
+  });
+
+export { listProductCatalogPublic };
 
 type JsonRecord = Record<string, unknown>;
 

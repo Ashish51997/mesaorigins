@@ -4,7 +4,7 @@ import { requestLog } from './middleware/log';
 import { authenticate, authMode, googleSignInAvailable } from './middleware/auth';
 import { resolveTenant } from './middleware/tenant';
 import { notFound, errorHandler } from './middleware/error';
-import { authRouter, onboardingRouter } from './platform';
+import { authRouter, commandRouter, onboardingRouter } from './platform';
 import { mountMesaOpsRouters } from './mesaops';
 import { mesaLeadsRouter, publicMesaLeadsRouter } from './mesaleads';
 import { mountMesaErpRouters, supplierPortalRouter } from './mesaerp';
@@ -55,6 +55,9 @@ export function buildApiRouter(opts: BuildApiRouterOptions = {}): Router {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ user: req.user });
   });
+
+  // Command + org product catalog (customer shell; requires auth).
+  api.use('/command', commandRouter);
 
   // Protected onboarding for the internal team only.
   api.use(onboardingRouter);

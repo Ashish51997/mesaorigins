@@ -10,7 +10,7 @@ services:
       NODE_ENV: development
       PORT: 3000
       DEV_AUTH: "1"
-      APP_URL: http://localhost:${MESAORIGINS_APP_PORT:-3000}
+      APP_URL: http://localhost:${MESAORIGINS_APP_PORT:-4000}
       AUTH_URL: ""
       AUTH_SECRET: ""
       TRUST_PROXY_HOPS: "0"

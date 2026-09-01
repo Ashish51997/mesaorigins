@@ -22,7 +22,7 @@ export const MESAWORKS_MESALEADS_PROFILE = {
     'One Platform. Every Operation. MesaOrigins digitises plant discipline — machine logbooks, planning, quality, '
     + 'inventory, dispatch and full lot traceability — for manufacturing teams that already know how to run a shop floor.',
   website: '',
-  emails: ['aroul303@gmail.com'],
+  emails: ['sales@mesaorigins.com'],
   phones: [],
   contact: { name: 'MesaWorks', title: 'Platform Owner' },
   address: {

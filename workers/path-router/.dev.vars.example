@@ -1,0 +1,3 @@
+# Local wrangler overrides (copy to .dev.vars — do not commit .dev.vars)
+APP_ORIGIN=https://mesadesk-4sdtmcjrcq-as.a.run.app
+MARKETING_ORIGIN=https://mesa-website-eight.vercel.app

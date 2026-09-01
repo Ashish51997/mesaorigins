@@ -58,6 +58,7 @@ import { clearMachineQueryFromUrl, readMachineCodeFromLocation } from './lib/mac
 import LogbookLedger from './components/LogbookLedger';
 import TemplateBuilder from './components/TemplateBuilder';
 import { EmployeeDirectory, RolesAccess } from './components/admin/AdminScreens';
+import { OrganizationProducts } from './components/admin/OrganizationProducts';
 import OnboardingPage from './components/OnboardingPage';
 import InstallAppButton from '@shared/components/InstallAppButton';
 import { useMyPermissions } from '@mesaops/lib/queries/admin';
@@ -538,9 +539,9 @@ export default function App() {
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 font-sans">
         <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 text-center sm:p-8">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><LockKeyhole className="h-6 w-6" /></div>
-          <h1 className="mt-5 text-xl font-extrabold text-slate-900">{serviceAccessError === 'unauthenticated' ? 'Session expired' : 'MesaOps is not assigned'}</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">{serviceAccessError === 'unauthenticated' ? 'Sign in again to continue to your organization services.' : 'MesaOps is not active for this organization. Return to your service list or ask a MesaOrigins administrator for access.'}</p>
-          <a href="/" className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">Return to sign in</a>
+          <h1 className="mt-5 text-xl font-extrabold text-slate-900">{serviceAccessError === 'unauthenticated' ? 'Session expired' : 'MesaPlant is not assigned'}</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">{serviceAccessError === 'unauthenticated' ? 'Sign in again to continue to your organization services.' : 'MesaPlant is not active for this organization. Return to your product list or ask a MesaOrigins administrator for access.'}</p>
+          <a href="/login" className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">Return to sign in</a>
         </div>
       </div>
     );
@@ -827,7 +828,12 @@ export default function App() {
               {activeModule === 'preventive' && <PreventiveSchedule {...maintData} />}
 
               {/* Admin — People & Roles + Roles & Access (API) */}
-              {activeModule === 'users' && <EmployeeDirectory />}
+              {activeModule === 'users' && (
+                <div className="space-y-4">
+                  <OrganizationProducts />
+                  <EmployeeDirectory />
+                </div>
+              )}
               {activeModule === 'acl' && <RolesAccess />}
             </>
           )}

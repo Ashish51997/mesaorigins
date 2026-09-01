@@ -21,6 +21,9 @@ export default defineConfig(() => {
       // The Express bundle is emitted to dist/server. Keeping the browser root
       // separate makes it impossible for express.static to publish server code.
       outDir: 'dist/client',
+      // Marketing on Vercel uses /assets; app static files live under /app-assets
+      // so Cloudflare path routing can split the two origins cleanly.
+      assetsDir: 'app-assets',
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

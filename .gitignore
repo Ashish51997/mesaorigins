@@ -7,6 +7,11 @@ coverage/
 .env*
 !.env.example
 
+# Cloudflare Worker local overrides
+workers/**/.dev.vars
+workers/**/node_modules/
+workers/**/.wrangler/
+
 # Runtime / local scratch — never source artifacts
 data.json
 branding/

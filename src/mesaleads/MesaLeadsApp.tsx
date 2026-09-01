@@ -428,7 +428,7 @@ export default function MesaLeadsApp() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Settings2 className="h-6 w-6" /></div>
           <h1 className="mt-5 text-xl font-extrabold text-slate-900">{sessionExpired ? 'Session expired' : 'MesaLeads is not assigned'}</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">{sessionExpired ? 'Sign in again to continue to your organization services.' : 'MesaLeads is not active for this organization. Return to your available services or ask a MesaOrigins administrator for access.'}</p>
-          <div className="mt-5 flex justify-center gap-2"><a href="/" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">Back to sign in</a></div>
+          <div className="mt-5 flex justify-center gap-2"><a href="/login" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">Back to sign in</a></div>
         </div>
       </div>
     );
@@ -449,7 +449,7 @@ export default function MesaLeadsApp() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Settings2 className="h-6 w-6" /></div>
           <h1 className="mt-5 text-xl font-extrabold text-slate-900">MesaLeads could not load</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">{errorMessage(loadError)}</p>
-          <div className="mt-5 flex justify-center gap-2"><a href="/" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">All services</a><button onClick={refresh} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-600"><RefreshCw className="h-4 w-4" /> Retry</button></div>
+          <div className="mt-5 flex justify-center gap-2"><a href="/login" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">All services</a><button onClick={refresh} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-600"><RefreshCw className="h-4 w-4" /> Retry</button></div>
         </div>
       </div>
     );
@@ -470,7 +470,7 @@ export default function MesaLeadsApp() {
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5"><Logo className="h-9 w-9" /><div><p className="font-extrabold leading-none text-slate-900">MesaLeads</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">by MesaOrigins</p></div><button onClick={() => setMobileNav(false)} className="ml-auto p-2 text-slate-400 lg:hidden" aria-label="Close navigation"><X className="h-5 w-5" /></button></div>
         <nav aria-label="MesaLeads navigation" className="flex-1 space-y-1 p-3">{NAV.map((item) => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} onClick={() => navigate(item.id)} className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-semibold transition ${active ? 'bg-blue-50 text-blue-800' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}><Icon className="h-4 w-4" /> {item.label}{item.id === 'leads' && <span className="ml-auto rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{leads.length}</span>}</button>; })}</nav>
-        <div className="border-t border-slate-200 p-3"><a href="/" className="flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-500 hover:bg-slate-100"><Building2 className="h-4 w-4" /> All services</a><button type="button" onClick={() => void signOut()} className="mt-1 flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-500 hover:bg-slate-100"><LogOut className="h-4 w-4" /> Sign out</button></div>
+        <div className="border-t border-slate-200 p-3"><a href="/login" className="flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-500 hover:bg-slate-100"><Building2 className="h-4 w-4" /> All services</a><button type="button" onClick={() => void signOut()} className="mt-1 flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-500 hover:bg-slate-100"><LogOut className="h-4 w-4" /> Sign out</button></div>
       </aside>
       {mobileNav && <button aria-label="Close navigation" onClick={() => setMobileNav(false)} className="fixed inset-0 z-30 bg-slate-900/30 lg:hidden" />}
 

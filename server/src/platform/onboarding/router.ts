@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { validateBody } from '../../middleware/validate';
 import { authSecretConfigured } from '../../auth/config';
 import { ApiError } from '../../middleware/error';
-import { bootstrapOrganization, listOrganizations, listServiceCatalog, setOrganizationServices, setServiceStatus } from './service';
+import { bootstrapOrganization, listOrganizations, listProductCatalogPublic, listServiceCatalog, setOrganizationServices, setServiceStatus } from './service';
 import { bootstrapOrgSchema, organizationServicesSchema, serviceStatusSchema } from './schemas';
 import { allowedPlatformAdminEmails, canAccessPlatformAdmin } from '../../lib/platformAdmin';
 
@@ -20,6 +20,11 @@ function requireOnboardingAccess(req: import('express').Request): void {
     throw new ApiError(403, 'forbidden', 'You are not allowed to onboard organizations.');
   }
 }
+
+/** Public product IA (names, packages, manuals path) — no secrets. */
+onboardingRouter.get('/product-catalog', (_req, res) => {
+  res.json(listProductCatalogPublic());
+});
 
 onboardingRouter.get('/onboarding/access', async (req, res, next) => {
   try {
